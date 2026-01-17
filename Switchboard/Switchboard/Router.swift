@@ -7,7 +7,12 @@ struct Router {
         let urlString = url.absoluteString.lowercased()
         
         for route in config.routes {
-            if urlString.contains(route.contains.lowercased()) {
+            let value = route.value.lowercased()
+            let matches = switch route.condition {
+                case .contains: urlString.contains(value)
+                case .exact: urlString == value
+            }
+            if matches {
                 return route.profile
             }
         }

@@ -1,7 +1,13 @@
 import Foundation
 
+enum Condition: String, Codable {
+    case contains
+    case exact
+}
+
 struct Route: Codable {
-    let contains: String
+    let condition: Condition
+    let value: String
     let profile: String
 }
 
