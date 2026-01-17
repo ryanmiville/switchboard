@@ -4,7 +4,7 @@ import Combine
 @MainActor
 final class ConfigViewModel: ObservableObject {
     @Published var config: Config
-    @Published var availableProfiles: [String] = []
+    @Published var availableProfiles: [Profile] = []
     @Published var saveError: String?
     
     private var cancellables = Set<AnyCancellable>()
@@ -33,7 +33,7 @@ final class ConfigViewModel: ObservableObject {
     }
     
     func addRoute() {
-        let defaultProfile = availableProfiles.first ?? config.defaultProfile
+        let defaultProfile = availableProfiles.first?.name ?? config.defaultProfile
         config.routes.append(Route(profile: defaultProfile))
     }
     
@@ -64,9 +64,46 @@ final class ConfigViewModel: ObservableObject {
     }
     
     /// Discovers Chromium profiles from the browser's Local State file
-    static func discoverProfiles(browserPath: String) -> [String] {
+    static func discoverProfiles(browserPath: String) -> [Profile] {
+        guard let infoCache = Self.loadProfileInfoCache(browserPath: browserPath) else {
+            return [Profile(name: "Default", directory: "Default")]
+        }
+        
+        var profiles: [Profile] = []
+        for (directory, info) in infoCache {
+            guard let profileInfo = info as? [String: Any],
+                  let name = profileInfo["name"] as? String else { continue }
+            profiles.append(Profile(name: name, directory: directory))
+        }
+        
+        // Sort: Default directory first, then by name
+        return profiles.sorted { lhs, rhs in
+            if lhs.directory == "Default" { return true }
+            if rhs.directory == "Default" { return false }
+            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        }
+    }
+    
+    /// Resolves a profile display name to its directory identifier
+    static func profileDirectory(forName name: String, browserPath: String) -> String {
+        guard let infoCache = loadProfileInfoCache(browserPath: browserPath) else {
+            return name // Fallback: assume name is directory
+        }
+        
+        for (directory, info) in infoCache {
+            guard let profileInfo = info as? [String: Any],
+                  let profileName = profileInfo["name"] as? String else { continue }
+            if profileName == name {
+                return directory
+            }
+        }
+        
+        return name // Fallback: assume name is directory
+    }
+    
+    private static func loadProfileInfoCache(browserPath: String) -> [String: Any]? {
         guard let bundleId = Bundle(path: browserPath)?.bundleIdentifier else {
-            return ["Default"]
+            return nil
         }
         
         let localStateURL = FileManager.default.homeDirectoryForCurrentUser
@@ -76,16 +113,9 @@ final class ConfigViewModel: ObservableObject {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let profile = json["profile"] as? [String: Any],
               let infoCache = profile["info_cache"] as? [String: Any] else {
-            return ["Default"]
+            return nil
         }
         
-        let profiles = Array(infoCache.keys)
-        
-        // Sort: Default first, then Profile 1, Profile 2, etc.
-        return profiles.sorted { lhs, rhs in
-            if lhs == "Default" { return true }
-            if rhs == "Default" { return false }
-            return lhs.localizedStandardCompare(rhs) == .orderedAscending
-        }
+        return infoCache
     }
 }

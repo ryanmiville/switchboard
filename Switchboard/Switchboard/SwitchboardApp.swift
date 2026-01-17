@@ -61,7 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let router = Router(config: config)
             let profile = router.route(url: url)
             let launcher = BrowserLauncher(config: config)
-            launcher.launch(url: url, profile: profile)
+            launcher.launch(url: url, profileName: profile)
         } catch {
             // Fallback: just open in default browser app directly
             let process = Process()

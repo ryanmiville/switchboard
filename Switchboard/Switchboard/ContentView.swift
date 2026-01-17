@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = ConfigViewModel()
+    @FocusState private var focusedField: UUID?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -25,12 +26,14 @@ struct ContentView: View {
                         RouteRow(
                             route: $route,
                             profiles: viewModel.availableProfiles,
+                            focusedField: $focusedField,
                             onDelete: { viewModel.deleteRoute(route) }
                         )
                     }
                 }
                 .padding()
             }
+            .onTapGesture { focusedField = nil }
             
             Divider()
             
@@ -41,8 +44,8 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Picker("", selection: $viewModel.config.defaultProfile) {
-                        ForEach(viewModel.availableProfiles, id: \.self) { profile in
-                            Text(profile).tag(profile)
+                        ForEach(viewModel.availableProfiles) { profile in
+                            Text(profile.name).tag(profile.name)
                         }
                     }
                     .labelsHidden()
@@ -66,7 +69,8 @@ struct ContentView: View {
 
 struct RouteRow: View {
     @Binding var route: Route
-    let profiles: [String]
+    let profiles: [Profile]
+    var focusedField: FocusState<UUID?>.Binding
     let onDelete: () -> Void
     
     var body: some View {
@@ -87,6 +91,8 @@ struct RouteRow: View {
                 
                 TextField("pattern", text: $route.value)
                     .textFieldStyle(.roundedBorder)
+                    .focused(focusedField, equals: route.id)
+                    .onSubmit { focusedField.wrappedValue = nil }
                 
                 Button(action: onDelete) {
                     Image(systemName: "minus.circle.fill")
@@ -102,8 +108,8 @@ struct RouteRow: View {
                     .frame(width: 80, alignment: .trailing)
                 
                 Picker("", selection: $route.profile) {
-                    ForEach(profiles, id: \.self) { profile in
-                        Text(profile).tag(profile)
+                    ForEach(profiles) { profile in
+                        Text(profile.name).tag(profile.name)
                     }
                 }
                 .labelsHidden()

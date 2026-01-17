@@ -1,5 +1,12 @@
 import Foundation
 
+struct Profile: Identifiable, Hashable {
+    let name: String      // Display name (e.g., "Ryan", "H3")
+    let directory: String // Directory identifier (e.g., "Default", "Profile 1")
+    
+    var id: String { directory }
+}
+
 enum Condition: String, Codable, CaseIterable {
     case contains
     case exact
