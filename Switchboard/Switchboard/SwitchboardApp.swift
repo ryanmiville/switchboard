@@ -13,6 +13,8 @@ struct SwitchboardApp: App {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var launchedViaURL = false
+    
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Register URL handler before app finishes launching
         NSAppleEventManager.shared().setEventHandler(
@@ -24,11 +26,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide dock icon and menu bar - we just want to be a URL router
-        NSApp.setActivationPolicy(.accessory)
+        // If launched via URL, become accessory (no dock/menu) and quit after routing
+        // If launched directly, show the config window
+        if launchedViaURL {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
     
     @objc func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent replyEvent: NSAppleEventDescriptor) {
+        launchedViaURL = true
+        
         guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
               let url = URL(string: urlString) else {
             return
@@ -39,12 +46,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     // Fallback for URLs opened via NSApplicationDelegate
     func application(_ application: NSApplication, open urls: [URL]) {
+        launchedViaURL = true
         for url in urls {
             routeURL(url)
         }
     }
     
     private func routeURL(_ url: URL) {
+        // Hide dock icon when routing
+        NSApp.setActivationPolicy(.accessory)
+        
         do {
             let config = try Config.load()
             let router = Router(config: config)
