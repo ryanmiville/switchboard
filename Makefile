@@ -1,10 +1,16 @@
-.PHONY: build install clean
+.PHONY: build install release release-install clean
 
-build:
+debug:
 	xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Debug build
 
-install: build
+debug-install: build
 	cp -R ~/Library/Developer/Xcode/DerivedData/Switchboard-*/Build/Products/Debug/Switchboard.app /Applications/
+
+release:
+	xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Release build
+
+install: release
+	cp -R ~/Library/Developer/Xcode/DerivedData/Switchboard-*/Build/Products/Release/Switchboard.app /Applications/
 
 clean:
 	xcodebuild -project Switchboard.xcodeproj -scheme Switchboard clean

@@ -69,8 +69,10 @@ Profile names = Chromium directory names (`Default`, `Profile 1`, `Profile 2`, e
 ## BUILD
 
 ```bash
-make build    # or: xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Debug build
-make install  # copies to /Applications/
+make debug         # or: xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Debug build
+make debug-install # debug and copies to /Applications/
+make release       # or: xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Release build
+make install       # release and copies to /Applications/
 ```
 
 ## NOTES
