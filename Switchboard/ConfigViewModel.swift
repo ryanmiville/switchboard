@@ -5,12 +5,14 @@ import Combine
 final class ConfigViewModel: ObservableObject {
     @Published var config: Config
     @Published var availableProfiles: [Profile] = []
+    @Published var availableBrowsers: [InstalledBrowser] = []
     @Published var saveError: String?
     
     private var cancellables = Set<AnyCancellable>()
     
     init() {
         self.config = Config.loadOrDefault()
+        self.availableBrowsers = BrowserDiscovery.chromiumBrowsers()
         self.availableProfiles = Self.discoverProfiles(browserPath: config.browser)
         
         // Auto-save on changes (debounced)

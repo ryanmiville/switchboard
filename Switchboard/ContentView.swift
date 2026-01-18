@@ -56,9 +56,13 @@ struct ContentView: View {
                     Text("Browser")
                         .foregroundStyle(.secondary)
                     Spacer()
-                    TextField("Browser path", text: $viewModel.config.browser)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 200)
+                    Picker("", selection: $viewModel.config.browser) {
+                        ForEach(viewModel.availableBrowsers) { browser in
+                            Text(browser.name).tag(browser.path)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 200)
                 }
             }
             .padding()
