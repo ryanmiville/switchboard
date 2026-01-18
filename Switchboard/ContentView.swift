@@ -5,22 +5,10 @@ struct ContentView: View {
     @FocusState private var focusedField: UUID?
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Switchboard")
-                    .font(.headline)
-                Spacer()
-                Button("New Route") {
-                    viewModel.addRoute()
-                }
-            }
-            .padding()
-            
-            Divider()
-            
-            // Routes list
-            ScrollView {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Routes list
+                ScrollView {
                 LazyVStack(spacing: 16) {
                     ForEach($viewModel.config.routes) { $route in
                         RouteRow(
@@ -49,7 +37,7 @@ struct ContentView: View {
                         }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: 200)
+                    .frame(width: 200, alignment: .trailing)
                 }
                 
                 HStack {
@@ -58,16 +46,35 @@ struct ContentView: View {
                     Spacer()
                     Picker("", selection: $viewModel.config.browser) {
                         ForEach(viewModel.availableBrowsers) { browser in
-                            Text(browser.name).tag(browser.path)
+                            Label {
+                                Text(browser.name)
+                            } icon: {
+                                Image(nsImage: browser.icon)
+                            }
+                            .tag(browser.path)
                         }
                     }
                     .labelsHidden()
-                    .frame(maxWidth: 200)
+                    .frame(width: 200, alignment: .trailing)
                 }
             }
             .padding()
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("New Route") {
+                        viewModel.addRoute()
+                    }
+                }
+            }
+            .navigationTitle("")
         }
         .frame(minWidth: 480, minHeight: 400)
+        .onAppear {
+            DispatchQueue.main.async {
+                focusedField = nil
+            }
+        }
     }
 }
 
@@ -98,7 +105,10 @@ struct RouteRow: View {
                     .focused(focusedField, equals: route.id)
                     .onSubmit { focusedField.wrappedValue = nil }
                 
-                Button(action: onDelete) {
+                Button {
+                    focusedField.wrappedValue = nil
+                    DispatchQueue.main.async { onDelete() }
+                } label: {
                     Image(systemName: "minus.circle.fill")
                         .foregroundStyle(.secondary)
                 }
