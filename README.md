@@ -6,7 +6,7 @@
 
 A macOS URL router that sends links to different browser profiles based on patterns you define.
 
-Set Switchboard as your default browser, and it will automatically open URLs in the right Chrome/Chromium profile—work links in your work profile, personal links in your personal profile.
+Set Switchboard as your default browser, and it will automatically open URLs in the right Chrome/Chromium profile.
 
 ## Setup
 
@@ -23,15 +23,9 @@ Launch Switchboard to open the configuration window. From there you can:
 - Set a default profile for unmatched URLs
 - Choose your Chromium-based browser
 
+![Switchboard configuration window](screenshot.png)
+
 Routes are evaluated in order—first match wins.
-
-### Example
-
-| Condition | Pattern | Profile |
-|-----------|---------|---------|
-| Contains | `github.com` | Work |
-| Contains | `slack.com` | Work |
-| Contains | `youtube.com` | Personal |
 
 Any URL not matching a route opens in your default profile.
 
@@ -48,4 +42,4 @@ No dock icon. No menu bar clutter. Just routing.
 ## Requirements
 
 - macOS 14+
-- Any Chromium-based browser (Chrome, Arc, Brave, etc.)
+- Any Chromium-based browser (Chrome, Helium, Brave, etc.)

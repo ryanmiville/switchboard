@@ -8,25 +8,27 @@ macOS URL router. Sets as default browser, routes URLs to specific Chromium brow
 switchboard/
 ├── Switchboard.xcodeproj/
 ├── Switchboard/
-│   ├── SwitchboardApp.swift   # App entry + URL event handling
-│   ├── Config.swift           # JSON config loader (~/.config/switchboard/config.json)
-│   ├── ConfigViewModel.swift  # ObservableObject for config UI state
-│   ├── Router.swift           # URL → profile matching (substring contains)
-│   ├── BrowserLauncher.swift  # Launches browser executable with --profile-directory
-│   ├── ContentView.swift      # Setup instructions + config editor UI
-│   └── Info.plist             # URL scheme registration (http/https)
-└── Makefile                   # build, install, clean targets
+│   ├── SwitchboardApp.swift    # App entry + URL event handling
+│   ├── Config.swift            # Codable structs + JSON I/O
+│   ├── ConfigViewModel.swift   # ObservableObject for UI state
+│   ├── Router.swift            # URL → profile matching (case-insensitive)
+│   ├── BrowserLauncher.swift   # Launches browser executable with --profile-directory
+│   ├── BrowserDiscovery.swift  # Finds installed Chromium browsers
+│   ├── ContentView.swift       # Setup instructions + config editor UI
+│   └── Info.plist              # URL scheme registration (http/https)
+└── Makefile                    # build, install, clean targets
 ```
 
 ## WHERE TO LOOK
 
-| Task | File |
-|------|------|
-| URL handling | `SwitchboardApp.swift` - `handleGetURL`, `routeURL` |
-| Add matching logic | `Router.swift` - currently substring match only |
-| Change browser launch | `BrowserLauncher.swift` - builds executable path from .app bundle |
-| Config format | `Config.swift` - Codable structs for JSON |
-| UI state | `ConfigViewModel.swift` - loads/saves config, publishes state |
+| Task | File | Notes |
+|------|------|-------|
+| URL handling | `SwitchboardApp.swift` | `handleGetURL`, `routeURL` |
+| Add matching logic | `Router.swift` | currently substring match only |
+| Change browser launch | `BrowserLauncher.swift` | builds executable path from .app bundle |
+| Config format | `Config.swift` | Codable structs for JSON |
+| UI state | `ConfigViewModel.swift` | loads/saves config, publishes state |
+| Browser discovery | `BrowserDiscovery.swift` | detects installed Chromium browsers |
 
 ## ARCHITECTURE
 
@@ -55,12 +57,14 @@ Location: `~/.config/switchboard/config.json`
   "browser": "/Applications/Helium.app",
   "defaultProfile": "Default",
   "routes": [
-    { "contains": "github.com", "profile": "Profile 1" }
+    { "condition": "contains", "value": "github.com", "profile": "Profile 1" }
   ]
 }
 ```
 
 Profile names = Chromium directory names (`Default`, `Profile 1`, `Profile 2`, etc.)
+- Route `condition`: `"contains"` (substring) or `"exact"` (full match)
+- Both URL and value are lowercased for case-insensitive matching
 
 ## BUILD
 
