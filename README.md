@@ -4,15 +4,20 @@
 
 # Switchboard
 
-A macOS URL router that sends links to different browser profiles based on patterns you define.
+A macOS URL router that opens external links in different browser profiles based on patterns you define.
 
 Set Switchboard as your default browser, and it will automatically open URLs in the right Chrome/Chromium profile.
 
-## Setup
+>Note: Switchboard should work with any Chromium browser that uses the standard profile system, but it has only been tested with Helium.
+## Installation
 
-1. Move `Switchboard.app` to `/Applications`
-2. Open it once to register with the system
-3. Go to **System Settings → Desktop & Dock → Default web browser** and select Switchboard
+1. Make sure Command Line Tools for Xcode are installed
+```bash
+xcode-select --install
+```
+2. Run `make install`
+3. Open the Switchboard app to register with the system
+4. Go to **System Settings → Desktop & Dock → Default web browser** and select Switchboard
 
 ## Configuration
 
