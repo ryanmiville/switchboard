@@ -5,15 +5,17 @@ macOS URL router. Sets as default browser, routes URLs to specific Chromium brow
 ## STRUCTURE
 
 ```
-Switchboard/
+switchboard/
 ├── Switchboard.xcodeproj/
-└── Switchboard/
-    ├── SwitchboardApp.swift   # App entry + URL event handling
-    ├── Config.swift           # JSON config loader (~/.config/switchboard/config.json)
-    ├── Router.swift           # URL → profile matching (substring contains)
-    ├── BrowserLauncher.swift  # Launches browser executable with --profile-directory
-    ├── ContentView.swift      # Minimal setup instructions UI
-    └── Info.plist             # URL scheme registration (http/https)
+├── Switchboard/
+│   ├── SwitchboardApp.swift   # App entry + URL event handling
+│   ├── Config.swift           # JSON config loader (~/.config/switchboard/config.json)
+│   ├── ConfigViewModel.swift  # ObservableObject for config UI state
+│   ├── Router.swift           # URL → profile matching (substring contains)
+│   ├── BrowserLauncher.swift  # Launches browser executable with --profile-directory
+│   ├── ContentView.swift      # Setup instructions + config editor UI
+│   └── Info.plist             # URL scheme registration (http/https)
+└── Makefile                   # build, install, clean targets
 ```
 
 ## WHERE TO LOOK
@@ -24,6 +26,7 @@ Switchboard/
 | Add matching logic | `Router.swift` - currently substring match only |
 | Change browser launch | `BrowserLauncher.swift` - builds executable path from .app bundle |
 | Config format | `Config.swift` - Codable structs for JSON |
+| UI state | `ConfigViewModel.swift` - loads/saves config, publishes state |
 
 ## ARCHITECTURE
 
@@ -62,9 +65,8 @@ Profile names = Chromium directory names (`Default`, `Profile 1`, `Profile 2`, e
 ## BUILD
 
 ```bash
-cd Switchboard
-xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Debug build
-cp -R ~/Library/Developer/Xcode/DerivedData/Switchboard-*/Build/Products/Debug/Switchboard.app /Applications/
+make build    # or: xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Debug build
+make install  # copies to /Applications/
 ```
 
 ## NOTES
