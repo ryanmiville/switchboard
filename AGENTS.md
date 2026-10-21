@@ -1,82 +1,47 @@
-# SWITCHBOARD
+# Switchboard
 
-macOS URL router. Sets as default browser, routes URLs to specific Chromium browser profiles based on pattern matching.
+Personal macOS URL router built with SwiftUI/AppKit. Keep changes small and use the standard library and Apple frameworks unless a dependency has a clear payoff.
 
-## STRUCTURE
+## Commands
 
-```
-switchboard/
-├── Switchboard.xcodeproj/
-├── Switchboard/
-│   ├── SwitchboardApp.swift    # App entry + URL event handling
-│   ├── Config.swift            # Codable structs + JSON I/O
-│   ├── ConfigViewModel.swift   # ObservableObject for UI state
-│   ├── Router.swift            # URL → profile matching (case-insensitive)
-│   ├── BrowserLauncher.swift   # Launches browser executable with --profile-directory
-│   ├── BrowserDiscovery.swift  # Finds installed Chromium browsers
-│   ├── ContentView.swift       # Setup instructions + config editor UI
-│   └── Info.plist              # URL scheme registration (http/https)
-└── Makefile                    # build, install, clean targets
-```
+Requires full Xcode 26.4 (including its command-line tools), Swift 6, and macOS. The app targets macOS 13+.
 
-## WHERE TO LOOK
+- `make test` — fast, unhosted Swift Testing tests against the same source files the app compiles.
+- `make verify` — formatting, tests, Debug/Release builds, bundle checks, and whitespace checks. This is the completion check for code/build changes and runs in CI.
+- `make format` — apply the checked-in Swift formatting rules.
+- `make debug` / `make release` — build into `.build/xcode`.
+- `make debug-install` / `make install` — build, copy to `/Applications`, and register the app. Run only when installation is requested.
 
-| Task | File | Notes |
-|------|------|-------|
-| URL handling | `SwitchboardApp.swift` | `handleGetURL`, `routeURL` |
-| Add matching logic | `Router.swift` | currently substring match only |
-| Change browser launch | `BrowserLauncher.swift` | builds executable path from .app bundle |
-| Config format | `Config.swift` | Codable structs for JSON |
-| UI state | `ConfigViewModel.swift` | loads/saves config, publishes state |
-| Browser discovery | `BrowserDiscovery.swift` | detects installed Chromium browsers |
+Tests use temporary files and fake browsers; they have no personal configuration or real browser access. Run them, fix relevant failures, and rerun without asking for permission at each step. Use `make verify` before handing off code changes, and report any checks you could not run. CI uses the Xcode 26.4 family on `macos-26`.
 
-## ARCHITECTURE
+## Where to look
 
-- **Accessory app**: No dock icon, no menu bar (`NSApp.setActivationPolicy(.accessory)`)
-- **Fire and forget**: Routes URL then terminates after 0.5s
-- **Hybrid SwiftUI/AppKit**: Uses `@NSApplicationDelegateAdaptor` for `NSAppleEventManager` URL events
-- **Direct process launch**: Calls browser executable directly (not `open -a`) to pass args when browser already running
+| Area | Source |
+| --- | --- |
+| URL events, launch mode, shutdown and recovery UI | `Switchboard/SwitchboardApp.swift` |
+| Routing lifetime decisions | `Switchboard/RoutingSession.swift` |
+| JSON configuration and atomic persistence | `Switchboard/Config.swift` |
+| Editor state, autosave and flush | `Switchboard/ConfigViewModel.swift` |
+| Rule matching and preview decisions | `Switchboard/Router.swift` |
+| Browser-specific profile paths and legacy names | `Switchboard/BrowserProfiles.swift` |
+| Installed browsers and executable launching | `Switchboard/BrowserDiscovery.swift`, `Switchboard/BrowserLauncher.swift` |
+| Editor and URL preview | `Switchboard/ContentView.swift` |
+| Regression tests | `Tests/SwitchboardCoreTests/` |
 
-## CONVENTIONS
+The Swift package excludes the app entry point and editor view so tests do not launch NSApplication. New app sources must also be added to the Xcode project's Sources phase. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
 
-- Immutable value types: `struct` for services, `class` only for AppDelegate (required)
-- Guard-based validation with early returns
-- Error handling: try/catch with silent fallback to default browser
+## Behavior to preserve
 
-## ANTI-PATTERNS
+- First matching rule wins. Contains and Exact match the complete URL case-insensitively. Domain matches the host or a subdomain at a dot boundary. Empty patterns are ignored. Unmatched URLs use the configured default profile.
+- Configuration lives at `~/.config/switchboard/config.json`. Keep existing JSON readable. A missing file may use defaults; malformed or unreadable files must not be silently replaced. Saves use atomic replacement, and failures retain edits for retry.
+- Persist Chromium directory identifiers (`Default`, `Profile 1`, etc.), and show display names only in the UI. Accept legacy display names only when unambiguous. Directory identifiers take precedence over colliding display names. Browser data locations are browser-specific.
+- Launch the browser executable directly using `Bundle.executableURL` and a Process argument array. Do not use `open -a --args`; profiles must work when the browser is already running. Pass only complete HTTP/HTTPS URLs and preserve the original URL when launching.
+- Surface failures with a recovery action. Do not guess a different browser/profile or fall back through the system default browser, which may be Switchboard itself.
+- Routing must preserve an existing editor session. Flush pending edits before routing from the editor or quitting it. A temporary routing launch exits only after the latest URL's idle delay.
+- Keep App Sandbox disabled: launching the browser requires subprocess control. Preserve HTTP/HTTPS and HTML declarations in `Info.plist` so macOS recognizes the app as a browser.
 
-- **Don't use `open -a --args`**: Args ignored when app already running. Must call executable directly.
-- **Don't enable sandbox**: Requires subprocess control for browser launching
+## Verification and review
 
-## CONFIG
+For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Do not weaken tests to make a change pass.
 
-Location: `~/.config/switchboard/config.json`
-
-```json
-{
-  "browser": "/Applications/Helium.app",
-  "defaultProfile": "Default",
-  "routes": [
-    { "condition": "contains", "value": "github.com", "profile": "Profile 1" }
-  ]
-}
-```
-
-Profile names = Chromium directory names (`Default`, `Profile 1`, `Profile 2`, etc.)
-- Route `condition`: `"contains"` (substring) or `"exact"` (full match)
-- Both URL and value are lowercased for case-insensitive matching
-
-## BUILD
-
-```bash
-make debug         # or: xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Debug build
-make debug-install # debug and copies to /Applications/
-make release       # or: xcodebuild -project Switchboard.xcodeproj -scheme Switchboard -configuration Release build
-make install       # release and copies to /Applications/
-```
-
-## NOTES
-
-- Must register with Launch Services: `lsregister -f /Applications/Switchboard.app`
-- Set as default: System Settings → Desktop & Dock → Default web browser
-- Info.plist requires `CFBundleDocumentTypes` + `LSHandlerRank` to appear in browser list
+Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and unintended writes to personal files. Keep installation separate from normal verification. Mention whether actual browser delivery or GUI behavior was exercised; a successful process launch alone does not prove the right browser window opened.

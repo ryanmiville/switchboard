@@ -4,47 +4,60 @@
 
 # Switchboard
 
-A macOS URL router that opens external links in different browser profiles based on patterns you define.
+A personal macOS URL router that opens external links in Chromium browser profiles based on rules you define.
 
-Set Switchboard as your default browser, and it will automatically open URLs in the right Chrome/Chromium profile.
+## Requirements and installation
 
->Note: Switchboard should work with any Chromium browser that uses the standard profile system, but it has only been tested with Helium.
-## Installation
+- macOS 13 or newer.
+- Full Xcode 26.4 with command-line tools selected. Standalone Command Line Tools are insufficient for the app build.
+- A supported Chromium browser. Helium has been used with the real app; automated fixtures cover profile discovery for Chrome and its channels, Chromium, Brave, Edge, Vivaldi, and Helium.
 
-1. Make sure Command Line Tools for Xcode are installed
-```bash
-xcode-select --install
-```
-2. Run `make install`
-3. Open the Switchboard app to register with the system
-4. Go to **System Settings → Desktop & Dock → Default web browser** and select Switchboard
+Run `make install` to build Release, copy it to `/Applications/Switchboard.app`, and register it with Launch Services. Use `make debug-install` for Debug. Then select Switchboard under **System Settings → Desktop & Dock → Default web browser**.
+
+Installation does not change your default-browser selection automatically.
 
 ## Configuration
 
-Launch Switchboard to open the configuration window. From there you can:
+Open Switchboard to choose a browser, select the default profile, and add rules. Move rules with the arrow buttons: the first match wins. The URL preview shows which rule and profile would be used without opening anything.
 
-- Add routes with URL patterns (substring or exact match)
-- Assign each route to a browser profile
-- Set a default profile for unmatched URLs
-- Choose your Chromium-based browser
+- **Contains** matches a substring anywhere in the complete URL, including its query string.
+- **Exact** matches the complete URL.
+- **Domain** matches a host and its subdomains. For example, `github.com` matches `docs.github.com`, but not `github.com.example.com` or a query parameter mentioning GitHub.
 
-![Switchboard configuration window](screenshot.png)
+All matching is case-insensitive. Empty patterns are ignored. Unmatched URLs use the configured default profile.
 
-Routes are evaluated in order—first match wins.
+Settings are saved automatically after a short delay. Pending changes are saved before quitting or routing a link from an open editor. Loading and saving errors appear in the editor with recovery actions. Invalid configuration is left untouched, and failed saves retain changes in the window for retry.
 
-Any URL not matching a route opens in your default profile.
+The configuration file is `~/.config/switchboard/config.json`:
 
-## How It Works
+```json
+{
+  "browser": "/Applications/Helium.app",
+  "defaultProfile": "Default",
+  "routes": [
+    { "condition": "domain", "value": "github.com", "profile": "Profile 1" }
+  ]
+}
+```
 
-Switchboard runs silently in the background. When you click a link anywhere on your Mac, it:
+Profiles are saved as Chromium directory identifiers, while the editor displays friendly names alongside them. Older files containing display names are resolved when unambiguous and converted to directory identifiers when saved. Missing or ambiguous selections require choosing a profile in the editor.
 
-1. Checks the URL against your routes
-2. Opens the matching profile (or default)
-3. Exits immediately
+A link launches the selected browser executable directly so profile arguments work even when the browser is already running. A temporary routing launch exits shortly afterward. An existing editor stays open. If a link cannot be launched, Switchboard offers settings or a copy of the link instead of silently choosing another browser.
 
-No dock icon. No menu bar clutter. Just routing.
+## Development
 
-## Requirements
+```sh
+make test     # Fast isolated regression tests; no app or real browser is launched
+make verify   # Formatting, tests, Debug/Release builds, bundle and whitespace checks
+make format   # Apply Swift formatting
+make debug    # Build Debug into .build/xcode
+make release  # Build Release into .build/xcode
+```
 
-- macOS 14+
-- Any Chromium-based browser (Chrome, Helium, Brave, etc.)
+Tests use Swift Testing through `Package.swift`, compiling the same production source files without the app entry point or editor view. Use `make test` rather than `xcodebuild test`. There are no third-party package dependencies. Swift 6 concurrency checks and Swift warnings-as-errors are enabled for the app.
+
+Normal verification does not install the app or modify your configuration. Xcode automatically registers build products; the build commands unregister their local products afterward. Explicit installation registers the copy in `/Applications`.
+
+GitHub Actions runs `make verify` for pull requests and pushes to `main`, using the Xcode 26.4 family on `macos-26`. Failure logs are uploaded as artifacts. The workflow starts running once it is pushed to GitHub.
+
+For changes to URL handling or launching, also smoke-check the app on macOS: open links with the browser closed and already running, confirm the selected profile, open several links quickly, and verify an open editor stays open. Automated fixtures cannot establish actual browser-window delivery or compatibility with every supported macOS release.
