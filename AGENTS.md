@@ -28,7 +28,7 @@ Tests use temporary files and fake browsers; they have no personal configuration
 | Editor and URL preview | `Switchboard/ContentView.swift` |
 | Regression tests | `Tests/SwitchboardCoreTests/` |
 
-The Swift package excludes the app entry point and editor view so tests do not launch NSApplication. New app sources must also be added to the Xcode project's Sources phase. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
+The Swift package excludes the app entry point and editor view. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
 
 ## Behavior to preserve
 
@@ -38,6 +38,7 @@ The Swift package excludes the app entry point and editor view so tests do not l
 - Launch the browser executable directly using `Bundle.executableURL` and a Process argument array. Do not use `open -a --args`; profiles must work when the browser is already running. Pass only complete HTTP/HTTPS URLs and preserve the original URL when launching.
 - Surface failures with a recovery action. Do not guess a different browser/profile or fall back through the system default browser, which may be Switchboard itself.
 - Routing must preserve an existing editor session. Flush pending edits before routing from the editor or quitting it. A temporary routing launch exits only after the latest URL's idle delay.
+- Settings is a single window. Dock/launcher reopening must focus or restore it, creating a window only when none is open. Keep the reopen handler responsible for the request instead of also asking AppKit to perform default reopening.
 - Keep App Sandbox disabled: launching the browser requires subprocess control. Preserve HTTP/HTTPS and HTML declarations in `Info.plist` so macOS recognizes the app as a browser.
 
 ## Verification and review

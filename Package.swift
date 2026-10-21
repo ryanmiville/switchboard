@@ -10,7 +10,7 @@ let package = Package(
             path: "Switchboard",
             exclude: [
                 "Assets.xcassets", "ContentView.swift", "Info.plist",
-                "Switchboard.entitlements", "SwitchboardApp.swift",
+                "Switchboard.entitlements",
             ]
         ),
         .testTarget(name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore"]),

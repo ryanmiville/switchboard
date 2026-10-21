@@ -1,22 +1,33 @@
 import AppKit
 import SwiftUI
 
-@main
-struct SwitchboardApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+#if !SWIFT_PACKAGE
+    @main
+    struct SwitchboardApp: App {
+        @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    var body: some Scene {
-        WindowGroup(id: "settings") {
-            ContentView(viewModel: appDelegate.viewModel, onOpen: appDelegate.editorAppeared)
+        var body: some Scene {
+            Window("Switchboard", id: "settings") {
+                ContentView(viewModel: appDelegate.viewModel, onOpen: appDelegate.editorAppeared)
+            }
         }
     }
-}
+#endif
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let viewModel = ConfigViewModel()
+    let viewModel: ConfigViewModel
     private var session = RoutingSession()
     private var openSettingsWindow: (() -> Void)?
+
+    override convenience init() {
+        self.init(viewModel: ConfigViewModel())
+    }
+
+    init(viewModel: ConfigViewModel) {
+        self.viewModel = viewModel
+        super.init()
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSAppleEventManager.shared().setEventHandler(
@@ -45,7 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showEditor()
-        return true
+        // We handled reopening; AppKit must not also create a default window.
+        return false
     }
 
     @objc func handleGetURL(
@@ -112,8 +124,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showEditor() {
         session.openEditor()
         NSApp.setActivationPolicy(.regular)
-        openSettingsWindow?()
-        NSApp.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
+        if let window = NSApp.windows.first(where: {
+            $0.isMiniaturized || ($0.canBecomeMain && $0.isVisible)
+        }) {
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openSettingsWindow?()
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 
