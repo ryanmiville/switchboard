@@ -7,11 +7,11 @@ struct Router {
         ["http", "https"].contains(url.scheme?.lowercased() ?? "") && !(url.host ?? "").isEmpty
     }
 
-    func route(url: URL) -> String {
-        decision(url: url).profile
+    func route(url: URL) -> Destination {
+        decision(url: url).destination
     }
 
-    func decision(url: URL) -> (profile: String, route: Route?) {
+    func decision(url: URL) -> (destination: Destination, route: Route?) {
         let urlString = url.absoluteString.lowercased()
 
         for route in config.routes {
@@ -27,10 +27,10 @@ struct Router {
                             || (url.host?.lowercased().hasSuffix("." + value) == true))
                 }
             if matches {
-                return (route.profile, route)
+                return (Destination(browser: route.browser ?? config.browser, profile: route.profile), route)
             }
         }
 
-        return (config.defaultProfile, nil)
+        return (Destination(browser: config.browser, profile: config.defaultProfile), nil)
     }
 }

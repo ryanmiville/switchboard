@@ -51,16 +51,14 @@ struct ContentView: View {
             .padding(.bottom, 12)
             Divider()
             VStack(alignment: .leading, spacing: 12) {
-                profilePicker("Default", selection: $viewModel.config.defaultProfile)
-                Picker("Browser", selection: $viewModel.config.browser) {
-                    if !viewModel.availableBrowsers.contains(where: { $0.path == viewModel.config.browser }) {
-                        Text("Unavailable: \((viewModel.config.browser as NSString).lastPathComponent)")
-                            .tag(viewModel.config.browser)
-                    }
-                    ForEach(viewModel.availableBrowsers) { browser in
-                        Text(browser.name).tag(browser.path)
-                    }
-                }
+                BrowserPicker(
+                    label: "Default browser", selection: $viewModel.config.browser,
+                    browsers: viewModel.availableBrowsers
+                )
+                ProfilePicker(
+                    label: "Default profile", selection: $viewModel.config.defaultProfile,
+                    profiles: viewModel.availableProfiles
+                )
                 TextField("Test an HTTP or HTTPS URL", text: $testURL)
                     .textFieldStyle(.roundedBorder)
                 if !testURL.isEmpty {
@@ -76,25 +74,18 @@ struct ContentView: View {
             return "Enter a complete URL, such as https://example.com."
         }
         let decision = Router(config: viewModel.config).decision(url: url)
-        let name =
-            viewModel.availableProfiles.first { $0.directory == decision.profile }?.name ?? decision.profile
+        let destination = decision.destination
+        let browser = ((destination.browser as NSString).lastPathComponent as NSString).deletingPathExtension
+        let profile =
+            viewModel.profiles(for: destination.browser).first { $0.directory == destination.profile }?.name
+            ?? destination.profile
+        let target = "\(browser) → \(profile) (\(destination.profile))"
         if let route = decision.route,
             let index = viewModel.config.routes.firstIndex(where: { $0.id == route.id })
         {
-            return "Rule \(index + 1) → \(name) (\(decision.profile))"
+            return "Rule \(index + 1) → \(target)"
         }
-        return "Default → \(name) (\(decision.profile))"
-    }
-
-    private func profilePicker(_ label: String, selection: Binding<String>) -> some View {
-        Picker(label, selection: selection) {
-            if !viewModel.availableProfiles.contains(where: { $0.directory == selection.wrappedValue }) {
-                Text("Unavailable: \(selection.wrappedValue)").tag(selection.wrappedValue)
-            }
-            ForEach(viewModel.availableProfiles) { profile in
-                Text("\(profile.name) (\(profile.directory))").tag(profile.directory)
-            }
-        }
+        return "Default → \(target)"
     }
 
     private func errorMessage<Actions: View>(_ message: String, @ViewBuilder actions: () -> Actions)
@@ -152,17 +143,62 @@ private struct RouteRow: View {
                 }
                 .help("Delete rule")
             }
-            Picker("Open in", selection: $route.profile) {
-                if !viewModel.availableProfiles.contains(where: { $0.directory == route.profile }) {
-                    Text("Unavailable: \(route.profile)").tag(route.profile)
-                }
-                ForEach(viewModel.availableProfiles) { profile in
-                    Text("\(profile.name) (\(profile.directory))").tag(profile.directory)
-                }
-            }
+            BrowserPicker(
+                label: "Browser",
+                selection: Binding(
+                    get: { route.browser ?? "" },
+                    set: { viewModel.selectBrowser($0.isEmpty ? nil : $0, for: route) }
+                ),
+                browsers: viewModel.availableBrowsers,
+                defaultBrowser: viewModel.config.browser
+            )
+            ProfilePicker(
+                label: "Profile", selection: $route.profile,
+                profiles: viewModel.profiles(for: route.browser ?? viewModel.config.browser)
+            )
         }
         .padding()
         .background(.quaternary.opacity(0.5))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct BrowserPicker: View {
+    let label: String
+    @Binding var selection: String
+    let browsers: [InstalledBrowser]
+    var defaultBrowser: String?
+
+    var body: some View {
+        Picker(label, selection: $selection) {
+            if let defaultBrowser {
+                Text("Use default (\((defaultBrowser as NSString).lastPathComponent))").tag("")
+            }
+            if !selection.isEmpty && !browsers.contains(where: { $0.path == selection }) {
+                Text("Unavailable: \((selection as NSString).lastPathComponent)").tag(selection)
+            }
+            ForEach(browsers) { browser in
+                Text(browser.name).tag(browser.path)
+            }
+        }
+    }
+}
+
+private struct ProfilePicker: View {
+    let label: String
+    @Binding var selection: String
+    let profiles: [Profile]
+
+    var body: some View {
+        Picker(label, selection: $selection) {
+            if selection.isEmpty {
+                Text("Choose a profile…").tag("")
+            } else if !profiles.contains(where: { $0.directory == selection }) {
+                Text("Unavailable: \(selection)").tag(selection)
+            }
+            ForEach(profiles) { profile in
+                Text("\(profile.name) (\(profile.directory))").tag(profile.directory)
+            }
+        }
     }
 }

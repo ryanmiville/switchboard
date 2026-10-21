@@ -53,4 +53,23 @@ struct ProfileTests {
             try BrowserProfiles(homeDirectory: fixture.root).profiles(browserPath: browser.path)
         }
     }
+
+    @Test func legacyNamesAreResolvedWithinEachRulesBrowser() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let chrome = try fixture.browser()
+        let helium = try fixture.browser(id: "net.imput.helium", name: "Helium")
+        try fixture.profiles(["Default": "Chrome Personal", "Profile 3": "Work"])
+        try fixture.profiles(["Default": "Ryan", "Profile 1": "Work"], folder: "net.imput.helium")
+        let config = Config(
+            browser: helium.path, defaultProfile: "Ryan",
+            routes: [
+                Route(value: "gitlab.com", profile: "Work", browser: chrome.path),
+                Route(value: "youtube.com", profile: "Work"),
+            ])
+        let normalized = try BrowserProfiles(homeDirectory: fixture.root).normalized(config)
+        #expect(normalized.defaultProfile == "Default")
+        #expect(normalized.routes.map(\.profile) == ["Profile 3", "Profile 1"])
+        #expect(normalized.routes.first?.browser == chrome.path)
+    }
 }

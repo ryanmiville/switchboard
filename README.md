@@ -18,13 +18,15 @@ Installation does not change your default-browser selection automatically.
 
 ## Configuration
 
-Open Switchboard to choose a browser, select the default profile, and add rules. Move rules with the arrow buttons: the first match wins. The URL preview shows which rule and profile would be used without opening anything.
+Open Switchboard to choose a default browser and profile, then add rules. Each rule can use the default browser or a different Chromium browser, with its own profile. For example, work links can open a Google Chrome profile while everything else opens Ryan in Helium. Move rules with the arrow buttons: the first match wins. The URL preview shows the selected browser and profile without opening anything.
+
+Changing a rule’s browser clears its profile choice so you can select a profile belonging to the new browser. Profile directory names can be identical across browsers, so they are never treated as a shared identity.
 
 - **Contains** matches a substring anywhere in the complete URL, including its query string.
 - **Exact** matches the complete URL.
 - **Domain** matches a host and its subdomains. For example, `github.com` matches `docs.github.com`, but not `github.com.example.com` or a query parameter mentioning GitHub.
 
-All matching is case-insensitive. Empty patterns are ignored. Unmatched URLs use the configured default profile.
+All matching is case-insensitive. Empty patterns are ignored. Unmatched URLs use the configured default browser and profile.
 
 Settings are saved automatically after a short delay. Pending changes are saved before quitting or routing a link from an open editor. Loading and saving errors appear in the editor with recovery actions. Invalid configuration is left untouched, and failed saves retain changes in the window for retry.
 
@@ -35,12 +37,19 @@ The configuration file is `~/.config/switchboard/config.json`:
   "browser": "/Applications/Helium.app",
   "defaultProfile": "Default",
   "routes": [
-    { "condition": "domain", "value": "github.com", "profile": "Profile 1" }
+    {
+      "condition": "domain",
+      "value": "gitlab.com",
+      "browser": "/Applications/Google Chrome.app",
+      "profile": "Profile 2"
+    }
   ]
 }
 ```
 
-Profiles are saved as Chromium directory identifiers, while the editor displays friendly names alongside them. Older files containing display names are resolved when unambiguous and converted to directory identifiers when saved. Missing or ambiguous selections require choosing a profile in the editor.
+The top-level `browser` and `defaultProfile` define the default destination. A rule’s optional `browser` overrides the default browser. Older rules without it keep using the top-level browser, so existing files continue to work.
+
+Profiles are saved as Chromium directory identifiers, while the editor displays friendly names alongside them. Profiles are discovered and validated within each destination’s browser. Older files containing display names are resolved when unambiguous and converted to directory identifiers when saved. Missing or ambiguous selections require choosing a profile in the editor.
 
 A link launches the selected browser executable directly so profile arguments work even when the browser is already running. A temporary routing launch exits shortly afterward. An existing editor stays open. If a link cannot be launched, Switchboard offers settings or a copy of the link instead of silently choosing another browser.
 

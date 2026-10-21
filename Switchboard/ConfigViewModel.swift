@@ -7,12 +7,12 @@ final class ConfigViewModel: ObservableObject {
     @Published var config: Config {
         didSet {
             guard !isLoading else { return }
-            if oldValue.browser != config.browser { refreshProfiles() }
+            if oldValue.browserPaths != config.browserPaths { refreshProfiles() }
             needsSave = true
             scheduleSave()
         }
     }
-    @Published private(set) var availableProfiles: [Profile] = []
+    @Published private(set) var profilesByBrowser: [String: [Profile]] = [:]
     @Published private(set) var availableBrowsers: [InstalledBrowser]
     @Published private(set) var loadError: String?
     @Published private(set) var saveError: String?
@@ -26,6 +26,9 @@ final class ConfigViewModel: ObservableObject {
     private var needsSave = false
 
     var hasUnsavedChanges: Bool { needsSave && loadError == nil }
+    var availableProfiles: [Profile] { profiles(for: config.browser) }
+
+    func profiles(for browser: String) -> [Profile] { profilesByBrowser[browser] ?? [] }
 
     init(
         configURL: URL = Config.configPath,
@@ -47,6 +50,17 @@ final class ConfigViewModel: ObservableObject {
 
     func deleteRoute(_ route: Route) {
         config.routes.removeAll { $0.id == route.id }
+    }
+
+    func selectBrowser(_ browser: String?, for route: Route) {
+        guard let index = config.routes.firstIndex(where: { $0.id == route.id }) else { return }
+        var updated = config.routes[index]
+        if (updated.browser ?? config.browser) != (browser ?? config.browser) {
+            // Directory names are only meaningful within one browser. Require a new choice.
+            updated.profile = ""
+        }
+        updated.browser = browser
+        config.routes[index] = updated
     }
 
     // Text fields can finish editing after their row was deleted or moved.
@@ -89,21 +103,31 @@ final class ConfigViewModel: ObservableObject {
     }
 
     func refreshProfiles() {
-        availableProfiles = []
-        do {
-            availableProfiles = try profileStore.profiles(browserPath: config.browser)
-            let normalized = try profileStore.normalized(config)
-            if normalized != config {
-                let wasLoading = isLoading
-                isLoading = true
-                config = normalized
-                isLoading = wasLoading
-                needsSave = true
+        var discovered: [String: [Profile]] = [:]
+        var errors: [String] = []
+        for browser in config.browserPaths.sorted() {
+            do {
+                discovered[browser] = try profileStore.profiles(browserPath: browser)
+            } catch {
+                errors.append("\((browser as NSString).lastPathComponent): \(error.localizedDescription)")
             }
-            profileError = nil
-        } catch {
-            profileError = error.localizedDescription
         }
+        profilesByBrowser = discovered
+        if errors.isEmpty {
+            do {
+                let normalized = try profileStore.normalized(config)
+                if normalized != config {
+                    let wasLoading = isLoading
+                    isLoading = true
+                    config = normalized
+                    isLoading = wasLoading
+                    needsSave = true
+                }
+            } catch {
+                errors.append(error.localizedDescription)
+            }
+        }
+        profileError = errors.isEmpty ? nil : errors.joined(separator: "\n")
         if needsSave && !isLoading { scheduleSave() }
     }
 
@@ -122,8 +146,14 @@ final class ConfigViewModel: ObservableObject {
         pendingSave = nil
         guard loadError == nil else { return false }
         guard needsSave else { return true }
+        let normalized: Config
         do {
-            let normalized = try profileStore.normalized(config)
+            normalized = try profileStore.normalized(config)
+        } catch {
+            profileError = error.localizedDescription
+            return false
+        }
+        do {
             try normalized.save(to: configURL)
             isLoading = true
             config = normalized

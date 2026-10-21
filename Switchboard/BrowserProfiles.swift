@@ -53,6 +53,7 @@ struct BrowserProfiles {
     }
 
     static func directory(for selection: String, in profiles: [Profile]) throws -> String {
+        guard !selection.isEmpty else { throw ProfileError.selectionRequired }
         // The documented directory format takes precedence over legacy display names.
         if profiles.contains(where: { $0.directory == selection }) { return selection }
         let matches = profiles.filter { $0.name == selection }
@@ -63,12 +64,20 @@ struct BrowserProfiles {
     }
 
     func normalized(_ config: Config) throws -> Config {
-        let profiles = try profiles(browserPath: config.browser)
+        var cache: [String: [Profile]] = [:]
+        func profiles(for browser: String) throws -> [Profile] {
+            if let cached = cache[browser] { return cached }
+            let found = try self.profiles(browserPath: browser)
+            cache[browser] = found
+            return found
+        }
         var normalized = config
-        normalized.defaultProfile = try Self.directory(for: config.defaultProfile, in: profiles)
+        normalized.defaultProfile = try Self.directory(
+            for: config.defaultProfile, in: profiles(for: config.browser))
         for index in normalized.routes.indices {
+            let browser = config.routes[index].browser ?? config.browser
             normalized.routes[index].profile = try Self.directory(
-                for: config.routes[index].profile, in: profiles)
+                for: config.routes[index].profile, in: profiles(for: browser))
         }
         return normalized
     }
@@ -86,12 +95,15 @@ struct BrowserProfiles {
 }
 
 enum ProfileError: LocalizedError {
+    case selectionRequired
     case browserUnavailable
     case missing(String)
     case ambiguous(String)
 
     var errorDescription: String? {
         switch self {
+        case .selectionRequired:
+            "Choose a profile for every rule and for the default browser before saving."
         case .browserUnavailable:
             "The selected browser is unavailable. Choose an installed browser in Switchboard."
         case .missing(let name):

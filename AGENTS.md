@@ -32,9 +32,9 @@ The Swift package excludes the app entry point and editor view so tests do not l
 
 ## Behavior to preserve
 
-- First matching rule wins. Contains and Exact match the complete URL case-insensitively. Domain matches the host or a subdomain at a dot boundary. Empty patterns are ignored. Unmatched URLs use the configured default profile.
+- First matching rule wins. Contains and Exact match the complete URL case-insensitively. Domain matches the host or a subdomain at a dot boundary. Empty patterns are ignored. Routing returns a browser/profile pair; unmatched URLs use the configured default browser and profile. A rule can override its browser; omitted browser fields inherit the top-level browser for compatibility with existing JSON.
 - Configuration lives at `~/.config/switchboard/config.json`. Keep existing JSON readable. A missing file may use defaults; malformed or unreadable files must not be silently replaced. Saves use atomic replacement, and failures retain edits for retry.
-- Persist Chromium directory identifiers (`Default`, `Profile 1`, etc.), and show display names only in the UI. Accept legacy display names only when unambiguous. Directory identifiers take precedence over colliding display names. Browser data locations are browser-specific.
+- Persist Chromium directory identifiers (`Default`, `Profile 1`, etc.), and show display names only in the UI. Discover and validate each profile within its destination’s browser; identical directory IDs in Chrome and Helium can refer to different people. Changing a rule’s browser requires a new profile selection. Accept legacy display names only when unambiguous. Directory identifiers take precedence over colliding display names. Browser data locations are browser-specific.
 - Launch the browser executable directly using `Bundle.executableURL` and a Process argument array. Do not use `open -a --args`; profiles must work when the browser is already running. Pass only complete HTTP/HTTPS URLs and preserve the original URL when launching.
 - Surface failures with a recovery action. Do not guess a different browser/profile or fall back through the system default browser, which may be Switchboard itself.
 - Routing must preserve an existing editor session. Flush pending edits before routing from the editor or quitting it. A temporary routing launch exits only after the latest URL's idle delay.
@@ -42,6 +42,6 @@ The Swift package excludes the app entry point and editor view so tests do not l
 
 ## Verification and review
 
-For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Do not weaken tests to make a change pass.
+For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Cross-browser tests should cover a Chrome rule with a Helium default, browser-specific profile choices, and legacy rules with no browser override. Do not weaken tests to make a change pass.
 
 Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and unintended writes to personal files. Keep installation separate from normal verification. Mention whether actual browser delivery or GUI behavior was exercised; a successful process launch alone does not prove the right browser window opened.

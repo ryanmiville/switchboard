@@ -51,12 +51,12 @@ struct ConfigViewModelTests {
         let model = model(fixture)
         model.config.defaultProfile = "Missing"
         #expect(!model.flush())
-        #expect(model.saveError != nil)
+        #expect(model.profileError != nil)
         #expect(model.config.defaultProfile == "Missing")
         #expect(try Data(contentsOf: fixture.configURL) == original)
         model.config.defaultProfile = "Default"
         #expect(model.flush())
-        #expect(model.saveError == nil)
+        #expect(model.profileError == nil)
     }
 
     @Test func repairedConfigCanBeReloaded() throws {
@@ -147,5 +147,33 @@ struct ConfigViewModelTests {
         binding.wrappedValue.value = "late text-field write"
         #expect(model.config.routes.count == 1)
         #expect(model.config.routes[0].value == "first")
+    }
+
+    @Test func ruleBrowserChangeRequiresChoosingThatBrowsersProfile() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let chrome = try fixture.browser()
+        let helium = try fixture.browser(id: "net.imput.helium", name: "Helium")
+        try fixture.profiles(["Default": "Chrome Work", "Profile 3": "Other Chrome"])
+        try fixture.profiles(["Default": "Ryan"], folder: "net.imput.helium")
+        try Config(browser: helium.path, defaultProfile: "Default", routes: [Route(value: "gitlab.com")])
+            .save(to: fixture.configURL)
+        let model = model(fixture)
+        let original = try Data(contentsOf: fixture.configURL)
+        model.selectBrowser(chrome.path, for: try #require(model.config.routes.first))
+        #expect(model.config.routes.first?.profile == "")
+        #expect(model.profiles(for: chrome.path).map(\.name) == ["Chrome Work", "Other Chrome"])
+        #expect(model.availableProfiles.map(\.name) == ["Ryan"])
+        #expect(!model.flush())
+        #expect(try Data(contentsOf: fixture.configURL) == original)
+        model.config.routes[0].profile = "Default"
+        #expect(model.flush())
+        let saved = try Config.load(from: fixture.configURL)
+        #expect(saved.browser == helium.path)
+        #expect(saved.defaultProfile == "Default")
+        #expect(saved.routes.first?.browser == chrome.path)
+        model.refreshProfiles()
+        #expect(model.profiles(for: chrome.path).first?.name == "Chrome Work")
+        #expect(model.availableProfiles.first?.name == "Ryan")
     }
 }

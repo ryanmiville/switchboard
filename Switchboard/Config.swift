@@ -21,22 +21,31 @@ enum Condition: String, Codable, CaseIterable {
     }
 }
 
+struct Destination: Equatable {
+    let browser: String
+    let profile: String
+}
+
 struct Route: Codable, Identifiable, Equatable {
     var id: UUID
     var condition: Condition
     var value: String
     var profile: String
+    var browser: String?
 
-    init(id: UUID = UUID(), condition: Condition = .contains, value: String = "", profile: String = "Default")
-    {
+    init(
+        id: UUID = UUID(), condition: Condition = .contains, value: String = "", profile: String = "Default",
+        browser: String? = nil
+    ) {
         self.id = id
         self.condition = condition
         self.value = value
         self.profile = profile
+        self.browser = browser
     }
 
     enum CodingKeys: String, CodingKey {
-        case condition, value, profile
+        case condition, value, profile, browser
     }
 
     init(from decoder: Decoder) throws {
@@ -45,6 +54,7 @@ struct Route: Codable, Identifiable, Equatable {
         self.condition = try container.decode(Condition.self, forKey: .condition)
         self.value = try container.decode(String.self, forKey: .value)
         self.profile = try container.decode(String.self, forKey: .profile)
+        self.browser = try container.decodeIfPresent(String.self, forKey: .browser)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -52,6 +62,7 @@ struct Route: Codable, Identifiable, Equatable {
         try container.encode(condition, forKey: .condition)
         try container.encode(value, forKey: .value)
         try container.encode(profile, forKey: .profile)
+        try container.encodeIfPresent(browser, forKey: .browser)
     }
 }
 
@@ -59,6 +70,8 @@ struct Config: Codable, Equatable {
     var browser: String
     var defaultProfile: String
     var routes: [Route]
+
+    var browserPaths: Set<String> { Set([browser] + routes.compactMap(\.browser)) }
 
     static let configPath = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".config/switchboard/config.json")

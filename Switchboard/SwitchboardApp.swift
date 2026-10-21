@@ -69,7 +69,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if session.keepsEditorOpen {
                 guard viewModel.flush() else {
                     showRoutingError(
-                        viewModel.loadError ?? viewModel.saveError ?? "Your settings couldn’t be saved.",
+                        viewModel.loadError ?? viewModel.saveError ?? viewModel.profileError
+                            ?? "Your settings couldn’t be saved.",
                         url: url)
                     scheduleTermination(after: ticket)
                     return
@@ -78,8 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 config = try Config.loadOrDefault()
             }
-            try BrowserLauncher(config: config).launch(
-                url: url, profileName: Router(config: config).route(url: url))
+            try BrowserLauncher().launch(url: url, destination: Router(config: config).route(url: url))
         } catch {
             showRoutingError(error.localizedDescription, url: url)
         }
@@ -124,7 +124,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "Your changes haven’t been saved"
         alert.informativeText =
-            viewModel.saveError ?? "Keep editing to fix the issue, or quit and discard these changes."
+            viewModel.saveError ?? viewModel.profileError
+            ?? "Keep editing to fix the issue, or quit and discard these changes."
         alert.addButton(withTitle: "Keep Editing")
         alert.addButton(withTitle: "Quit Without Saving")
         return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel

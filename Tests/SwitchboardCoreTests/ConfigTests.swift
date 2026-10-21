@@ -36,5 +36,21 @@ struct ConfigTests {
         #expect(loaded.browser == config.browser)
         #expect(loaded.routes.first?.condition == .exact)
         #expect(loaded.routes.first?.profile == "Profile 1")
+        #expect(loaded.routes.first?.browser == nil)
+    }
+
+    @Test func perRuleBrowserIsPreservedInJSON() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let json = Data(
+            #"{"browser":"/Applications/Helium.app","defaultProfile":"Default","routes":[{"condition":"domain","value":"gitlab.com","browser":"/Applications/Google Chrome.app","profile":"Profile 2"}]}"#
+                .utf8)
+        try json.write(to: fixture.configURL)
+        let config = try Config.load(from: fixture.configURL)
+        try config.save(to: fixture.configURL)
+        let saved = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: fixture.configURL)) as? [String: Any])
+        let route = try #require((saved["routes"] as? [[String: Any]])?.first)
+        #expect(route["browser"] as? String == "/Applications/Google Chrome.app")
     }
 }
