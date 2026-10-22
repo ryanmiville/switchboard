@@ -167,7 +167,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func startResidentTools() {
         guard enableResidentTools, statusItem == nil else { return }
-        picker.onSettings = { [weak self] in self?.showEditor() }
+        picker.onSettings = { [weak self] in
+            UserDefaults.standard.set("quickSwitch", forKey: "settingsPane")
+            self?.showEditor()
+        }
         picker.start()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = NSImage(named: "MenuBarIcon")

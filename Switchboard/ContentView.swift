@@ -310,9 +310,10 @@ struct ContentView: View {
     }
 
     private var favoriteCount: String {
-        let count = viewModel.config.picker?.favorites.count ?? 0
+        let settings = viewModel.config.picker ?? PickerSettings()
+        let count = settings.favorites.filter { settings.includes($0.destination) }.count
         return count == 0
-            ? "Star destinations to keep them at the top of the picker."
+            ? "Choose destinations and favorites in Quick Switch settings."
             : "\(count) favorite \(count == 1 ? "destination" : "destinations") in the picker."
     }
 
@@ -451,14 +452,22 @@ private struct QuickSwitchSettings: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 5) {
-                            Text("Favorite destinations").font(.headline)
-                            Text("Favorites appear first in the picker, with ⌘1–⌘9 shortcuts.")
-                                .font(.callout).foregroundStyle(.secondary)
+                            Text("Destinations").font(.headline)
+                            Text(
+                                "Checked profiles appear in Quick Switch. Star favorites to put them first, with ⌘1–⌘9 shortcuts."
+                            )
+                            .font(.callout).foregroundStyle(.secondary)
                         }
                         Spacer()
                         Button("Refresh") { model.refresh() }
                     }
-                    if model.choices.isEmpty {
+                    HStack {
+                        Button("Favorites Only", action: model.showOnlyFavorites)
+                        Button("Show All", action: model.showAllDestinations)
+                        Spacer()
+                        Text("\(model.choices.count) shown").font(.callout).foregroundStyle(.secondary)
+                    }
+                    if model.allChoices.isEmpty {
                         SettingsSection("Browsers & profiles") {
                             Text("No supported browsers were found.").fontWeight(.medium)
                             Text("Install a supported Chromium browser, then refresh.")
@@ -466,8 +475,8 @@ private struct QuickSwitchSettings: View {
                         }
                     } else {
                         VStack(spacing: 0) {
-                            ForEach(Array(model.choices.enumerated()), id: \.element.id) { index, choice in
-                                if index > 0 { Divider().padding(.leading, 54) }
+                            ForEach(Array(model.allChoices.enumerated()), id: \.element.id) { index, choice in
+                                if index > 0 { Divider().padding(.leading, 82) }
                                 favoriteRow(choice)
                             }
                         }
@@ -488,12 +497,19 @@ private struct QuickSwitchSettings: View {
     }
 
     private func favoriteRow(_ choice: PickerChoice) -> some View {
-        let number = model.choices.filter(\.isFavorite).firstIndex { $0.id == choice.id }.map { $0 + 1 }
+        let number = model.favoriteNumber(for: choice)
         return HStack(alignment: .top, spacing: 12) {
+            Toggle(
+                "Show \(choice.label) in Quick Switch",
+                isOn: Binding(get: { model.includes(choice) }, set: { model.setIncluded($0, for: choice) })
+            )
+            .labelsHidden().toggleStyle(.checkbox)
+            .disabled(choice.destination.profile.isEmpty)
+            .padding(.top, 5)
             BrowserIcon(path: choice.destination.browser, size: 28)
             VStack(alignment: .leading, spacing: 4) {
                 Text(choice.profileName).fontWeight(.medium).fixedSize(horizontal: false, vertical: true)
-                Text(choice.browserName).font(.callout).foregroundStyle(.secondary)
+                Text(choice.browserDisplayName).font(.callout).foregroundStyle(.secondary)
                 if let error = choice.error {
                     Text(error).font(.callout).foregroundStyle(.red).fixedSize(
                         horizontal: false, vertical: true)
@@ -512,7 +528,7 @@ private struct QuickSwitchSettings: View {
                     .frame(width: 26, height: 26)
             }
             .buttonStyle(.borderless)
-            .disabled(!choice.isFavorite && choice.error != nil)
+            .disabled(!choice.isFavorite && (choice.error != nil || !model.includes(choice)))
             .help(choice.isFavorite ? "Remove favorite" : "Add favorite")
             .accessibilityLabel("\(choice.isFavorite ? "Remove" : "Add") favorite: \(choice.label)")
         }

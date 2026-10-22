@@ -23,6 +23,182 @@ struct PickerTests {
         return model
     }
 
+    private func selectionModel(_ fixture: Fixture) throws -> (TabPickerModel, URL, URL) {
+        let helium = try fixture.browser(id: "net.imput.helium", name: "Helium")
+        let chrome = try fixture.browser(name: "Chrome")
+        try fixture.profiles(["Default": "Ryan", "Profile 1": "Work"], folder: "net.imput.helium")
+        try fixture.profiles(["Default": "Personal", "Profile 1": "Horizon 3"])
+        let model = try model(fixture, browser: helium)
+        let browsers = [installed(chrome, name: "Google Chrome.app"), installed(helium, name: "Helium.app")]
+        model.browsers = { browsers }
+        model.viewModel.config.picker = PickerSettings(favorites: [
+            PickerFavorite(browser: helium.path, profile: "Default", name: "Ryan"),
+            PickerFavorite(browser: chrome.path, profile: "Profile 1", name: "Horizon 3"),
+        ])
+        model.refresh()
+        return (model, chrome, helium)
+    }
+
+    @Test func legacyPickerJSONKeepsAllDestinationsAndExplicitEmptySelectionRoundTrips() throws {
+        let legacy = PickerSettings()
+        let data = try JSONEncoder().encode(legacy)
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["destinations"] == nil)
+        let decoded = try JSONDecoder().decode(PickerSettings.self, from: data)
+        let destination = Destination(browser: "/Applications/Helium.app", profile: "Default")
+        #expect(decoded.destinations == nil)
+        #expect(decoded.includes(destination))
+
+        var selected = decoded
+        selected.destinations = []
+        let empty = try JSONDecoder().decode(PickerSettings.self, from: JSONEncoder().encode(selected))
+        #expect(empty.destinations == [])
+        #expect(!empty.includes(destination))
+        selected.destinations = [destination]
+        #expect(
+            try JSONDecoder().decode(PickerSettings.self, from: JSONEncoder().encode(selected)) == selected)
+    }
+
+    @Test func hidingOneProfileUsesBrowserIdentityAndKeepsNewProfilesUnchecked() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let (model, chrome, helium) = try selectionModel(fixture)
+        #expect(model.choices.count == 4)
+        let hidden = try #require(
+            model.allChoices.first {
+                $0.destination == Destination(browser: chrome.path, profile: "Default")
+            })
+        model.setIncluded(false, for: hidden)
+        #expect(!model.choices.contains { $0.id == hidden.id })
+        #expect(model.choices.contains { $0.id == Destination(browser: helium.path, profile: "Default") })
+
+        try fixture.profiles([
+            "Default": "Renamed Personal", "Profile 1": "Horizon 3", "Profile 2": "New Work",
+        ])
+        model.refresh()
+        #expect(model.allChoices.count == 5)
+        #expect(model.choices.count == 3)
+        #expect(!model.choices.contains { $0.destination.profile == "Profile 2" })
+        #expect(!model.choices.contains { $0.id == hidden.id })
+        let renamed = try #require(model.allChoices.first { $0.id == hidden.id })
+        #expect(renamed.profileName == "Renamed Personal")
+        model.setIncluded(true, for: renamed)
+        #expect(model.choices.contains { $0.id == hidden.id })
+        #expect(!model.choices.contains { $0.destination.profile == "Profile 2" })
+        #expect(model.viewModel.flush())
+        #expect(
+            try Config.load(from: fixture.configURL).picker?.destinations
+                == model.viewModel.config.picker?.destinations)
+    }
+
+    @Test func favoritesOnlyPreservesRoutingAndHiddenFavoritesGetNoShortcutOrLaunch() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let (model, chrome, helium) = try selectionModel(fixture)
+        let rule = Route(condition: .domain, value: "example.com", profile: "Profile 1", browser: chrome.path)
+        model.viewModel.config.routes = [rule]
+        model.showOnlyFavorites()
+        #expect(
+            model.choices.map(\.id) == [
+                Destination(browser: helium.path, profile: "Default"),
+                Destination(browser: chrome.path, profile: "Profile 1"),
+            ])
+        let hiddenFavorite = try #require(model.choices.first)
+        model.setIncluded(false, for: hiddenFavorite)
+        #expect(model.favoriteNumber(for: hiddenFavorite) == nil)
+        #expect(model.favoriteNumber(for: try #require(model.choices.first)) == 1)
+        #expect(model.viewModel.config.picker?.favorites.count == 2)
+        model.urlString = "https://example.com/path"
+        model.launch = { _, _ in Issue.record("A hidden destination was launched") }
+        #expect(!model.open(hiddenFavorite))
+        #expect(model.error?.contains("hidden") == true)
+        #expect(model.viewModel.flush())
+        let saved = try Config.load(from: fixture.configURL)
+        #expect(saved.browser == helium.path)
+        #expect(saved.defaultProfile == "Default")
+        #expect(saved.routes.count == 1)
+        let savedRule = try #require(saved.routes.first)
+        #expect(savedRule.condition == rule.condition)
+        #expect(savedRule.value == rule.value)
+        #expect(savedRule.browser == rule.browser)
+        #expect(savedRule.profile == rule.profile)
+    }
+
+    @Test func emptySelectionStaysEmptyAndShowAllRestoresDiscovery() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let (model, _, _) = try selectionModel(fixture)
+        model.showOnlyFavorites()
+        for choice in model.choices { model.setIncluded(false, for: choice) }
+        #expect(model.choices.isEmpty)
+        #expect(model.allChoices.count == 4)
+        #expect(model.viewModel.config.picker?.destinations == [])
+        #expect(model.viewModel.flush())
+        #expect(try Config.load(from: fixture.configURL).picker?.destinations == [])
+        model.refresh()
+        #expect(model.choices.isEmpty)
+        model.showAllDestinations()
+        #expect(model.choices.count == 4)
+        #expect(model.viewModel.config.picker?.destinations == nil)
+    }
+
+    @Test func missingSelectedProfileRemainsVisibleWithoutSubstitutingAnotherBrowser() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let (model, chrome, helium) = try selectionModel(fixture)
+        let selected = Destination(browser: chrome.path, profile: "Default")
+        model.viewModel.config.picker?.destinations = [selected]
+        try fixture.profiles(["Profile 1": "Horizon 3"])
+        model.refresh()
+        let missing = try #require(model.choices.first)
+        #expect(model.choices.count == 1)
+        #expect(missing.id == selected)
+        #expect(missing.error != nil)
+        #expect(model.allChoices.contains { $0.id == Destination(browser: helium.path, profile: "Default") })
+        model.urlString = "https://example.com"
+        model.launch = { _, _ in Issue.record("An unavailable selected profile was launched") }
+        #expect(!model.open(missing))
+        #expect(model.urlString == "https://example.com")
+        model.setIncluded(false, for: missing)
+        #expect(model.choices.isEmpty)
+        #expect(!model.allChoices.contains { $0.id == selected })
+    }
+
+    @Test func unavailableSelectedBrowserIsRetainedAndUnselectedDiscoveryErrorsStayHidden() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let (model, chrome, helium) = try selectionModel(fixture)
+        let selected = Destination(browser: helium.path, profile: "Profile 1")
+        model.viewModel.config.picker?.destinations = [selected]
+        model.browsers = { [self.installed(chrome, name: "Chrome")] }
+        try Data("broken".utf8).write(
+            to: fixture.root.appendingPathComponent("Library/Application Support/Google/Chrome/Local State"))
+        model.refresh()
+        #expect(model.choices.count == 1)
+        #expect(model.choices.first?.id == selected)
+        #expect(model.choices.first?.error != nil)
+        #expect(model.allChoices.contains { $0.destination.browser == chrome.path && $0.error != nil })
+    }
+
+    @Test func pickerLabelsOmitAppExtensionAndHiddenProfilesCannotBeNewFavorites() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let (model, chrome, _) = try selectionModel(fixture)
+        let personal = try #require(
+            model.allChoices.first {
+                $0.id == Destination(browser: chrome.path, profile: "Default")
+            })
+        #expect(personal.browserDisplayName == "Google Chrome")
+        #expect(personal.label == "Google Chrome · Personal")
+        model.showOnlyFavorites()
+        model.toggleFavorite(personal)
+        #expect(model.viewModel.config.picker?.favorites.count == 2)
+        model.setIncluded(true, for: personal)
+        model.toggleFavorite(personal)
+        #expect(model.choices.filter(\.isFavorite).count == 3)
+        #expect(model.favoriteNumber(for: personal) == 3)
+    }
+
     @Test func favoritesResolveOnceAndPersistBrowserSpecificDirectories() throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }

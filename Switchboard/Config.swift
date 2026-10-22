@@ -21,7 +21,7 @@ enum Condition: String, Codable, CaseIterable {
     }
 }
 
-struct Destination: Equatable, Hashable {
+struct Destination: Codable, Equatable, Hashable {
     let browser: String
     let profile: String
 }

@@ -7,7 +7,16 @@ final class TabPickerModel: ObservableObject {
     @Published var urlString = ""
     @Published private(set) var error: String?
     @Published private(set) var needsAutomationPermission = false
-    @Published private(set) var choices: [PickerChoice] = []
+    @Published private(set) var allChoices: [PickerChoice] = []
+
+    var choices: [PickerChoice] {
+        guard let settings = viewModel.config.picker else { return allChoices }
+        return allChoices.filter { settings.includes($0.destination) }
+    }
+
+    var panelHeight: CGFloat {
+        176 + CGFloat(min(5, max(2, choices.count))) * 72 + (error == nil ? 0 : 120)
+    }
 
     let viewModel: ConfigViewModel
     var reader = CurrentTabReader()
@@ -33,8 +42,9 @@ final class TabPickerModel: ObservableObject {
     }
 
     func refresh() {
-        choices = catalog.choices(
-            browsers: browsers(), favorites: viewModel.config.picker?.favorites ?? [])
+        allChoices = catalog.choices(
+            browsers: browsers(), favorites: viewModel.config.picker?.favorites ?? [],
+            destinations: viewModel.config.picker?.destinations ?? [])
     }
 
     func toggleFavorite(_ choice: PickerChoice) {
@@ -42,11 +52,43 @@ final class TabPickerModel: ObservableObject {
         refresh()
     }
 
+    func includes(_ choice: PickerChoice) -> Bool {
+        viewModel.config.picker?.includes(choice.destination) ?? true
+    }
+
+    func setIncluded(_ included: Bool, for choice: PickerChoice) {
+        viewModel.setPickerDestination(choice.destination, included: included, choices: allChoices)
+        refresh()
+    }
+
+    func showOnlyFavorites() {
+        viewModel.showOnlyPickerFavorites()
+        refresh()
+    }
+
+    func showAllDestinations() {
+        viewModel.showAllPickerDestinations()
+        refresh()
+    }
+
+    func favoriteNumber(for choice: PickerChoice) -> Int? {
+        choices.filter(\.isFavorite).firstIndex { $0.id == choice.id }.map { $0 + 1 }
+    }
+
     func open(_ choice: PickerChoice) -> Bool {
         // A favorite cannot recover a URL that permission failure prevented us from reading.
         if urlString.isEmpty && needsAutomationPermission { return false }
         error = nil
         needsAutomationPermission = false
+        guard includes(choice) else {
+            error =
+                "This destination is hidden from Quick Switch. Choose another destination or enable it in Settings."
+            return false
+        }
+        guard choice.error == nil else {
+            error = choice.error
+            return false
+        }
         guard let url = URL(string: urlString), Router.isWebURL(url) else {
             error = "Enter a complete HTTP or HTTPS link, such as https://example.com."
             return false
@@ -89,6 +131,7 @@ final class TabPickerController: ObservableObject {
     }
     private let shortcut = GlobalShortcut()
     private var subscription: AnyCancellable?
+    private var panelSubscription: AnyCancellable?
     private var panel: TabPickerPanel?
     private var isRecording = false
 
@@ -147,9 +190,9 @@ final class TabPickerController: ObservableObject {
         model.prepare(source: source)
         if panel == nil {
             let panel = TabPickerPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 460, height: 420),
+                contentRect: NSRect(x: 0, y: 0, width: 460, height: model.panelHeight),
                 styleMask: [.titled, .closable, .utilityWindow], backing: .buffered, defer: false)
-            panel.title = "Open page in…"
+            panel.title = "Quick Switch"
             panel.isReleasedWhenClosed = false
             panel.hidesOnDeactivate = false
             panel.level = .floating
@@ -162,7 +205,14 @@ final class TabPickerController: ObservableObject {
                         self?.onSettings()
                     }))
             self.panel = panel
+            panelSubscription = model.objectWillChange.sink { [weak self] in
+                DispatchQueue.main.async {
+                    guard let self, self.panel?.isVisible == true else { return }
+                    self.panel?.setContentSize(NSSize(width: 460, height: self.model.panelHeight))
+                }
+            }
         }
+        panel?.setContentSize(NSSize(width: 460, height: model.panelHeight))
         panel?.center()
         NSApp.activate(ignoringOtherApps: true)
         panel?.makeKeyAndOrderFront(nil)
@@ -194,10 +244,13 @@ private struct TabPickerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Open current page in…").font(.headline)
-            TextField("Paste an HTTP or HTTPS link", text: $model.urlString)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityLabel("Page URL")
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Link to open").font(.callout).foregroundStyle(.secondary)
+                TextField("Paste an HTTP or HTTPS link", text: $model.urlString)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityLabel("Link to open")
+                    .help(model.urlString)
+            }
             if let error = model.error {
                 Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled)
                 if model.needsAutomationPermission {
@@ -211,18 +264,28 @@ private struct TabPickerView: View {
                     }
                 }
             }
+            Text("Open in").font(.headline)
             ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(model.choices) { choice in
-                        choiceRow(choice)
+                LazyVStack(alignment: .leading, spacing: 6) {
+                    if model.choices.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("No destinations to show").fontWeight(.medium)
+                            Text(
+                                "Choose the browser profiles you want in Quick Switch settings, or refresh to check for installed browsers."
+                            )
+                            .font(.callout).foregroundStyle(.secondary)
+                            Button("Choose Destinations…", action: onSettings).padding(.top, 4)
+                        }
+                        .padding(.vertical, 12)
+                    } else {
+                        ForEach(model.choices) { choice in
+                            choiceRow(choice)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if model.choices.isEmpty {
-                Text("No supported browsers were found. Install a browser, then refresh.")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-            Text("Opens a new tab using that profile’s login. The original tab stays open.")
+            Text("Opens a new tab. The original tab stays open.")
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button("Settings…", action: onSettings)
@@ -232,29 +295,37 @@ private struct TabPickerView: View {
             }
         }
         .padding(16)
-        .frame(width: 460, height: 420)
+        .frame(width: 460, height: model.panelHeight)
     }
 
     private func choiceRow(_ choice: PickerChoice) -> some View {
-        let number = model.choices.filter(\.isFavorite).firstIndex { $0.id == choice.id }.map { $0 + 1 }
+        let number = model.favoriteNumber(for: choice)
         return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Button {
                     onOpen(choice)
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: choice.destination.browser))
+                            .resizable().frame(width: 28, height: 28).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(choice.profileName).fontWeight(.medium)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(choice.browserDisplayName).font(.callout).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
                         if let number, number <= 9 {
                             Text("⌘\(number)").font(.caption.monospaced()).foregroundStyle(.secondary)
+                                .fixedSize()
                         }
-                        Text(choice.label)
-                        Spacer()
-                        Text(choice.destination.profile).font(.caption).foregroundStyle(.secondary)
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(choice.error != nil)
                 .modifier(FavoriteKey(number: number))
+                .help("\(choice.label) · \(choice.destination.profile)")
+                .accessibilityLabel(choice.label)
                 Button {
                     model.toggleFavorite(choice)
                 } label: {

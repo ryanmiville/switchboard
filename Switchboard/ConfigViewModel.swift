@@ -93,12 +93,33 @@ final class ConfigViewModel: ObservableObject {
         var settings = config.picker ?? PickerSettings()
         if settings.favorites.contains(where: { $0.id == choice.id }) {
             settings.favorites.removeAll { $0.id == choice.id }
-        } else if choice.error == nil {
+        } else if choice.error == nil && settings.includes(choice.destination) {
             settings.favorites.append(
                 PickerFavorite(
                     browser: choice.destination.browser, profile: choice.destination.profile,
                     name: choice.profileName))
         }
+        config.picker = settings
+    }
+
+    func setPickerDestination(_ destination: Destination, included: Bool, choices: [PickerChoice]) {
+        var settings = config.picker ?? PickerSettings()
+        var selected = settings.destinations ?? choices.map(\.destination).filter { !$0.profile.isEmpty }
+        selected.removeAll { $0 == destination }
+        if included && !destination.profile.isEmpty { selected.append(destination) }
+        settings.destinations = selected
+        config.picker = settings
+    }
+
+    func showOnlyPickerFavorites() {
+        var settings = config.picker ?? PickerSettings()
+        settings.destinations = settings.favorites.map(\.destination)
+        config.picker = settings
+    }
+
+    func showAllPickerDestinations() {
+        var settings = config.picker ?? PickerSettings()
+        settings.destinations = nil
         config.picker = settings
     }
 

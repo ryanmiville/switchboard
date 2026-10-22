@@ -61,7 +61,9 @@ A link launches the selected browser executable directly so profile arguments wo
 
 Opening or reopening Switchboard starts its menu bar and shortcut without opening Settings. Switchboard stays out of the Dock, including while Settings or the picker is open. Open **Settings** or **Quit Switchboard** from its menu-bar icon. While Chrome, Helium, or another supported Chromium browser is focused, press **Control–Option–Space** to open the destination picker. Choose a browser/profile to open the same URL there and bring that browser forward. The original tab stays open; the destination uses its own login/session. Manual selections override routing rules for that opening only.
 
-The initial favorites are **Helium · Ryan** and **Chrome · Horizon 3** (Chrome’s `horizon3.ai` profile), when those names resolve unambiguously. They are saved as browser paths and profile directory identifiers. Favorites appear first and have **Command–1**, **Command–2**, etc. shortcuts. Use the stars to add or remove favorites. Missing favorites remain visible and require refreshing or choosing another destination; they never silently select another profile.
+The initial favorites are **Helium · Ryan** and **Chrome · Horizon 3** (Chrome’s `horizon3.ai` profile), when those names resolve unambiguously. They are saved as browser paths and profile directory identifiers. Favorites appear first and have **Command–1**, **Command–2**, etc. shortcuts. Use the stars to add or remove favorites.
+
+In **Settings → Quick Switch**, check the destinations you want in the picker. **Favorites Only** selects your saved favorites; **Show All** includes every discovered browser/profile again. Once you customize the selection, newly discovered profiles stay unchecked. Selection and favorites are separate: a hidden favorite stays saved but gets no picker shortcut until you show it again. Missing selected destinations remain visible with a recovery message; they never silently select another profile. The picker shows browser icons and profile names, with the link above the destination list.
 
 macOS asks for Automation access the first time Switchboard reads each browser’s current tab. If access is denied, the picker offers Automation Settings and a URL field for pasting the link instead. Only HTTP/HTTPS links are accepted. Reading the URL does not require enabling JavaScript from Apple Events.
 
@@ -73,7 +75,7 @@ Click the shortcut button in Switchboard’s settings to record a different shor
 
 Enable **Launch Switchboard at login** in Settings to start the menu bar and shortcut automatically when you sign in, with Settings closed. This uses macOS’s login-item registration and reflects changes made in **System Settings → General → Login Items**. If macOS requires approval, Settings shows a button to open Login Items. Registration is optional and is changed only through the toggle, not by building, installing, or opening links.
 
-Shortcut and favorite preferences live in the optional `picker` section of `config.json`; existing configuration files continue to load. Link-only launches keep their temporary lifecycle. To use the shortcut after quitting, reopen Switchboard normally.
+Shortcut, favorite, and destination preferences live in the optional `picker` section of `config.json`; existing configuration files continue to load. An omitted `picker.destinations` preserves the previous behavior of showing all destinations. A saved array contains explicit browser/profile pairs; an empty array hides all destinations until you select some in Settings. Routing rules and the default destination are unaffected. Link-only launches keep their temporary lifecycle. To use the shortcut after quitting, reopen Switchboard normally.
 
 ## Development
 
