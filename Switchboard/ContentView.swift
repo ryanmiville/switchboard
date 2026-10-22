@@ -138,17 +138,23 @@ struct ContentView: View {
                     }
                 }
                 SettingsSection("Startup") {
-                    Toggle(
-                        isOn: Binding(get: { loginItem.isEnabled }, set: { loginItem.setEnabled($0) })
-                    ) {
+                    HStack {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("Launch Switchboard at login").fontWeight(.medium)
                             Text("Starts in the menu bar with Settings closed.")
                                 .font(.callout).foregroundStyle(.secondary)
                         }
+                        Spacer(minLength: 20)
+                        Toggle(
+                            "Launch Switchboard at login",
+                            isOn: Binding(get: { loginItem.isEnabled }, set: { loginItem.setEnabled($0) })
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .fixedSize()
+                        .accessibilityHint("Starts in the menu bar with Settings closed.")
                     }
-                    .toggleStyle(.switch)
-                    .accessibilityLabel("Launch Switchboard at login")
                     if loginItem.needsApproval {
                         Text("Allow Switchboard in System Settings → General → Login Items.")
                             .font(.callout).foregroundStyle(.secondary).padding(.top, 8)
