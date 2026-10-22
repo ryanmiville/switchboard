@@ -25,7 +25,7 @@ struct BuildTests {
         let plan = try run(["-n"] + arguments)
         #expect(plan.status == 0)
         let build = try #require(plan.output.range(of: "/usr/bin/false"))
-        let install = try #require(plan.output.range(of: "ditto"))
+        let install = try #require(plan.output.range(of: "python3 scripts/install-app.py"))
         #expect(build.lowerBound < install.lowerBound)
         // Never execute an install test if it could write to the real Applications folder.
         try #require(!plan.output.contains("/Applications/"))

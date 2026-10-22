@@ -21,7 +21,7 @@ enum Condition: String, Codable, CaseIterable {
     }
 }
 
-struct Destination: Equatable {
+struct Destination: Equatable, Hashable {
     let browser: String
     let profile: String
 }
@@ -70,6 +70,7 @@ struct Config: Codable, Equatable {
     var browser: String
     var defaultProfile: String
     var routes: [Route]
+    var picker: PickerSettings? = nil
 
     var browserPaths: Set<String> { Set([browser] + routes.compactMap(\.browser)) }
 

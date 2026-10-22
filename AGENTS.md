@@ -38,7 +38,7 @@ The Swift package excludes the app entry point and editor view. Reopen tests cal
 - Launch the browser executable directly using `Bundle.executableURL` and a Process argument array. Do not use `open -a --args`; profiles must work when the browser is already running. Pass only complete HTTP/HTTPS URLs and preserve the original URL when launching.
 - Surface failures with a recovery action. Do not guess a different browser/profile or fall back through the system default browser, which may be Switchboard itself.
 - Routing must preserve an existing editor session. Flush pending edits before routing from the editor or quitting it. A temporary routing launch exits only after the latest URL's idle delay.
-- Settings is a single window. Dock/launcher reopening must focus or restore it, creating a window only when none is open. Keep the reopen handler responsible for the request instead of also asking AppKit to perform default reopening.
+- Opening or reopening the app starts its menu bar and shortcut without opening Settings. Settings is a single window opened explicitly from the menu; repeated Settings requests focus or restore it, creating a window only when none is open. Suppress AppKit's default reopening.
 - Keep App Sandbox disabled: launching the browser requires subprocess control. Preserve HTTP/HTTPS and HTML declarations in `Info.plist` so macOS recognizes the app as a browser.
 
 ## Verification and review

@@ -48,6 +48,60 @@ final class ConfigViewModel: ObservableObject {
         config.routes.append(Route(profile: config.defaultProfile))
     }
 
+    // Sheets edit a value copy. Only Done changes the live configuration or starts autosave.
+    @discardableResult
+    func commitRoute(_ draft: RouteDraft) -> Bool {
+        guard loadError == nil else { return false }
+        if draft.isNew {
+            guard !config.routes.contains(where: { $0.id == draft.id }) else { return false }
+            config.routes.append(draft.route)
+        } else {
+            guard let index = config.routes.firstIndex(where: { $0.id == draft.id }) else { return false }
+            config.routes[index] = draft.route
+        }
+        return true
+    }
+
+    func discoverProfiles(for browser: String) throws -> [Profile] {
+        try profileStore.profiles(browserPath: browser)
+    }
+
+    func selectDefaultBrowser(_ browser: String) {
+        guard browser != config.browser else { return }
+        var updated = config
+        updated.browser = browser
+        updated.defaultProfile = ""
+        for index in updated.routes.indices where updated.routes[index].browser == nil {
+            updated.routes[index].profile = ""
+        }
+        config = updated
+    }
+
+    func initializePicker() {
+        guard config.picker == nil, loadError == nil else { return }
+        config.picker = PickerSettings.initial(browsers: availableBrowsers, profileStore: profileStore)
+    }
+
+    func setPickerShortcut(_ shortcut: KeyboardShortcut) {
+        guard shortcut.isValid else { return }
+        var settings = config.picker ?? PickerSettings()
+        settings.shortcut = shortcut
+        config.picker = settings
+    }
+
+    func toggleFavorite(_ choice: PickerChoice) {
+        var settings = config.picker ?? PickerSettings()
+        if settings.favorites.contains(where: { $0.id == choice.id }) {
+            settings.favorites.removeAll { $0.id == choice.id }
+        } else if choice.error == nil {
+            settings.favorites.append(
+                PickerFavorite(
+                    browser: choice.destination.browser, profile: choice.destination.profile,
+                    name: choice.profileName))
+        }
+        config.picker = settings
+    }
+
     func deleteRoute(_ route: Route) {
         config.routes.removeAll { $0.id == route.id }
     }
@@ -80,6 +134,18 @@ final class ConfigViewModel: ObservableObject {
             config.routes.indices.contains(index + offset)
         else { return }
         config.routes.swapAt(index, index + offset)
+    }
+
+    func moveRoute(id: UUID, toInsertionIndex insertion: Int) {
+        guard let source = config.routes.firstIndex(where: { $0.id == id }),
+            (0...config.routes.count).contains(insertion)
+        else { return }
+        let destination = insertion > source ? insertion - 1 : insertion
+        guard source != destination else { return }
+        var routes = config.routes
+        let route = routes.remove(at: source)
+        routes.insert(route, at: destination)
+        config.routes = routes
     }
 
     func reload() {
@@ -167,5 +233,23 @@ final class ConfigViewModel: ObservableObject {
                 "Your changes couldn’t be saved. They are still in this window. \(error.localizedDescription) Fix the issue and retry saving."
             return false
         }
+    }
+}
+
+struct RouteDraft: Identifiable {
+    var route: Route
+    let isNew: Bool
+    var id: UUID { route.id }
+
+    init(config: Config, route: Route? = nil) {
+        self.route = route ?? Route(condition: .domain, profile: config.defaultProfile)
+        isNew = route == nil
+    }
+
+    mutating func selectBrowser(_ browser: String?, defaultBrowser: String) {
+        if (route.browser ?? defaultBrowser) != (browser ?? defaultBrowser) {
+            route.profile = ""
+        }
+        route.browser = browser
     }
 }

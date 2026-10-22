@@ -176,4 +176,100 @@ struct ConfigViewModelTests {
         #expect(model.profiles(for: chrome.path).first?.name == "Chrome Work")
         #expect(model.availableProfiles.first?.name == "Ryan")
     }
+
+    @Test func ruleSheetsKeepDraftsIsolatedAndCommitInPlace() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal"])
+        let rules = [Route(value: "first"), Route(value: "second")]
+        try Config(browser: browser.path, defaultProfile: "Default", routes: rules)
+            .save(to: fixture.configURL)
+        let model = model(fixture)
+        let original = try Data(contentsOf: fixture.configURL)
+        let selected = model.config.routes[0]
+        var edit = RouteDraft(config: model.config, route: selected)
+        edit.route.value = "edited"
+        var addition = RouteDraft(config: model.config)
+        addition.route.value = "new.example"
+        // Creating, changing, and cancelling either sheet cannot trigger an autosave.
+        #expect(!model.hasUnsavedChanges)
+        #expect(model.config.routes[0].value == "first")
+        #expect(model.flush())
+        #expect(try Data(contentsOf: fixture.configURL) == original)
+        #expect(model.commitRoute(edit))
+        #expect(model.config.routes.map(\.value) == ["edited", "second"])
+        #expect(model.config.routes[0].id == selected.id)
+        #expect(model.commitRoute(addition))
+        #expect(model.config.routes.map(\.value) == ["edited", "second", "new.example"])
+        #expect(!model.commitRoute(addition))
+        #expect(model.flush())
+        #expect(
+            try Config.load(from: fixture.configURL).routes.map(\.value) == [
+                "edited", "second", "new.example",
+            ])
+        model.deleteRoute(selected)
+        #expect(!model.commitRoute(edit))
+    }
+
+    @Test func draftBrowserDiscoveryDoesNotSaveOrReuseAnotherBrowsersProfile() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let chrome = try fixture.browser()
+        let helium = try fixture.browser(id: "net.imput.helium", name: "Helium")
+        try fixture.profiles(["Default": "Chrome Work"])
+        try fixture.profiles(["Default": "Ryan"], folder: "net.imput.helium")
+        try Config(browser: helium.path, defaultProfile: "Default", routes: [Route(value: "gitlab.com")])
+            .save(to: fixture.configURL)
+        let model = model(fixture)
+        var draft = RouteDraft(config: model.config, route: model.config.routes[0])
+        draft.selectBrowser(helium.path, defaultBrowser: model.config.browser)
+        #expect(draft.route.profile == "Default")
+        draft.selectBrowser(chrome.path, defaultBrowser: model.config.browser)
+        #expect(draft.route.profile.isEmpty)
+        #expect(try model.discoverProfiles(for: chrome.path).map(\.name) == ["Chrome Work"])
+        #expect(model.availableProfiles.map(\.name) == ["Ryan"])
+        #expect(!model.hasUnsavedChanges)
+        draft.route.profile = "Default"
+        #expect(model.commitRoute(draft))
+        #expect(model.flush())
+        let saved = try Config.load(from: fixture.configURL)
+        #expect(saved.routes.first?.browser == chrome.path)
+        #expect(saved.browser == helium.path)
+        #expect(saved.routes.first?.profile == "Default")
+    }
+
+    @Test func dragReorderingPreservesIdentityAndGlobalPriority() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let model = model(fixture)
+        let rules = [Route(value: "one"), Route(value: "two"), Route(value: "three")]
+        model.config.routes = rules
+        model.moveRoute(id: rules[0].id, toInsertionIndex: 3)
+        #expect(model.config.routes.map(\.id) == [rules[1].id, rules[2].id, rules[0].id])
+        model.moveRoute(id: rules[0].id, toInsertionIndex: 0)
+        #expect(model.config.routes == rules)
+        model.moveRoute(id: rules[0].id, toInsertionIndex: 1)
+        model.moveRoute(id: UUID(), toInsertionIndex: 0)
+        model.moveRoute(id: rules[0].id, toInsertionIndex: 4)
+        #expect(model.config.routes == rules)
+    }
+
+    @Test func changingDefaultBrowserClearsOnlyDestinationsThatInheritIt() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let chrome = try fixture.browser()
+        let helium = try fixture.browser(id: "net.imput.helium", name: "Helium")
+        try fixture.profiles(["Default": "Chrome Work"])
+        try fixture.profiles(["Default": "Ryan"], folder: "net.imput.helium")
+        let rules = [Route(value: "inherited"), Route(value: "explicit", browser: helium.path)]
+        try Config(browser: helium.path, defaultProfile: "Default", routes: rules).save(to: fixture.configURL)
+        let model = model(fixture)
+        model.selectDefaultBrowser(chrome.path)
+        #expect(model.config.defaultProfile.isEmpty)
+        #expect(model.config.routes[0].profile.isEmpty)
+        #expect(model.config.routes[1].profile == "Default")
+        #expect(!model.flush())
+        #expect(try Config.load(from: fixture.configURL).browser == helium.path)
+    }
 }

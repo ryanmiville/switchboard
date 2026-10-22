@@ -4,8 +4,9 @@ SHELL := /bin/bash
 
 BUILD_DIR := $(CURDIR)/.build/xcode
 INSTALL_DIR ?= /Applications
+SIGNING_IDENTITY ?= -
 XCODEBUILD ?= xcodebuild
-XCODE_FLAGS := -project Switchboard.xcodeproj -scheme Switchboard -destination 'generic/platform=macOS' -derivedDataPath "$(BUILD_DIR)" CODE_SIGNING_ALLOWED=NO
+XCODE_FLAGS := -project Switchboard.xcodeproj -scheme Switchboard -destination 'generic/platform=macOS' -derivedDataPath "$(BUILD_DIR)" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="$(SIGNING_IDENTITY)" CODE_SIGN_STYLE=Manual OTHER_CODE_SIGN_FLAGS="--options=runtime --timestamp=none" ENABLE_DEBUG_DYLIB=NO
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister
 
 .PHONY: verify test format format-check debug release debug-install install clean
@@ -33,11 +34,11 @@ release:
 	@trap '$(LSREGISTER) -u "$(BUILD_DIR)/Build/Products/Release/Switchboard.app" >/dev/null 2>&1 || true' EXIT; $(XCODEBUILD) $(XCODE_FLAGS) -configuration Release build
 
 debug-install: debug
-	ditto "$(BUILD_DIR)/Build/Products/Debug/Switchboard.app" "$(INSTALL_DIR)/Switchboard.app"
+	python3 scripts/install-app.py "$(BUILD_DIR)/Build/Products/Debug/Switchboard.app" "$(INSTALL_DIR)/Switchboard.app"
 	$(LSREGISTER) -f "$(INSTALL_DIR)/Switchboard.app"
 
 install: release
-	ditto "$(BUILD_DIR)/Build/Products/Release/Switchboard.app" "$(INSTALL_DIR)/Switchboard.app"
+	python3 scripts/install-app.py "$(BUILD_DIR)/Build/Products/Release/Switchboard.app" "$(INSTALL_DIR)/Switchboard.app"
 	$(LSREGISTER) -f "$(INSTALL_DIR)/Switchboard.app"
 
 clean:
