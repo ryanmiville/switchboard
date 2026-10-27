@@ -204,69 +204,62 @@ struct ContentView: View {
                     .padding(.top, 8)
             }
             VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Routing rules").font(.headline)
-                        Text("First match wins. Drag rules to change their priority.")
-                            .font(.callout).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button {
-                        draft = RouteDraft(config: viewModel.config)
-                    } label: {
-                        Label("Add Rule", systemImage: "plus")
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Routing rules").font(.headline)
+                    Text("First match wins. Drag rules to change their priority.")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
-                ZStack {
-                    RoutingRulesTable(
-                        rows: tableRows, selection: $selectedRuleID,
-                        onEdit: editSelectedRule,
-                        onMove: { viewModel.moveRoute(id: $0, toInsertionIndex: $1) }
-                    )
-                    if viewModel.config.routes.isEmpty {
-                        VStack(spacing: 8) {
-                            Image(systemName: "arrow.triangle.branch").font(.title2).foregroundStyle(
-                                .secondary)
-                            Text("No routing rules yet").font(.headline)
-                            Text("All links use your default destination.").foregroundStyle(.secondary)
-                            Button("Add Your First Rule") { draft = RouteDraft(config: viewModel.config) }
-                                .padding(.top, 5)
+                VStack(spacing: 0) {
+                    ZStack {
+                        RoutingRulesTable(
+                            rows: tableRows, selection: $selectedRuleID,
+                            onEdit: editSelectedRule,
+                            onDelete: deleteSelectedRule,
+                            onMove: { viewModel.moveRoute(id: $0, toInsertionIndex: $1) }
+                        )
+                        if viewModel.config.routes.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "arrow.triangle.branch").font(.title2).foregroundStyle(
+                                    .secondary)
+                                Text("No routing rules yet").font(.headline)
+                                Text("All links use your default destination.").foregroundStyle(.secondary)
+                                Button("Add Your First Rule") { draft = RouteDraft(config: viewModel.config) }
+                                    .padding(.top, 5)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color(nsColor: .controlBackgroundColor))
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color(nsColor: .controlBackgroundColor))
                     }
+                    Divider()
+                    HStack(spacing: 0) {
+                        Button {
+                            draft = RouteDraft(config: viewModel.config)
+                        } label: {
+                            Image(systemName: "plus").frame(width: 26, height: 22).contentShape(Rectangle())
+                        }
+                        .keyboardShortcut("n", modifiers: .command)
+                        .help("Add a rule").accessibilityLabel("Add rule")
+                        Divider().frame(height: 14)
+                        Button {
+                            deleteSelectedRule()
+                        } label: {
+                            Image(systemName: "minus").frame(width: 26, height: 22).contentShape(Rectangle())
+                        }
+                        .help("Delete selected rule").accessibilityLabel("Delete selected rule")
+                        .disabled(selectedRule == nil)
+                        Spacer()
+                        Button("Edit Rule…", action: editSelectedRule)
+                            .disabled(selectedRule == nil)
+                            .padding(.horizontal, 8)
+                    }
+                    .buttonStyle(.borderless)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color(nsColor: .controlBackgroundColor))
                 }
                 .frame(minHeight: 220)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Color.primary.opacity(0.10)))
-                HStack(spacing: 12) {
-                    Button {
-                        deleteSelectedRule()
-                    } label: {
-                        Image(systemName: "minus")
-                    }
-                    .help("Delete selected rule").accessibilityLabel("Delete selected rule")
-                    .disabled(selectedRule == nil)
-                    Divider().frame(height: 17)
-                    Button {
-                        moveSelectedRule(by: -1)
-                    } label: {
-                        Image(systemName: "arrow.up")
-                    }
-                    .help("Move rule earlier").accessibilityLabel("Move rule earlier")
-                    .disabled(selectedRule == nil || selectedRuleID == viewModel.config.routes.first?.id)
-                    Button {
-                        moveSelectedRule(by: 1)
-                    } label: {
-                        Image(systemName: "arrow.down")
-                    }
-                    .help("Move rule later").accessibilityLabel("Move rule later")
-                    .disabled(selectedRule == nil || selectedRuleID == viewModel.config.routes.last?.id)
-                    Spacer()
-                    Button("Edit Rule…", action: editSelectedRule).disabled(selectedRule == nil)
-                }
-                .controlSize(.small)
             }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
@@ -341,11 +334,6 @@ struct ContentView: View {
         guard let selectedRule else { return }
         viewModel.deleteRoute(selectedRule)
         selectedRuleID = nil
-    }
-
-    private func moveSelectedRule(by offset: Int) {
-        guard let selectedRule else { return }
-        viewModel.moveRoute(selectedRule, by: offset)
     }
 
     @ViewBuilder private var errors: some View {
@@ -887,6 +875,7 @@ private struct RoutingRulesTable: NSViewRepresentable {
     let rows: [RuleTableRow]
     @Binding var selection: UUID?
     let onEdit: () -> Void
+    let onDelete: () -> Void
     let onMove: (UUID, Int) -> Void
     @Environment(\.isEnabled) private var isEnabled
 
@@ -898,6 +887,7 @@ private struct RoutingRulesTable: NSViewRepresentable {
         table.target = context.coordinator
         table.doubleAction = #selector(Coordinator.edit)
         table.onEdit = onEdit
+        table.onDelete = onDelete
         table.isEnabled = isEnabled
         table.usesAlternatingRowBackgroundColors = true
         table.allowsMultipleSelection = false
@@ -934,6 +924,7 @@ private struct RoutingRulesTable: NSViewRepresentable {
         coordinator.parent = self
         guard let table = coordinator.table else { return }
         table.onEdit = onEdit
+        table.onDelete = onDelete
         table.isEnabled = isEnabled
         coordinator.updating = true
         if previousRows != rows { table.reloadData() }
@@ -1034,7 +1025,13 @@ private struct RoutingRulesTable: NSViewRepresentable {
 
 private final class RulesTableView: NSTableView {
     var onEdit: () -> Void = {}
+    var onDelete: () -> Void = {}
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 36, selectedRow >= 0 { onEdit() } else { super.keyDown(with: event) }
+        guard selectedRow >= 0 else { return super.keyDown(with: event) }
+        switch event.keyCode {
+        case 36: onEdit()
+        case 51, 117: onDelete()
+        default: super.keyDown(with: event)
+        }
     }
 }
