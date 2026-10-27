@@ -38,7 +38,25 @@ struct LauncherTests {
         }
     }
 
-    @Test(arguments: ["--incognito", "file:///tmp/a", "javascript:alert(1)", "https:relative"])
+    @Test func localFileURLsLaunchWithRoutedProfile() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal", "Profile 1": "Work"])
+        let url = try #require(
+            URL(string: "file:///Users/example/dev/show%20me/page.html?a=1#part"))
+        var received: [String] = []
+        let launcher = BrowserLauncher(
+            profileStore: BrowserProfiles(homeDirectory: fixture.root),
+            runProcess: { _, arguments in received = arguments })
+        let config = Config(browser: browser.path, defaultProfile: "Profile 1", routes: [])
+        try launcher.launch(url: url, destination: Router(config: config).route(url: url))
+        #expect(received == ["--profile-directory=Profile 1", url.absoluteString])
+    }
+
+    @Test(arguments: [
+        "--incognito", "javascript:alert(1)", "https:relative", "file:relative", "file://server/share/a.html",
+    ])
     func nonWebURLsCannotBecomeBrowserArguments(value: String) throws {
         let launcher = BrowserLauncher(
             runProcess: { _, _ in

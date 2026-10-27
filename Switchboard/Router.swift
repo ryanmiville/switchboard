@@ -7,6 +7,11 @@ struct Router {
         ["http", "https"].contains(url.scheme?.lowercased() ?? "") && !(url.host ?? "").isEmpty
     }
 
+    static func isLocalFileURL(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == "file" && ["", "localhost"].contains(url.host?.lowercased() ?? "")
+            && url.path.hasPrefix("/")
+    }
+
     func route(url: URL) -> Destination {
         decision(url: url).destination
     }

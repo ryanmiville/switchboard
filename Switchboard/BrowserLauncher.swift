@@ -10,7 +10,7 @@ struct BrowserLauncher {
     }
 
     func launch(url: URL, destination: Destination) throws {
-        guard Router.isWebURL(url) else { throw LaunchError.invalidURL }
+        guard Router.isWebURL(url) || Router.isLocalFileURL(url) else { throw LaunchError.invalidURL }
         guard let executable = Bundle(path: destination.browser)?.executableURL,
             FileManager.default.isExecutableFile(atPath: executable.path)
         else { throw ProfileError.browserUnavailable }
@@ -24,6 +24,6 @@ enum LaunchError: LocalizedError {
     case invalidURL
 
     var errorDescription: String? {
-        "Switchboard can only open complete HTTP or HTTPS links."
+        "Switchboard can only open complete HTTP or HTTPS links and local files."
     }
 }
