@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+<title>Switchboard — Rounded panel</title>
+<g fill="none" stroke="black" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="15.0" height="15.0" rx="3.0"/></g>
+<g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.0" cy="5.0" r="1.15"/></g>
+<g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.0" cy="13.0" r="1.15"/></g>
+<g fill="none" stroke="black" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11.85 C5 8.2 10.3 2.4 13 3.85"/></g>
+<g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.0" cy="13.0" r="1.15"/></g>
+<g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.0" cy="5.0" r="1.15"/></g>
+</svg>

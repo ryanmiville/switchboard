@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Switchboard — 10 Settings Concepts</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #f4f6f9; color: #202631; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.masthead { padding: 25px 32px 17px; display: flex; align-items: center; justify-content: space-between; gap: 25px; }
+.masthead strong { font-size: 15px; letter-spacing: -.02em; }
+.masthead span { font-size: 12px; color: #737c88; }
+a { color: #1260c4; text-underline-offset: 3px; }
+.masthead a { font-size: 12px; }
+.heading { max-width: 1180px; margin: 12px auto 0; padding: 0 26px; display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+h1 { margin: 0; font-size: 25px; letter-spacing: -.025em; font-weight: 650; }
+.axis { margin: 7px 0 0; color: #687382; font-size: 13px; }
+.count { font-size: 12px; color: #6d7886; white-space: nowrap; }
+.image-link { display: block; max-width: 1200px; margin: 17px auto 0; }
+.shot { display: block; width: 100%; height: auto; }
+.notes { max-width: 1136px; padding: 0 4px; margin: 19px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 44px; font-size: 13px; line-height: 1.6; }
+.notes p { margin: 0; color: #566373; }
+.notes b { display: block; color: #222b36; font-weight: 600; }
+.links { max-width: 1136px; margin: 20px auto 0; font-size: 12px; display: flex; gap: 23px; }
+.disclosure { max-width: 1136px; margin: 14px auto 110px; color: #7a8490; font-size: 11px; }
+.index { max-width: 1136px; margin: 0 auto 130px; padding-top: 20px; border-top: 1px solid #dce1e8; }
+.index summary { cursor: pointer; font-size: 13px; color: #596574; }
+.index-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 30px; margin-top: 18px; }
+.index-list a { font-size: 12px; }
+@media(max-width: 800px) { .masthead { padding: 20px; } .masthead span { display: none; } .notes,.links,.disclosure,.index { margin-left: 24px; margin-right: 24px; } .notes { grid-template-columns: 1fr; gap: 12px; } }
+
+/* Prototype picker chrome, from Ryan's prototype/PICKER.md. */
+.proto-picker {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 10, 10, 0.82);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 8px 24px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.proto-picker-highlight {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  will-change: transform;
+}
+.proto-picker[data-ready] .proto-picker-highlight {
+  transition:
+    transform 250ms cubic-bezier(0.23, 1, 0.32, 1),
+    width 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .proto-picker[data-ready] .proto-picker-highlight { transition: none; }
+}
+.proto-picker-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  cursor: pointer;
+  transition: color 150ms ease-out;
+}
+.proto-picker-item:hover { color: rgba(255, 255, 255, 0.85); }
+.proto-picker-item:active { transform: scale(0.97); }
+.proto-picker-item:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.4); outline-offset: 2px; }
+.proto-picker-item[data-active] { color: #fff; }
+.proto-picker-divider { width: 1px; height: 16px; margin: 0 4px; background: rgba(255, 255, 255, 0.12); }
+.proto-picker-replay { padding: 0 10px; font-size: 14px; }
+.proto-picker[data-position="top"] { bottom: auto; top: 24px; }
+</style>
+<header class="masthead"><strong>Switchboard / Settings exploration</strong><span>10 native macOS directions · October 22, 2026</span><a href="switchboard-settings-10-mockups.zip" download>Download all 10</a></header>
+<main id="stage" aria-live="polite"></main>
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  __PICKER__
+</nav>
+<script>
+const concepts = __CONCEPTS__;
+const escape = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const variants = concepts.map((c,i) => () => `
+  <div class="heading"><div><h1>${String(i+1).padStart(2,'0')} — ${escape(c.name)}</h1><p class="axis">${escape(c.axis)}</p></div><span class="count">${i+1} / 10</span></div>
+  <a class="image-link" href="${c.file}" target="_blank" aria-label="Open full-resolution ${escape(c.name)} screenshot"><img class="shot" width="2400" height="1680" src="${c.file}" alt="${escape(c.name)}: ${escape(c.axis)}"></a>
+  <div class="notes"><p><b>Why this direction</b>${escape(c.benefit)}</p><p><b>The tradeoff</b>${escape(c.cost)}</p></div>
+  <div class="links"><a href="${c.file}" download>Download this screenshot</a><a href="overview.png" target="_blank">See all 10 together</a></div>
+  <p class="disclosure">Static design mockups rendered with AppKit typography, SF Symbols, and sample data. Settings controls in the images are illustrative. Use ← → or 1–9 and 0 to switch concepts.</p>
+  <details class="index"><summary>All ten screenshots</summary><div class="index-list">${concepts.map((s,j)=>`<a href="?v=${j+1}">${String(j+1).padStart(2,'0')} — ${escape(s.name)}</a>`).join('')}</div></details>`);
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const items = [...picker.querySelectorAll('.proto-picker-item:not(.proto-picker-replay)')];
+const replay = picker.querySelector('.proto-picker-replay');
+let current = 0;
+function moveHighlight() {
+  const el = items[current];
+  highlight.style.width = el.offsetWidth + 'px';
+  highlight.style.transform = `translateX(${el.offsetLeft}px)`;
+}
+function mount(i) {
+  stage.innerHTML = '';
+  requestAnimationFrame(() => { stage.innerHTML = variants[i](); });
+}
+function setActive(i) {
+  if (i < 0 || i >= variants.length) return;
+  current = i;
+  items.forEach((el, j) => {
+    el.toggleAttribute('data-active', j === i);
+    if (j === i) el.setAttribute('aria-current', 'true');
+    else el.removeAttribute('aria-current');
+  });
+  moveHighlight();
+  const url = new URL(location);
+  url.searchParams.set('v', i + 1);
+  history.replaceState(null, '', url);
+  mount(i);
+}
+items.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+replay?.addEventListener('click', () => mount(current));
+window.addEventListener('resize', moveHighlight);
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const num = e.key === '0' ? 10 : parseInt(e.key, 10);
+  if (num >= 1 && num <= variants.length) setActive(num - 1);
+  else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length);
+  else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length);
+  else if (e.key === 'r' || e.key === 'R') mount(current);
+});
+setActive(Math.max(0,Math.min(9,(parseInt(new URLSearchParams(location.search).get('v'),10)||1)-1)));
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</html>

@@ -1,0 +1,38 @@
+[
+  {
+    "letter" : "A",
+    "logicalSize" : 18,
+    "name" : "Clean panel",
+    "stem" : "A-clean-panel"
+  },
+  {
+    "letter" : "B",
+    "logicalSize" : 18,
+    "name" : "One spare socket",
+    "stem" : "B-one-spare-socket"
+  },
+  {
+    "letter" : "C",
+    "logicalSize" : 18,
+    "name" : "Two spare sockets",
+    "stem" : "C-two-spare-sockets"
+  },
+  {
+    "letter" : "D",
+    "logicalSize" : 18,
+    "name" : "Clean split panel",
+    "stem" : "D-clean-split-panel"
+  },
+  {
+    "letter" : "E",
+    "logicalSize" : 18,
+    "name" : "Split + one socket",
+    "stem" : "E-split-one-socket"
+  },
+  {
+    "letter" : "F",
+    "logicalSize" : 18,
+    "name" : "Split + two sockets",
+    "stem" : "F-split-two-sockets"
+  }
+]
