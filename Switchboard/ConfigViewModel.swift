@@ -273,4 +273,10 @@ struct RouteDraft: Identifiable {
         }
         route.browser = browser
     }
+
+    // Only fills an empty choice, so an unavailable saved profile is never silently replaced.
+    mutating func selectOnlyProfile(in profiles: [Profile]) {
+        guard route.profile.isEmpty, profiles.count == 1 else { return }
+        route.profile = profiles[0].directory
+    }
 }

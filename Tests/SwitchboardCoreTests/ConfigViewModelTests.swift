@@ -239,6 +239,30 @@ struct ConfigViewModelTests {
         #expect(saved.routes.first?.profile == "Default")
     }
 
+    @Test func draftSelectsTheOnlyProfileOfANewBrowser() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let chrome = try fixture.browser()
+        let helium = try fixture.browser(id: "net.imput.helium", name: "Helium")
+        try fixture.profiles(["Profile 1": "Chrome Work"])
+        try fixture.profiles(["Default": "Ryan", "Profile 2": "H3"], folder: "net.imput.helium")
+        try Config(browser: helium.path, defaultProfile: "Default", routes: []).save(to: fixture.configURL)
+        let model = model(fixture)
+        var draft = RouteDraft(config: model.config)
+        draft.selectBrowser(chrome.path, defaultBrowser: model.config.browser)
+        #expect(draft.route.profile.isEmpty)
+        draft.selectOnlyProfile(in: try model.discoverProfiles(for: chrome.path))
+        #expect(draft.route.profile == "Profile 1")
+        draft.selectBrowser(nil, defaultBrowser: model.config.browser)
+        draft.selectOnlyProfile(in: try model.discoverProfiles(for: helium.path))
+        #expect(draft.route.profile.isEmpty)
+        var stale = RouteDraft(
+            config: model.config, route: Route(value: "a", profile: "Profile 9", browser: chrome.path))
+        stale.selectOnlyProfile(in: try model.discoverProfiles(for: chrome.path))
+        #expect(stale.route.profile == "Profile 9")
+        #expect(!model.hasUnsavedChanges)
+    }
+
     @Test func dragReorderingPreservesIdentityAndGlobalPriority() throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }

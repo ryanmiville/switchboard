@@ -655,6 +655,7 @@ private struct RuleEditorSheet: View {
     private func refreshProfiles() {
         do {
             profiles = try viewModel.discoverProfiles(for: browser)
+            draft.selectOnlyProfile(in: profiles)
             profileError =
                 profiles.isEmpty
                 ? "No profiles were found in this browser. Create a browser profile, then refresh." : nil
