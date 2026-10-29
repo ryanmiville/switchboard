@@ -47,7 +47,10 @@ struct HistoryTests {
         #expect(entries.first?.url == "https://example.com/\(HistoryStore.trimThreshold)")
         #expect(try permissions(fixture.historyURL) & 0o777 == 0o600)
         try store.append(entry("https://example.com/next"))
-        #expect(try store.entries().count == HistoryStore.keep + 1)
+        #expect(try store.entries().count == HistoryStore.keep)
+        #expect(try store.entries().first?.url == "https://example.com/next")
+        let lines = try Data(contentsOf: fixture.historyURL).split(separator: 0x0A)
+        #expect(lines.count == HistoryStore.keep + 1)
     }
 
     @Test(arguments: [

@@ -78,7 +78,7 @@ The tool reads and writes `config.json` directly, whether or not the app is runn
 
 The app records each link it opens, from a rule, the default destination, or Quick Switch, so `switchboard explain --last` can say what just happened. Failed launches are recorded too. History is a local log of URLs, which can include tokens in query strings:
 
-- It lives in `~/.local/state/switchboard/history.jsonl` (folder `0700`, file `0600`) and keeps the newest 200 links.
+- It lives in `~/.local/state/switchboard/history.jsonl` (folder `0700`, file `0600`) and keeps the newest 200 links. The file is trimmed back to 200 once it passes 400 lines.
 - The command hides query strings and fragments unless you pass `--full-urls`. Agents pass `--last` or `--history <id>` instead of copying URLs.
 - Turn it off with **Keep a history of opened links** in **Settings → General** (`"history": {"enabled": false}` in `config.json`), and delete it with **Clear History** or `switchboard history clear`.
 

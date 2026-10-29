@@ -352,7 +352,7 @@ struct ConfigViewModelTests {
         #expect(!model.hasUnsavedChanges)
     }
 
-    @Test func theWatcherFollowsAtomicReplacement() throws {
+    @Test func theWatcherFollowsAtomicReplacement() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }
         let browser = try fixture.browser()
@@ -363,9 +363,10 @@ struct ConfigViewModelTests {
         try ConfigStore(url: fixture.configURL).save(
             Config(browser: browser.path, defaultProfile: "Default", routes: [Route(value: "github.com")]),
             expecting: nil)
+        // Awaiting frees the main queue, where the watcher's events are delivered.
         let deadline = Date().addingTimeInterval(5)
         while model.config.routes.isEmpty && Date() < deadline {
-            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+            try await Task.sleep(nanoseconds: 20_000_000)
         }
         #expect(model.config.routes.map(\.value) == ["github.com"])
     }

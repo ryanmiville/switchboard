@@ -219,6 +219,8 @@ final class ConfigViewModel: ObservableObject {
     // Called when the configuration folder changes, and before routing a link. Without pending edits the
     // window follows the file; with them, the change is reported instead of being overwritten.
     func checkForExternalChanges() {
+        // The folder may have been created since, for example by the switchboard command.
+        if watchesConfig { startWatchingConfig() }
         guard let revision = try? store.currentRevision(), revision != diskRevision else { return }
         if needsSave && loadError == nil {
             pendingSave?.cancel()

@@ -70,7 +70,8 @@ struct HistoryStore {
     var errorURL: URL { url.appendingPathExtension("error") }
     private var lock: FileLock { FileLock(url: url.appendingPathExtension("lock")) }
 
-    // Newest first. Lines that don't decode are skipped rather than hiding every other entry.
+    // The newest `keep` entries, newest first. Lines that don't decode are skipped rather than hiding every
+    // other entry.
     func entries() throws -> [HistoryEntry] {
         let data: Data
         do {
@@ -79,8 +80,9 @@ struct HistoryStore {
             return []
         }
         let decoder = Self.decoder()
-        return data.split(separator: 0x0A).compactMap { try? decoder.decode(HistoryEntry.self, from: $0) }
-            .reversed()
+        return Array(
+            data.split(separator: 0x0A).compactMap { try? decoder.decode(HistoryEntry.self, from: $0) }
+                .reversed().prefix(Self.keep))
     }
 
     func append(_ entry: HistoryEntry) throws {

@@ -142,7 +142,7 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("Keep a history of opened links").fontWeight(.medium)
                             Text(
-                                "The last 200 links stay on this Mac so the switchboard command can explain and fix where they opened."
+                                "Your 200 most recent links stay on this Mac so the switchboard command can explain and fix where they opened."
                             )
                             .font(.callout).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
