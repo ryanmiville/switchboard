@@ -47,3 +47,7 @@ The Swift package excludes the app entry point and editor view. Reopen tests cal
 For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Cross-browser tests should cover a Chrome rule with a Helium default, browser-specific profile choices, and legacy rules with no browser override. Do not weaken tests to make a change pass.
 
 Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and unintended writes to personal files. Keep installation separate from normal verification. Mention whether actual browser delivery or GUI behavior was exercised; a successful process launch alone does not prove the right browser window opened.
+
+## Git
+
+Commit, merge, and push directly to `main`. Feature branches and pull requests aren't needed, including in cloud sessions that start on another branch: merge that work into `main` and push it.
