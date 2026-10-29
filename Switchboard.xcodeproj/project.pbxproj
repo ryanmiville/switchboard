@@ -18,6 +18,7 @@
 		0100000000000009 /* BrowserProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000000C /* BrowserProfiles.swift */; };
 		010000000000000A /* RoutingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000000D /* RoutingSession.swift */; };
 		010000000000000B /* PickerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000000E /* PickerSettings.swift */; };
+		0100000000000011 /* PickerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000014 /* PickerConfig.swift */; };
 		010000000000000C /* CurrentTabReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000000F /* CurrentTabReader.swift */; };
 		010000000000000D /* GlobalShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000010 /* GlobalShortcut.swift */; };
 		010000000000000E /* TabPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000011 /* TabPicker.swift */; };
@@ -40,6 +41,7 @@
 		020000000000000C /* BrowserProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserProfiles.swift; sourceTree = "<group>"; };
 		020000000000000D /* RoutingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingSession.swift; sourceTree = "<group>"; };
 		020000000000000E /* PickerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerSettings.swift; sourceTree = "<group>"; };
+		0200000000000014 /* PickerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickerConfig.swift; sourceTree = "<group>"; };
 		020000000000000F /* CurrentTabReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentTabReader.swift; sourceTree = "<group>"; };
 		0200000000000010 /* GlobalShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcut.swift; sourceTree = "<group>"; };
 		0200000000000011 /* TabPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabPicker.swift; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 			children = (
 				020000000000000C /* BrowserProfiles.swift */,
 				020000000000000E /* PickerSettings.swift */,
+				0200000000000014 /* PickerConfig.swift */,
 				020000000000000F /* CurrentTabReader.swift */,
 				0200000000000010 /* GlobalShortcut.swift */,
 				0200000000000011 /* TabPicker.swift */,
@@ -170,6 +173,7 @@
 			files = (
 				0100000000000009 /* BrowserProfiles.swift in Sources */,
 				010000000000000B /* PickerSettings.swift in Sources */,
+				0100000000000011 /* PickerConfig.swift in Sources */,
 				010000000000000C /* CurrentTabReader.swift in Sources */,
 				010000000000000D /* GlobalShortcut.swift in Sources */,
 				010000000000000E /* TabPicker.swift in Sources */,

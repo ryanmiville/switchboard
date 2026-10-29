@@ -53,4 +53,24 @@ struct ConfigTests {
         let route = try #require((saved["routes"] as? [[String: Any]])?.first)
         #expect(route["browser"] as? String == "/Applications/Google Chrome.app")
     }
+
+    @Test func pickerSectionRoundTrips() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let json = Data(
+            #"{"browser":"/Applications/Helium.app","defaultProfile":"Default","routes":[],"picker":{"shortcut":{"keyCode":40,"modifiers":256,"key":"K"},"favorites":[{"browser":"/Applications/Google Chrome.app","profile":"Profile 2","name":"Work"}],"destinations":[]}}"#
+                .utf8)
+        try json.write(to: fixture.configURL)
+        let config = try Config.load(from: fixture.configURL)
+        try config.save(to: fixture.configURL)
+        let picker = try #require(try Config.load(from: fixture.configURL).picker)
+        #expect(picker.shortcut == KeyboardShortcut(keyCode: 40, modifiers: 256, key: "K"))
+        #expect(
+            picker.favorites == [
+                PickerFavorite(browser: "/Applications/Google Chrome.app", profile: "Profile 2", name: "Work")
+            ])
+        // An empty selection hides everything and must not turn back into "show all".
+        #expect(picker.destinations == [])
+        #expect(PickerSettings().shortcut == .default)
+    }
 }

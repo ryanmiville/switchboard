@@ -82,6 +82,7 @@ Shortcut, favorite, and destination preferences live in the optional `picker` se
 ```sh
 make test     # Fast isolated regression tests; no app or real browser is launched
 make verify   # Formatting, tests, Debug/Release builds, bundle and whitespace checks
+make verify-linux  # On Linux: formatting, Foundation-only tests and whitespace checks
 make format   # Apply Swift formatting
 make debug    # Build Debug into .build/xcode
 make release  # Build Release into .build/xcode

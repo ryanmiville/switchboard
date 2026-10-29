@@ -7,12 +7,22 @@ INSTALL_DIR ?= /Applications
 SIGNING_IDENTITY ?= -
 XCODEBUILD ?= xcodebuild
 XCODE_FLAGS := -project Switchboard.xcodeproj -scheme Switchboard -destination 'generic/platform=macOS' -derivedDataPath "$(BUILD_DIR)" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="$(SIGNING_IDENTITY)" CODE_SIGN_STYLE=Manual OTHER_CODE_SIGN_FLAGS="--options=runtime --timestamp=none" ENABLE_DEBUG_DYLIB=NO
+ifeq ($(shell uname -s),Darwin)
+SWIFT_FORMAT ?= xcrun swift-format
+else
+SWIFT_FORMAT ?= swift format
+endif
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister
 
-.PHONY: verify test format format-check debug release debug-install install clean
+.PHONY: verify verify-linux test format format-check debug release debug-install install clean
 
 verify: format-check test debug release
 	python3 scripts/check-bundle.py "$(BUILD_DIR)/Build/Products/Debug/Switchboard.app" "$(BUILD_DIR)/Build/Products/Release/Switchboard.app"
+	git diff --check
+
+# Linux subset for cloud sessions: formatting, the Foundation-only tests and whitespace. Not a
+# substitute for verify, which also covers the app sources, Xcode builds and bundle checks.
+verify-linux: format-check test
 	git diff --check
 
 test:
@@ -22,10 +32,10 @@ test:
 	swift test --disable-xctest
 
 format:
-	xcrun swift-format format --in-place --recursive Switchboard Tests Package.swift
+	$(SWIFT_FORMAT) format --in-place --recursive Switchboard Tests Package.swift
 
 format-check:
-	xcrun swift-format lint --strict --recursive Switchboard Tests Package.swift
+	$(SWIFT_FORMAT) lint --strict --recursive Switchboard Tests Package.swift
 
 debug:
 	@trap '$(LSREGISTER) -u "$(BUILD_DIR)/Build/Products/Debug/Switchboard.app" >/dev/null 2>&1 || true' EXIT; $(XCODEBUILD) $(XCODE_FLAGS) -configuration Debug build

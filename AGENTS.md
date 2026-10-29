@@ -9,6 +9,7 @@ Requires full Xcode 26.4 (including its command-line tools), Swift 6, and macOS.
 - `make test` — fast, unhosted Swift Testing tests against the same source files the app compiles.
 - `make verify` — formatting, tests, Debug/Release builds, bundle checks, and whitespace checks. This is the completion check for code/build changes and runs in CI.
 - `make format` — apply the checked-in Swift formatting rules.
+- `make verify-linux` — on Linux (cloud sessions): formatting, the Foundation-only tests, and whitespace checks. Use it while developing the core and CLI there. It does not replace `make verify`; report `make verify` as not run.
 - `make debug` / `make release` — build into `.build/xcode`.
 - `make debug-install` / `make install` — build, copy to `/Applications`, and register the app. Run only when installation is requested.
 
@@ -28,7 +29,7 @@ Tests use temporary files and fake browsers; they have no personal configuration
 | Editor and URL preview | `Switchboard/ContentView.swift` |
 | Regression tests | `Tests/SwitchboardCoreTests/` |
 
-The Swift package excludes the app entry point and editor view. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
+The Swift package excludes the app entry point and editor view. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
 
 ## Behavior to preserve
 

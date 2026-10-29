@@ -424,6 +424,10 @@ struct PickerTests {
     @Test func shortcutRequiresAnIntentionalModifier() {
         #expect(KeyboardShortcut.default.isValid)
         #expect(KeyboardShortcut.default.label == "⌃⌥Space")
+        #expect(
+            KeyboardShortcut.default
+                == KeyboardShortcut(
+                    keyCode: UInt32(kVK_Space), modifiers: UInt32(controlKey | optionKey), key: "Space"))
         #expect(!KeyboardShortcut(keyCode: 49, modifiers: 0, key: "Space").isValid)
         #expect(!KeyboardShortcut(keyCode: 49, modifiers: UInt32(shiftKey), key: "Space").isValid)
     }

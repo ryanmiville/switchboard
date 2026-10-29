@@ -1,14 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 
-struct KeyboardShortcut: Codable, Equatable {
-    var keyCode: UInt32
-    var modifiers: UInt32
-    var key: String
-
-    static let `default` = KeyboardShortcut(
-        keyCode: UInt32(kVK_Space), modifiers: UInt32(controlKey | optionKey), key: "Space")
-
+extension KeyboardShortcut {
     var isValid: Bool {
         let allowed = UInt32(cmdKey | optionKey | controlKey | shiftKey)
         return keyCode <= 127 && modifiers & ~allowed == 0
@@ -47,25 +40,7 @@ struct KeyboardShortcut: Codable, Equatable {
     }
 }
 
-struct PickerFavorite: Codable, Equatable, Identifiable {
-    var browser: String
-    var profile: String
-    var name: String
-
-    var destination: Destination { Destination(browser: browser, profile: profile) }
-    var id: Destination { destination }
-}
-
-struct PickerSettings: Codable, Equatable {
-    var shortcut: KeyboardShortcut = .default
-    var favorites: [PickerFavorite] = []
-    // Omitted in older files: show everything. An empty array deliberately shows nothing.
-    var destinations: [Destination]?
-
-    func includes(_ destination: Destination) -> Bool {
-        destinations?.contains(destination) ?? true
-    }
-
+extension PickerSettings {
     // Resolve display names once. All later opens use the saved browser + directory identity.
     static func initial(browsers: [InstalledBrowser], profileStore: BrowserProfiles) -> PickerSettings {
         let requested = [
