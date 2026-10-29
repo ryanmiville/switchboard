@@ -32,7 +32,7 @@ Changing the default browser also clears its default profile and the profile cho
 
 All matching is case-insensitive. Empty patterns are ignored. Unmatched URLs use the configured default browser and profile.
 
-Settings are saved automatically after a short delay. Pending changes are saved before quitting or routing a link from an open editor. Loading and saving errors appear in the editor with recovery actions. Invalid configuration is left untouched, and failed saves retain changes in the window for retry.
+Settings are saved automatically after a short delay. Pending changes are saved before quitting or routing a link from an open editor. Loading and saving errors appear in the editor with recovery actions. Invalid configuration is left untouched, and failed saves retain changes in the window for retry. When the file changes outside the app, for example through the `switchboard` command, the app reloads it; if you had unsaved edits, it asks whether to keep them or use the saved settings instead of overwriting either.
 
 The configuration file is `~/.config/switchboard/config.json`:
 
@@ -56,6 +56,33 @@ The top-level `browser` and `defaultProfile` define the default destination. A r
 Profiles are saved as Chromium directory identifiers, while the editor displays friendly names alongside them. Profiles are discovered and validated within each destination’s browser. Older files containing display names are resolved when unambiguous and converted to directory identifiers when saved. Missing or ambiguous selections require choosing a profile in the editor.
 
 A link launches the selected browser executable directly so profile arguments work even when the browser is already running. A temporary routing launch exits shortly afterward. An existing editor stays open. If a link cannot be launched, Switchboard offers settings or a copy of the link instead of silently choosing another browser.
+
+## Command-line tool
+
+Switchboard ships a `switchboard` command inside the app, at `Switchboard.app/Contents/Helpers/switchboard`, so the two always agree about the configuration format. Run `make install-cli` after installing the app to link it to `~/.local/bin/switchboard` (set `BIN_DIR` to choose another folder). It is meant for coding agents as much as for people: “that last link opened in the wrong profile, make GitHub links for acme open in Chrome · Work”.
+
+```sh
+switchboard history --limit 3                 # recent links, newest first, with IDs
+switchboard explain --last                    # which rule sent the last link where
+switchboard profiles                          # installed browsers and their profiles
+switchboard route --last --browser Chrome --profile Work --match contains --value github.com/acme --dry-run
+switchboard rules list                        # rules in order, with any that no longer resolve
+switchboard doctor                            # configuration, profiles, history, and version checks
+```
+
+The tool reads and writes `config.json` directly, whether or not the app is running; the app notices the change and reloads. `route` adds or updates one rule, checks the result with the router before writing, and refuses changes that would stop a later rule from ever matching. Every save is a compare-and-swap: if the file changed since it was read, in the app or elsewhere, nothing is written. Pass `--json` to any command for one JSON object on stdout, and `--if-revision` to changing commands to make sure the rules haven’t moved since you looked. Exit codes: 0 success, 1 failed, 3 not found or ambiguous (nothing changed; candidates are listed), 4 the configuration can’t be read or is invalid, 5 the configuration changed, 64 invalid command line. `switchboard <command> --help` describes each command.
+
+`switchboard skill setup` installs a short skill for Claude Code, Codex, OpenCode, or Pi that points the agent at `switchboard skill show`, the workflow guide compiled into the tool, so upgrading Switchboard updates the guide. `skill status` and `skill remove` manage it; skills that setup didn’t install are left alone.
+
+### History
+
+The app records each link it opens, from a rule, the default destination, or Quick Switch, so `switchboard explain --last` can say what just happened. Failed launches are recorded too. History is a local log of URLs, which can include tokens in query strings:
+
+- It lives in `~/.local/state/switchboard/history.jsonl` (folder `0700`, file `0600`) and keeps the newest 200 links.
+- The command hides query strings and fragments unless you pass `--full-urls`. Agents pass `--last` or `--history <id>` instead of copying URLs.
+- Turn it off with **Keep a history of opened links** in **Settings → General** (`"history": {"enabled": false}` in `config.json`), and delete it with **Clear History** or `switchboard history clear`.
+
+Recording never delays or blocks opening a link. A failed write is logged and reported by `switchboard doctor`.
 
 ## Open the current browser tab in another profile
 
@@ -84,11 +111,12 @@ make test     # Fast isolated regression tests; no app or real browser is launch
 make verify   # Formatting, tests, Debug/Release builds, bundle and whitespace checks
 make verify-linux  # On Linux: formatting, Foundation-only tests and whitespace checks
 make format   # Apply Swift formatting
+make install-cli  # Link ~/.local/bin/switchboard to the tool inside the installed app
 make debug    # Build Debug into .build/xcode
 make release  # Build Release into .build/xcode
 ```
 
-Tests use Swift Testing through `Package.swift`, compiling the same production source files without the app entry point or editor view. Use `make test` rather than `xcodebuild test`. There are no third-party package dependencies. Swift 6 concurrency checks and Swift warnings-as-errors are enabled for the app.
+Tests use Swift Testing through `Package.swift`, compiling the same production source files without the app entry point or editor view. Use `make test` rather than `xcodebuild test`. The only package dependency is Apple’s [swift-argument-parser](https://github.com/apple/swift-argument-parser), used by the command-line tool. Swift 6 concurrency checks and Swift warnings-as-errors are enabled for the app.
 
 Normal verification does not install the app or modify your configuration. Xcode automatically registers build products; the build commands unregister their local products afterward. Explicit installation registers the copy in `/Applications`.
 

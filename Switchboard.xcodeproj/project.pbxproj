@@ -24,7 +24,54 @@
 		010000000000000E /* TabPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000011 /* TabPicker.swift */; };
 		010000000000000F /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000012 /* ShortcutRecorder.swift */; };
 		0100000000000010 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000013 /* LoginItem.swift */; };
+		0100000000000012 /* SHA256.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000015 /* SHA256.swift */; };
+		0100000000000013 /* ConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000016 /* ConfigStore.swift */; };
+		0100000000000014 /* History.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000017 /* History.swift */; };
+		0100000000000020 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000003 /* Config.swift */; };
+		0100000000000021 /* PickerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000014 /* PickerConfig.swift */; };
+		0100000000000022 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000004 /* Router.swift */; };
+		0100000000000023 /* BrowserProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000000C /* BrowserProfiles.swift */; };
+		0100000000000024 /* SHA256.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000015 /* SHA256.swift */; };
+		0100000000000025 /* ConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000016 /* ConfigStore.swift */; };
+		0100000000000026 /* History.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000017 /* History.swift */; };
+		0100000000000027 /* BrowserCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000018 /* BrowserCatalog.swift */; };
+		0100000000000028 /* OperationError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000019 /* OperationError.swift */; };
+		0100000000000029 /* RuleOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000001A /* RuleOperations.swift */; };
+		010000000000002A /* CommandLineTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000001B /* CommandLineTool.swift */; };
+		010000000000002B /* Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000001C /* Commands.swift */; };
+		010000000000002C /* Format.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000001D /* Format.swift */; };
+		010000000000002D /* HistoryCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000001E /* HistoryCommands.swift */; };
+		010000000000002E /* Doctor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 020000000000001F /* Doctor.swift */; };
+		010000000000002F /* Skill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000020 /* Skill.swift */; };
+		0100000000000030 /* SkillGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000021 /* SkillGuide.swift */; };
+		0100000000000031 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0200000000000022 /* main.swift */; };
+		0100000000000032 /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 0B00000000000001 /* ArgumentParser */; };
+		0100000000000033 /* switchboard in Embed Command-Line Tool */ = {isa = PBXBuildFile; fileRef = 0200000000000023 /* switchboard */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0E00000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0800000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0500000000000002;
+			remoteInfo = SwitchboardCLI;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0600000000000004 /* Embed Command-Line Tool */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Helpers;
+			dstSubfolderSpec = 1;
+			files = (
+				0100000000000033 /* switchboard in Embed Command-Line Tool */,
+			);
+			name = "Embed Command-Line Tool";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0200000000000001 /* SwitchboardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchboardApp.swift; sourceTree = "<group>"; };
@@ -47,6 +94,21 @@
 		0200000000000011 /* TabPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabPicker.swift; sourceTree = "<group>"; };
 		0200000000000012 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
 		0200000000000013 /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
+		0200000000000015 /* SHA256.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SHA256.swift; sourceTree = "<group>"; };
+		0200000000000016 /* ConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigStore.swift; sourceTree = "<group>"; };
+		0200000000000017 /* History.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = History.swift; sourceTree = "<group>"; };
+		0200000000000018 /* BrowserCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserCatalog.swift; sourceTree = "<group>"; };
+		0200000000000019 /* OperationError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationError.swift; sourceTree = "<group>"; };
+		020000000000001A /* RuleOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleOperations.swift; sourceTree = "<group>"; };
+		020000000000001B /* CommandLineTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandLineTool.swift; sourceTree = "<group>"; };
+		020000000000001C /* Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commands.swift; sourceTree = "<group>"; };
+		020000000000001D /* Format.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Format.swift; sourceTree = "<group>"; };
+		020000000000001E /* HistoryCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryCommands.swift; sourceTree = "<group>"; };
+		020000000000001F /* Doctor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Doctor.swift; sourceTree = "<group>"; };
+		0200000000000020 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
+		0200000000000021 /* SkillGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillGuide.swift; sourceTree = "<group>"; };
+		0200000000000022 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		0200000000000023 /* switchboard */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = switchboard; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +119,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		0300000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0100000000000032 /* ArgumentParser in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -64,6 +134,7 @@
 			isa = PBXGroup;
 			children = (
 				0400000000000002 /* Switchboard */,
+				0400000000000005 /* Command-Line Tool */,
 				0400000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -87,6 +158,13 @@
 				020000000000000B /* BrowserDiscovery.swift */,
 				0200000000000004 /* Router.swift */,
 				0200000000000005 /* BrowserLauncher.swift */,
+				0200000000000015 /* SHA256.swift */,
+				0200000000000016 /* ConfigStore.swift */,
+				0200000000000017 /* History.swift */,
+				0200000000000018 /* BrowserCatalog.swift */,
+				0200000000000019 /* OperationError.swift */,
+				020000000000001A /* RuleOperations.swift */,
+				0400000000000004 /* CLI */,
 				0200000000000006 /* Assets.xcassets */,
 				0200000000000007 /* Info.plist */,
 				0200000000000009 /* Switchboard.entitlements */,
@@ -98,8 +176,32 @@
 			isa = PBXGroup;
 			children = (
 				0200000000000008 /* Switchboard.app */,
+				0200000000000023 /* switchboard */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		0400000000000004 /* CLI */ = {
+			isa = PBXGroup;
+			children = (
+				020000000000001B /* CommandLineTool.swift */,
+				020000000000001C /* Commands.swift */,
+				020000000000001D /* Format.swift */,
+				020000000000001E /* HistoryCommands.swift */,
+				020000000000001F /* Doctor.swift */,
+				0200000000000020 /* Skill.swift */,
+				0200000000000021 /* SkillGuide.swift */,
+			);
+			path = CLI;
+			sourceTree = "<group>";
+		};
+		0400000000000005 /* Command-Line Tool */ = {
+			isa = PBXGroup;
+			children = (
+				0200000000000022 /* main.swift */,
+			);
+			name = "Command-Line Tool";
+			path = CLI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,15 +214,36 @@
 				0600000000000001 /* Sources */,
 				0300000000000001 /* Frameworks */,
 				0600000000000002 /* Resources */,
+				0600000000000004 /* Embed Command-Line Tool */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				0D00000000000001 /* PBXTargetDependency */,
 			);
 			name = Switchboard;
 			productName = Switchboard;
 			productReference = 0200000000000008 /* Switchboard.app */;
 			productType = "com.apple.product-type.application";
+		};
+		0500000000000002 /* SwitchboardCLI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0700000000000003 /* Build configuration list for PBXNativeTarget "SwitchboardCLI" */;
+			buildPhases = (
+				0600000000000003 /* Sources */,
+				0300000000000002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SwitchboardCLI;
+			packageProductDependencies = (
+				0B00000000000001 /* ArgumentParser */,
+			);
+			productName = switchboard;
+			productReference = 0200000000000023 /* switchboard */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -135,6 +258,9 @@
 					0500000000000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
+					0500000000000002 = {
+						CreatedOnToolsVersion = 15.0;
+					};
 				};
 			};
 			buildConfigurationList = 0700000000000002 /* Build configuration list for PBXProject "Switchboard" */;
@@ -146,11 +272,15 @@
 				Base,
 			);
 			mainGroup = 0400000000000001;
+			packageReferences = (
+				0A00000000000001 /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+			);
 			productRefGroup = 0400000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				0500000000000001 /* Switchboard */,
+				0500000000000002 /* SwitchboardCLI */,
 			);
 		};
 /* End PBXProject section */
@@ -187,10 +317,46 @@
 				0100000000000008 /* BrowserDiscovery.swift in Sources */,
 				0100000000000004 /* Router.swift in Sources */,
 				0100000000000005 /* BrowserLauncher.swift in Sources */,
+				0100000000000012 /* SHA256.swift in Sources */,
+				0100000000000013 /* ConfigStore.swift in Sources */,
+				0100000000000014 /* History.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0600000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0100000000000020 /* Config.swift in Sources */,
+				0100000000000021 /* PickerConfig.swift in Sources */,
+				0100000000000022 /* Router.swift in Sources */,
+				0100000000000023 /* BrowserProfiles.swift in Sources */,
+				0100000000000024 /* SHA256.swift in Sources */,
+				0100000000000025 /* ConfigStore.swift in Sources */,
+				0100000000000026 /* History.swift in Sources */,
+				0100000000000027 /* BrowserCatalog.swift in Sources */,
+				0100000000000028 /* OperationError.swift in Sources */,
+				0100000000000029 /* RuleOperations.swift in Sources */,
+				010000000000002A /* CommandLineTool.swift in Sources */,
+				010000000000002B /* Commands.swift in Sources */,
+				010000000000002C /* Format.swift in Sources */,
+				010000000000002D /* HistoryCommands.swift in Sources */,
+				010000000000002E /* Doctor.swift in Sources */,
+				010000000000002F /* Skill.swift in Sources */,
+				0100000000000030 /* SkillGuide.swift in Sources */,
+				0100000000000031 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0D00000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0500000000000002 /* SwitchboardCLI */;
+			targetProxy = 0E00000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0900000000000001 /* Debug */ = {
@@ -369,6 +535,42 @@
 			};
 			name = Release;
 		};
+		0900000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.switchboard.cli;
+				PRODUCT_MODULE_NAME = SwitchboardCLI;
+				PRODUCT_NAME = switchboard;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		0900000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.switchboard.cli;
+				PRODUCT_MODULE_NAME = SwitchboardCLI;
+				PRODUCT_NAME = switchboard;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -390,7 +592,35 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		0700000000000003 /* Build configuration list for PBXNativeTarget "SwitchboardCLI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0900000000000005 /* Debug */,
+				0900000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0A00000000000001 /* XCRemoteSwiftPackageReference "swift-argument-parser" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-argument-parser";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0B00000000000001 /* ArgumentParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0A00000000000001 /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
+			productName = ArgumentParser;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0800000000000001 /* Project object */;
 }

@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
+import os
 
 @MainActor
 final class ConfigViewModel: ObservableObject {
@@ -17,13 +18,23 @@ final class ConfigViewModel: ObservableObject {
     @Published private(set) var loadError: String?
     @Published private(set) var saveError: String?
     @Published private(set) var profileError: String?
+    // The file changed elsewhere, such as through the switchboard command, while edits were pending.
+    @Published private(set) var hasConflict = false
+    @Published private(set) var historyError: String?
 
     let configURL: URL
+    let historyURL: URL
+    private let store: ConfigStore
     private let profileStore: BrowserProfiles
     private let autosaveDelay: TimeInterval
     private var pendingSave: DispatchWorkItem?
     private var isLoading = false
     private var needsSave = false
+    // The revision this window last loaded or saved. Saves fail instead of replacing a newer file.
+    private var diskRevision: String?
+    private var watchesConfig = false
+    private var watcher: DirectoryWatcher?
+    private static let logger = Logger(subsystem: "com.switchboard.app", category: "history")
 
     var hasUnsavedChanges: Bool { needsSave && loadError == nil }
     var availableProfiles: [Profile] { profiles(for: config.browser) }
@@ -32,11 +43,19 @@ final class ConfigViewModel: ObservableObject {
 
     init(
         configURL: URL = Config.configPath,
+        historyURL: URL? = nil,
         profileStore: BrowserProfiles = BrowserProfiles(),
         browsers: [InstalledBrowser]? = nil,
         autosaveDelay: TimeInterval = 0.5
     ) {
         self.configURL = configURL
+        // An isolated configuration, such as a test's, keeps its history beside it, never in the user's.
+        self.historyURL =
+            historyURL
+            ?? (configURL == Config.configPath
+                ? HistoryStore.defaultURL
+                : configURL.deletingLastPathComponent().appendingPathComponent("history.jsonl"))
+        store = ConfigStore(url: configURL)
         self.profileStore = profileStore
         self.autosaveDelay = autosaveDelay
         config = .defaults
@@ -177,15 +196,87 @@ final class ConfigViewModel: ObservableObject {
             if needsSave { scheduleSave() }
         }
         do {
-            config = try Config.loadOrDefault(from: configURL)
+            let snapshot = try store.load()
+            config = snapshot.config
+            diskRevision = snapshot.revision
             loadError = nil
             saveError = nil
+            hasConflict = false
             needsSave = false
             refreshProfiles()
         } catch {
+            if case .invalid(_, let revision)? = error as? ConfigStoreError {
+                diskRevision = revision
+            } else {
+                diskRevision = nil
+            }
             loadError =
                 "Your settings couldn’t be read. The file has been left unchanged. Open it to repair it, then retry. \(error.localizedDescription)"
             needsSave = false
+        }
+    }
+
+    // Called when the configuration folder changes, and before routing a link. Without pending edits the
+    // window follows the file; with them, the change is reported instead of being overwritten.
+    func checkForExternalChanges() {
+        guard let revision = try? store.currentRevision(), revision != diskRevision else { return }
+        if needsSave && loadError == nil {
+            pendingSave?.cancel()
+            pendingSave = nil
+            hasConflict = true
+            saveError = Self.conflictMessage
+        } else {
+            reload()
+        }
+    }
+
+    // Replaces the file that changed elsewhere with this window's edits, at the user's request.
+    @discardableResult
+    func keepChangesOverExternalEdits() -> Bool {
+        if hasConflict {
+            diskRevision = try? store.currentRevision()
+            hasConflict = false
+        }
+        return flush()
+    }
+
+    // Atomic replacement swaps the file, so its folder is watched. A folder that doesn't exist yet is
+    // watched after the first save creates it.
+    func startWatchingConfig() {
+        watchesConfig = true
+        guard watcher == nil else { return }
+        watcher = DirectoryWatcher(directory: configURL.deletingLastPathComponent()) { [weak self] in
+            self?.checkForExternalChanges()
+        }
+    }
+
+    private static let conflictMessage =
+        "The settings file was changed outside this window, for example by the switchboard command, while you had unsaved changes. Your changes are still here. Use the saved settings to discard them, or keep your changes to replace the file."
+
+    func setHistoryEnabled(_ enabled: Bool) {
+        // Omitted means enabled, which keeps older files unchanged.
+        config.history = enabled ? nil : HistorySettings(enabled: false)
+    }
+
+    func clearHistory() {
+        do {
+            try HistoryStore(url: historyURL).clear()
+            historyError = nil
+        } catch {
+            historyError = "History couldn’t be cleared. \(error.localizedDescription)"
+        }
+    }
+
+    // Best effort: a history failure is logged and never affects opening the link.
+    func recordLink(
+        url: URL, destination: Destination, origin: HistoryRecorder.Origin, config: Config, error: Error?
+    ) {
+        let recorder = HistoryRecorder(store: HistoryStore(url: historyURL), profileStore: profileStore)
+        if let failure = recorder.record(
+            url: url, destination: destination, origin: origin, config: config, error: error)
+        {
+            Self.logger.error(
+                "History couldn’t be recorded: \(failure.localizedDescription, privacy: .public)")
         }
     }
 
@@ -241,19 +332,44 @@ final class ConfigViewModel: ObservableObject {
             return false
         }
         do {
-            try normalized.save(to: configURL)
+            diskRevision = try store.save(normalized, expecting: diskRevision)
             isLoading = true
             config = normalized
             isLoading = false
             needsSave = false
             saveError = nil
             profileError = nil
+            hasConflict = false
+            if watchesConfig { startWatchingConfig() }
             return true
+        } catch ConfigStoreError.conflict {
+            hasConflict = true
+            saveError = Self.conflictMessage
+            return false
         } catch {
             saveError =
                 "Your changes couldn’t be saved. They are still in this window. \(error.localizedDescription) Fix the issue and retry saving."
             return false
         }
+    }
+}
+
+// Watches a folder for entries being added, removed, or replaced.
+private final class DirectoryWatcher {
+    private let source: DispatchSourceFileSystemObject
+
+    init?(directory: URL, onChange: @escaping @MainActor @Sendable () -> Void) {
+        let descriptor = open(directory.path, O_EVTONLY)
+        guard descriptor >= 0 else { return nil }
+        source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: descriptor, eventMask: [.write, .delete, .rename], queue: .main)
+        source.setEventHandler { Task { @MainActor in onChange() } }
+        source.setCancelHandler { close(descriptor) }
+        source.resume()
+    }
+
+    deinit {
+        source.cancel()
     }
 }
 

@@ -137,6 +137,40 @@ struct ContentView: View {
                         Button("Quick Switch Settings…") { storedPane = SettingsPane.quickSwitch.rawValue }
                     }
                 }
+                SettingsSection("History") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Keep a history of opened links").fontWeight(.medium)
+                            Text(
+                                "The last 200 links stay on this Mac so the switchboard command can explain and fix where they opened."
+                            )
+                            .font(.callout).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 20)
+                        Toggle(
+                            "Keep a history of opened links",
+                            isOn: Binding(
+                                get: { viewModel.config.historyEnabled },
+                                set: { viewModel.setHistoryEnabled($0) })
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .fixedSize()
+                    }
+                    Divider().padding(.vertical, 9)
+                    HStack {
+                        Text("Clearing deletes the saved links. It doesn’t change your rules.")
+                            .font(.callout).foregroundStyle(.secondary)
+                        Spacer(minLength: 20)
+                        Button("Clear History") { viewModel.clearHistory() }
+                    }
+                    if let error = viewModel.historyError {
+                        Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled).padding(
+                            .top, 8)
+                    }
+                }
                 SettingsSection("Startup") {
                     HStack {
                         VStack(alignment: .leading, spacing: 5) {
@@ -344,7 +378,16 @@ struct ContentView: View {
             }
         }
         if let error = viewModel.saveError {
-            errorMessage("Changes haven’t been saved", error) { Button("Retry Saving") { viewModel.flush() } }
+            if viewModel.hasConflict {
+                errorMessage("Settings changed outside this window", error) {
+                    Button("Use Saved Settings") { viewModel.reload() }
+                    Button("Keep My Changes") { viewModel.keepChangesOverExternalEdits() }
+                }
+            } else {
+                errorMessage("Changes haven’t been saved", error) {
+                    Button("Retry Saving") { viewModel.flush() }
+                }
+            }
         }
         if let error = viewModel.profileError {
             errorMessage("Check browser profiles", error) {

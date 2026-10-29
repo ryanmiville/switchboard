@@ -300,6 +300,32 @@ struct PickerTests {
         #expect(!model.viewModel.hasUnsavedChanges)
     }
 
+    @Test func pickerLaunchesAreRecordedAndAHistoryFailureNeverBlocksThem() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Ryan", "Profile 1": "Work"])
+        let model = try model(fixture, browser: browser)
+        var launches = 0
+        model.launch = { _, _ in launches += 1 }
+        model.urlString = "https://example.com/?token=1"
+        let choice = PickerChoice(
+            destination: Destination(browser: browser.path, profile: "Profile 1"),
+            browserName: "Chrome", profileName: "Work", isFavorite: true)
+        #expect(model.open(choice))
+        let entry = try #require(try HistoryStore(url: model.viewModel.historyURL).entries().first)
+        #expect(entry.source == .picker)
+        #expect(entry.url == "https://example.com/?token=1")
+        #expect(entry.profile == "Profile 1")
+        #expect(entry.profileName == "Work")
+        try FileManager.default.removeItem(at: model.viewModel.historyURL)
+        try FileManager.default.createDirectory(
+            at: model.viewModel.historyURL, withIntermediateDirectories: true)
+        #expect(model.open(choice))
+        #expect(launches == 2)
+        #expect(model.error == nil)
+    }
+
     @Test func failedSaveRetainsEditsAndPreventsManualLaunch() throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }

@@ -13,18 +13,20 @@ struct Fixture {
     }
 
     var configURL: URL { root.appendingPathComponent("config.json") }
+    var historyURL: URL { root.appendingPathComponent("state/switchboard/history.jsonl") }
 
     func browser(
         id: String = "com.google.Chrome", executable: String = "ActualBrowser",
-        name: String = "RenamedBrowser"
+        name: String = "RenamedBrowser", bundleName: String? = nil
     ) throws -> URL {
         let app = root.appendingPathComponent("\(name).app")
         let contents = app.appendingPathComponent("Contents")
         try FileManager.default.createDirectory(
             at: contents.appendingPathComponent("MacOS"), withIntermediateDirectories: true)
-        let info = [
+        var info = [
             "CFBundleIdentifier": id, "CFBundleExecutable": executable, "CFBundlePackageType": "APPL",
         ]
+        info["CFBundleName"] = bundleName
         try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
             .write(to: contents.appendingPathComponent("Info.plist"))
         try FileManager.default.createSymbolicLink(

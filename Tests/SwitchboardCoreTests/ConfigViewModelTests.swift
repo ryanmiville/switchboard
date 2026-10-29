@@ -279,6 +279,125 @@ struct ConfigViewModelTests {
         #expect(model.config.routes == rules)
     }
 
+    @Test func externalChangesReloadWhenNothingIsPending() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal", "Profile 1": "Work"])
+        try Config(browser: browser.path, defaultProfile: "Default", routes: []).save(to: fixture.configURL)
+        let model = model(fixture)
+        model.checkForExternalChanges()
+        #expect(model.config.routes.isEmpty)
+        try Config(
+            browser: browser.path, defaultProfile: "Default",
+            routes: [Route(condition: .domain, value: "github.com", profile: "Profile 1")]
+        ).save(to: fixture.configURL)
+        model.checkForExternalChanges()
+        #expect(model.config.routes.map(\.value) == ["github.com"])
+        #expect(!model.hasUnsavedChanges)
+        #expect(!model.hasConflict)
+        model.addRoute()
+        model.config.routes[1].value = "gitlab.com"
+        #expect(model.flush())
+        #expect(try Config.load(from: fixture.configURL).routes.map(\.value) == ["github.com", "gitlab.com"])
+    }
+
+    @Test func externalChangesNeverOverwriteOrDiscardPendingEdits() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal"])
+        try Config(browser: browser.path, defaultProfile: "Default", routes: []).save(to: fixture.configURL)
+        let model = model(fixture)
+        model.addRoute()
+        model.config.routes[0].value = "pending.example"
+        try Config(
+            browser: browser.path, defaultProfile: "Default", routes: [Route(value: "external.example")]
+        )
+        .save(to: fixture.configURL)
+        let external = try Data(contentsOf: fixture.configURL)
+        model.checkForExternalChanges()
+        #expect(model.hasConflict)
+        #expect(model.saveError != nil)
+        #expect(model.config.routes.map(\.value) == ["pending.example"])
+        #expect(!model.flush())
+        #expect(try Data(contentsOf: fixture.configURL) == external)
+        #expect(model.keepChangesOverExternalEdits())
+        #expect(!model.hasConflict)
+        #expect(try Config.load(from: fixture.configURL).routes.map(\.value) == ["pending.example"])
+    }
+
+    @Test func aConflictingSaveKeepsEditsUntilTheSavedSettingsAreChosen() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal"])
+        try Config(browser: browser.path, defaultProfile: "Default", routes: []).save(to: fixture.configURL)
+        let model = model(fixture)
+        model.addRoute()
+        model.config.routes[0].value = "pending.example"
+        try Config(
+            browser: browser.path, defaultProfile: "Default", routes: [Route(value: "external.example")]
+        )
+        .save(to: fixture.configURL)
+        let external = try Data(contentsOf: fixture.configURL)
+        #expect(!model.flush())
+        #expect(model.hasConflict)
+        #expect(model.hasUnsavedChanges)
+        #expect(try Data(contentsOf: fixture.configURL) == external)
+        model.reload()
+        #expect(!model.hasConflict)
+        #expect(model.saveError == nil)
+        #expect(model.config.routes.map(\.value) == ["external.example"])
+        #expect(!model.hasUnsavedChanges)
+    }
+
+    @Test func theWatcherFollowsAtomicReplacement() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal"])
+        try Config(browser: browser.path, defaultProfile: "Default", routes: []).save(to: fixture.configURL)
+        let model = model(fixture)
+        model.startWatchingConfig()
+        try ConfigStore(url: fixture.configURL).save(
+            Config(browser: browser.path, defaultProfile: "Default", routes: [Route(value: "github.com")]),
+            expecting: nil)
+        let deadline = Date().addingTimeInterval(5)
+        while model.config.routes.isEmpty && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        }
+        #expect(model.config.routes.map(\.value) == ["github.com"])
+    }
+
+    @Test func historyCanBeTurnedOffAndCleared() throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let browser = try fixture.browser()
+        try fixture.profiles(["Default": "Personal"])
+        try Config(browser: browser.path, defaultProfile: "Default", routes: []).save(to: fixture.configURL)
+        let model = model(fixture)
+        // Isolated configurations never write to the user's history.
+        #expect(model.historyURL == fixture.root.appendingPathComponent("history.jsonl"))
+        let link = try #require(URL(string: "https://example.com"))
+        let destination = Destination(browser: browser.path, profile: "Default")
+        model.recordLink(
+            url: link, destination: destination, origin: .default, config: model.config, error: nil)
+        #expect(try HistoryStore(url: model.historyURL).entries().count == 1)
+        model.setHistoryEnabled(false)
+        #expect(model.flush())
+        #expect(try Config.load(from: fixture.configURL).history == HistorySettings(enabled: false))
+        model.recordLink(
+            url: link, destination: destination, origin: .default, config: model.config, error: nil)
+        #expect(try HistoryStore(url: model.historyURL).entries().count == 1)
+        model.clearHistory()
+        #expect(model.historyError == nil)
+        #expect(!FileManager.default.fileExists(atPath: model.historyURL.path))
+        model.setHistoryEnabled(true)
+        #expect(model.flush())
+        #expect(try Config.load(from: fixture.configURL).history == nil)
+    }
+
     @Test func changingDefaultBrowserClearsOnlyDestinationsThatInheritIt() throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }

@@ -23,15 +23,21 @@ import PackageDescription
 let package = Package(
     name: "Switchboard",
     platforms: [.macOS(.v13)],
+    products: [.executable(name: "switchboard", targets: ["switchboard"])],
+    dependencies: [.package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0")],
     targets: [
+        // Xcode compiles the shipped `switchboard` tool as one module from the Foundation-only core files
+        // plus Switchboard/CLI, so the package keeps the command definitions in the same module too.
         .target(
             name: "SwitchboardCore",
+            dependencies: [.product(name: "ArgumentParser", package: "swift-argument-parser")],
             path: "Switchboard",
             exclude: [
                 "Assets.xcassets", "ContentView.swift", "Info.plist",
                 "Switchboard.entitlements",
             ] + appleOnlySources
         ),
+        .executableTarget(name: "switchboard", dependencies: ["SwitchboardCore"], path: "CLI"),
         .testTarget(
             name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore"], exclude: appleOnlyTests),
     ],

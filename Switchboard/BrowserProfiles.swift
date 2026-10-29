@@ -27,14 +27,17 @@ struct BrowserProfiles {
         "net.imput.helium": "net.imput.helium",
     ]
 
-    func profiles(browserPath: String) throws -> [Profile] {
+    func localStateURL(browserPath: String) -> URL? {
         guard let id = Bundle(path: browserPath)?.bundleIdentifier,
             let directory = Self.dataDirectories[id]
-        else {
+        else { return nil }
+        return homeDirectory.appendingPathComponent("Library/Application Support/\(directory)/Local State")
+    }
+
+    func profiles(browserPath: String) throws -> [Profile] {
+        guard let state = localStateURL(browserPath: browserPath) else {
             throw ProfileError.browserUnavailable
         }
-        let state = homeDirectory.appendingPathComponent(
-            "Library/Application Support/\(directory)/Local State")
         let data: Data
         do {
             data = try Data(contentsOf: state)

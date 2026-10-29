@@ -102,8 +102,14 @@ final class TabPickerModel: ObservableObject {
         do {
             // A manual selection intentionally bypasses automatic routing rules.
             try launch(url, choice.destination)
+            viewModel.recordLink(
+                url: url, destination: choice.destination, origin: .picker, config: viewModel.config,
+                error: nil)
             return true
         } catch {
+            viewModel.recordLink(
+                url: url, destination: choice.destination, origin: .picker, config: viewModel.config,
+                error: error)
             self.error =
                 "\(error.localizedDescription) Refresh the destinations or open Settings to fix the issue, then retry."
             return false

@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let enableResidentTools: Bool
     private var statusItem: NSStatusItem?
     var launchEvent: () -> NSAppleEventDescriptor? = { NSAppleEventManager.shared().currentAppleEvent }
+    var launch: (URL, Destination) throws -> Void = { try BrowserLauncher().launch(url: $0, destination: $1) }
 
     override convenience init() {
         self.init(viewModel: ConfigViewModel())
@@ -105,9 +106,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func routeURL(_ url: URL) {
         let ticket = session.receiveURL()
         if !session.keepsEditorOpen { NSApp.setActivationPolicy(.accessory) }
+        let config: Config
         do {
-            let config: Config
             if session.keepsRunning {
+                // The switchboard command may have just changed the rules.
+                viewModel.checkForExternalChanges()
                 guard viewModel.flush() else {
                     showRoutingError(
                         viewModel.loadError ?? viewModel.saveError ?? viewModel.profileError
@@ -120,8 +123,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             } else {
                 config = try Config.loadOrDefault()
             }
-            try BrowserLauncher().launch(url: url, destination: Router(config: config).route(url: url))
         } catch {
+            showRoutingError(error.localizedDescription, url: url)
+            scheduleTermination(after: ticket)
+            return
+        }
+        let decision = Router(config: config).decision(url: url)
+        // History is written before the idle-exit timer starts, so a routing launch doesn't lose it.
+        do {
+            try launch(url, decision.destination)
+            viewModel.recordLink(
+                url: url, destination: decision.destination, origin: HistoryRecorder.origin(of: decision),
+                config: config, error: nil)
+        } catch {
+            viewModel.recordLink(
+                url: url, destination: decision.destination, origin: HistoryRecorder.origin(of: decision),
+                config: config, error: error)
             showRoutingError(error.localizedDescription, url: url)
         }
         scheduleTermination(after: ticket)
@@ -166,6 +183,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func startResidentTools() {
+        // A resident app routes from memory, so it follows changes made by the switchboard command.
+        viewModel.startWatchingConfig()
         guard enableResidentTools, statusItem == nil else { return }
         picker.onSettings = { [weak self] in
             UserDefaults.standard.set("quickSwitch", forKey: "settingsPane")

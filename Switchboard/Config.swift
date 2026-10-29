@@ -66,16 +66,35 @@ struct Route: Codable, Identifiable, Equatable {
     }
 }
 
+// Omitted in older files: history is recorded unless a file turns it off.
+struct HistorySettings: Codable, Equatable {
+    var enabled = true
+
+    init(enabled: Bool = true) {
+        self.enabled = enabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+    }
+}
+
 struct Config: Codable, Equatable {
     var browser: String
     var defaultProfile: String
     var routes: [Route]
     var picker: PickerSettings? = nil
+    var history: HistorySettings? = nil
 
     var browserPaths: Set<String> { Set([browser] + routes.compactMap(\.browser)) }
+    var historyEnabled: Bool { history?.enabled ?? true }
 
-    static let configPath = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".config/switchboard/config.json")
+    static let configPath = path(home: FileManager.default.homeDirectoryForCurrentUser)
+
+    static func path(home: URL) -> URL {
+        home.appendingPathComponent(".config/switchboard/config.json")
+    }
 
     static func load(from path: URL = configPath) throws -> Config {
         let data = try Data(contentsOf: path)
@@ -92,10 +111,15 @@ struct Config: Codable, Equatable {
         }
     }
 
-    func save(to path: URL = Self.configPath) throws {
+    // The app and the CLI share these settings so a CLI edit doesn't reformat the file.
+    func encoded() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(self)
+        return try encoder.encode(self)
+    }
+
+    func save(to path: URL = Self.configPath) throws {
+        let data = try encoded()
 
         // Ensure directory exists
         let dir = path.deletingLastPathComponent()

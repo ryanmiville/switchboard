@@ -1,6 +1,6 @@
 # Switchboard CLI design
 
-Status: proposal. Nothing here is implemented yet.
+Status: implemented. [Implementation notes](#implementation-notes) lists where the code differs from this proposal.
 
 ## Goal
 
@@ -322,6 +322,15 @@ Not covered automatically: that the browser window actually opens in the right p
 - Opening URLs from the CLI. Launching a browser would make agent runs and tests open real windows. `explain` covers "where would this go".
 - Editing picker favorites, the shortcut, or the login item.
 - A daemon or IPC between the CLI and the app.
+
+## Implementation notes
+
+- **Build layout.** The command definitions live in `Switchboard/CLI` and compile into the `SwitchboardCore` package module, with a tiny `switchboard` executable target (`CLI/main.swift`). Xcode compiles the shipped tool as one module from those files plus the Foundation-only core files, so a separate `SwitchboardCLI` package module would have needed `public` or `package` access across the core, and `package` needs a package name that Xcode targets don't get by default. The Xcode target is named `SwitchboardCLI` (product `switchboard`), because target names that differ only by case collide on case-insensitive disks.
+- **Browser discovery.** The CLI scans `/Applications` and `~/Applications`, plus any browser the configuration already names, instead of asking Launch Services, which needs AppKit.
+- **Changing the default browser** is refused (exit 3, `inheriting_rules`) while any rule inherits the default browser, not only when an inheriting rule's profile is missing in the new browser: the same directory identifier can name different people in two browsers. The error suggests a `rules update` command per rule that keeps it where it goes now.
+- **Extra values.** `profileStatus` can also be `unavailable` (the browser isn't installed or its profiles can't be read). Additional error codes: `ambiguous_browser`, `ambiguous_history_entry`, `inheriting_rules`, and `agent_not_found` (exit 3); `history_unreadable`, `profiles_unreadable`, and `write_failed` (exit 1); `invalid_argument` (exit 64, as a JSON error object when `--json` is given).
+- **Rules.** `rules update` accepts `--allow-shadowing`, and refuses with `verification_failed` an update that would make the rule itself unreachable. `rules move` reports rules it makes unreachable instead of refusing. `rules update` and `default` also report recent links that would open somewhere else.
+- **Small conveniences.** History IDs match by a prefix or a suffix of at least four characters. `--if-revision` accepts a prefix of at least eight characters. `history clear` works while history is off. `doctor` exits 0 and reports problems through `ok` and its `!` lines. The last history write error is kept in `history.jsonl.error` for `doctor`. Codex's skill goes to `$CODEX_HOME/skills` when that is set.
 
 ## Open questions
 

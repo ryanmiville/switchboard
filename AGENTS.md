@@ -12,6 +12,7 @@ Requires full Xcode 26.4 (including its command-line tools), Swift 6, and macOS.
 - `make verify-linux` — on Linux (cloud sessions): formatting, the Foundation-only tests, and whitespace checks. Use it while developing the core and CLI there. It does not replace `make verify`; report `make verify` as not run.
 - `make debug` / `make release` — build into `.build/xcode`.
 - `make debug-install` / `make install` — build, copy to `/Applications`, and register the app. Run only when installation is requested.
+- `make install-cli` — link `~/.local/bin/switchboard` to the tool inside the installed app. Run only when installation is requested.
 
 Tests use temporary files and fake browsers; they have no personal configuration or real browser access. Run them, fix relevant failures, and rerun without asking for permission at each step. Use `make verify` before handing off code changes, and report any checks you could not run. CI uses the Xcode 26.4 family on `macos-26`.
 
@@ -22,6 +23,10 @@ Tests use temporary files and fake browsers; they have no personal configuration
 | URL events, launch mode, shutdown and recovery UI | `Switchboard/SwitchboardApp.swift` |
 | Routing lifetime decisions | `Switchboard/RoutingSession.swift` |
 | JSON configuration and atomic persistence | `Switchboard/Config.swift` |
+| Compare-and-swap saves, revisions, and file locks | `Switchboard/ConfigStore.swift` |
+| Link history: storage, redaction, recording | `Switchboard/History.swift` |
+| CLI rule edits: resolution, shadowing, verification | `Switchboard/RuleOperations.swift` |
+| CLI commands, output, doctor, and agent skill | `Switchboard/CLI/`, entry point `CLI/main.swift` |
 | Editor state, autosave and flush | `Switchboard/ConfigViewModel.swift` |
 | Rule matching and preview decisions | `Switchboard/Router.swift` |
 | Browser-specific profile paths and legacy names | `Switchboard/BrowserProfiles.swift` |
@@ -29,7 +34,7 @@ Tests use temporary files and fake browsers; they have no personal configuration
 | Editor and URL preview | `Switchboard/ContentView.swift` |
 | Regression tests | `Tests/SwitchboardCoreTests/` |
 
-The Swift package excludes the app entry point and editor view. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
+The Swift package excludes the app entry point and editor view. The CLI's command definitions in `Switchboard/CLI` compile into `SwitchboardCore` in the package; Xcode's `SwitchboardCLI` target compiles them as one module with only the Foundation-only core files they need, and the app embeds the result in `Contents/Helpers`. Add a core file the CLI uses to both Sources phases. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
 
 ## Behavior to preserve
 
@@ -40,6 +45,8 @@ The Swift package excludes the app entry point and editor view. Reopen tests cal
 - Surface failures with a recovery action. Do not guess a different browser/profile or fall back through the system default browser, which may be Switchboard itself.
 - Routing must preserve an existing editor session. Flush pending edits before routing from the editor or quitting it. A temporary routing launch exits only after the latest URL's idle delay.
 - Opening or reopening the app starts its menu bar and shortcut without opening Settings. Settings is a single window opened explicitly from the menu; repeated Settings requests focus or restore it, creating a window only when none is open. Suppress AppKit's default reopening.
+- The CLI and the app share `config.json` with no daemon. Every save is a compare-and-swap against the loaded revision under a `flock`; never overwrite a file that changed since it was read. The CLI changes only the rules it was asked to change, refuses ambiguous names (exit 3) instead of guessing, and never opens links.
+- History recording is best effort: it never blocks, delays, or fails opening a link. URLs are redacted in CLI output unless `--full-urls` is passed.
 - Keep App Sandbox disabled: launching the browser requires subprocess control. Preserve HTTP/HTTPS and HTML declarations in `Info.plist` so macOS recognizes the app as a browser.
 
 ## Verification and review

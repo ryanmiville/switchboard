@@ -1,5 +1,6 @@
 """Check the actual built app's browser registration without registering it."""
 
+import os
 import pathlib
 import plistlib
 import re
@@ -51,4 +52,19 @@ for argument in sys.argv[1:]:
         ))
         assert embedded.get("com.apple.security.app-sandbox") is not True, "App Sandbox must stay disabled"
         assert embedded.get("com.apple.security.automation.apple-events") is True, "Signed Automation entitlement is missing"
+    tool = app / "Contents/Helpers/switchboard"
+    assert tool.is_file() and os.access(tool, os.X_OK), "The switchboard command-line tool is missing"
+    subprocess.run(["codesign", "--verify", "--strict", "--all-architectures", str(tool)], check=True)
+    tool_architectures = subprocess.check_output(["lipo", "-archs", str(tool)], text=True).split()
+    assert sorted(tool_architectures) == sorted(architectures), "The tool's architectures differ from the app's"
+    for architecture in tool_architectures:
+        signature = subprocess.run(
+            ["codesign", "--display", "--verbose=4", "--architecture", architecture, str(tool)],
+            capture_output=True, text=True, check=True,
+        ).stderr
+        flags = re.search(r"flags=0x([0-9a-f]+)", signature)
+        assert flags and int(flags.group(1), 16) & 0x10000, "Hardened runtime is missing from the tool"
+    # The tool reports the version of the app that contains it; doctor compares it with the installed app.
+    version = subprocess.run([str(tool), "--version"], capture_output=True, text=True, check=True).stdout.strip()
+    assert version == f"{info['CFBundleShortVersionString']} ({info['CFBundleVersion']})", f"Unexpected tool version {version!r}"
     print(f"Bundle checks passed: {app.name} ({app.parent.name})")
