@@ -58,9 +58,9 @@ struct HistoryEntry: Codable, Equatable {
 struct HistoryStore {
     static let keep = 200
     static let trimThreshold = 400
-    static let defaultURL = url(home: FileManager.default.homeDirectoryForCurrentUser)
+    static let defaultURL = location(home: FileManager.default.homeDirectoryForCurrentUser)
 
-    static func url(home: URL) -> URL {
+    static func location(home: URL) -> URL {
         home.appendingPathComponent(".local/state/switchboard/history.jsonl")
     }
 

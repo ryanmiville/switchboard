@@ -233,7 +233,7 @@ struct Session {
             ?? Config.path(home: context.homeDirectory)
         historyURL =
             (options.historyFile ?? context.environment["SWITCHBOARD_HISTORY"]).map(context.path)
-            ?? HistoryStore.url(home: context.homeDirectory)
+            ?? HistoryStore.location(home: context.homeDirectory)
     }
 
     var store: ConfigStore { ConfigStore(url: configURL) }
