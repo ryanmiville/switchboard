@@ -15,7 +15,7 @@ SWIFT_FORMAT ?= swift format
 endif
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister
 
-.PHONY: verify verify-linux test format format-check debug release debug-install install install-cli clean
+.PHONY: verify verify-linux test snapshots format format-check debug release debug-install install install-cli clean
 
 verify: format-check test debug release
 	python3 scripts/check-bundle.py "$(BUILD_DIR)/Build/Products/Debug/Switchboard.app" "$(BUILD_DIR)/Build/Products/Release/Switchboard.app"
@@ -31,6 +31,11 @@ test:
 	swift test list > .build/test-list.txt
 	@test -s .build/test-list.txt || { echo 'No tests were discovered.'; exit 1; }
 	swift test --disable-xctest
+
+# Renders the settings window's snapshot scenes into .build/snapshots and compares them with the goldens in
+# Tests/SwitchboardCoreTests/Snapshots. SNAPSHOT_RECORD=1 rewrites the goldens. macOS only; make test runs them too.
+snapshots:
+	@status=0; swift test --disable-xctest --filter SnapshotTests || status=$$?; echo "Images: $(CURDIR)/.build/snapshots"; exit $$status
 
 format:
 	$(SWIFT_FORMAT) format --in-place --recursive Switchboard CLI Tests Package.swift

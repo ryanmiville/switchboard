@@ -35,3 +35,11 @@ jobs:
         with:
           name: verification-log
           path: .build/verify.log
+      # CI renders the snapshot scenes without comparing them; these are the images it drew.
+      - name: Upload snapshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snapshots
+          path: .build/snapshots
+          if-no-files-found: ignore

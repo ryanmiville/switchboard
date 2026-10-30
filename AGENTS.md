@@ -9,6 +9,7 @@ Requires full Xcode 26.4 (including its command-line tools), Swift 6, and macOS.
 - `make test` — fast, unhosted Swift Testing tests against the same source files the app compiles.
 - `make verify` — formatting, tests, Debug/Release builds, bundle checks, and whitespace checks. This is the completion check for code/build changes and runs in CI.
 - `make format` — apply the checked-in Swift formatting rules.
+- `make snapshots` — render the settings window's snapshot scenes into `.build/snapshots` and compare them with the goldens in `Tests/SwitchboardCoreTests/Snapshots`; `SNAPSHOT_RECORD=1 make snapshots` rewrites the goldens. `make test` runs them too. With `CI` set they render without comparing, since pixels depend on the macOS version. macOS only.
 - `make verify-linux` — on Linux (cloud sessions): formatting, the Foundation-only tests, and whitespace checks. Use it while developing the core and CLI there. It does not replace `make verify`; report `make verify` as not run.
 - `make debug` / `make release` — build into `.build/xcode`.
 - `make debug-install` / `make install` — build, copy to `/Applications`, and register the app. Run only when installation is requested.
@@ -33,8 +34,9 @@ Tests use temporary files and fake browsers; they have no personal configuration
 | Installed browsers and executable launching | `Switchboard/BrowserDiscovery.swift`, `Switchboard/BrowserLauncher.swift` |
 | Editor and URL preview | `Switchboard/ContentView.swift` |
 | Regression tests | `Tests/SwitchboardCoreTests/` |
+| Settings window snapshots and their goldens | `Tests/SwitchboardCoreTests/SnapshotTests.swift`, `Snapshot.swift`, `Snapshots/` |
 
-The Swift package excludes the app entry point and editor view. The CLI's command definitions in `Switchboard/CLI` compile into `SwitchboardCore` in the package; Xcode's `SwitchboardCLI` target compiles them as one module with only the Foundation-only core files they need, and the app embeds the result in `Contents/Helpers`. Add a core file the CLI uses to both Sources phases. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
+The Swift package leaves out the app entry point (it is behind `#if !SWIFT_PACKAGE`) and compiles the editor view on macOS only, for the snapshot tests. The CLI's command definitions in `Switchboard/CLI` compile into `SwitchboardCore` in the package; Xcode's `SwitchboardCLI` target compiles them as one module with only the Foundation-only core files they need, and the app embeds the result in `Contents/Helpers`. Add a core file the CLI uses to both Sources phases. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
 
 ## Behavior to preserve
 
@@ -52,6 +54,8 @@ The Swift package excludes the app entry point and editor view. The CLI's comman
 ## Verification and review
 
 For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Cross-browser tests should cover a Chrome rule with a Helium default, browser-specific profile choices, and legacy rules with no browser override. Do not weaken tests to make a change pass.
+
+For changes to the settings window, run `make snapshots` and look at the images in `.build/snapshots`. When a change is intended, rerun with `SNAPSHOT_RECORD=1`, review the golden diff, and commit the new goldens. Snapshots show layout and drawing; they don't exercise clicks or window behavior.
 
 Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and unintended writes to personal files. Keep installation separate from normal verification. Mention whether actual browser delivery or GUI behavior was exercised; a successful process launch alone does not prove the right browser window opened.
 

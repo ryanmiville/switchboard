@@ -108,6 +108,7 @@ Shortcut, favorite, and destination preferences live in the optional `picker` se
 
 ```sh
 make test     # Fast isolated regression tests; no app or real browser is launched
+make snapshots  # Render the settings window into .build/snapshots and compare with the goldens
 make verify   # Formatting, tests, Debug/Release builds, bundle and whitespace checks
 make verify-linux  # On Linux: formatting, Foundation-only tests and whitespace checks
 make format   # Apply Swift formatting
@@ -116,7 +117,9 @@ make debug    # Build Debug into .build/xcode
 make release  # Build Release into .build/xcode
 ```
 
-Tests use Swift Testing through `Package.swift`, compiling the same production source files without the app entry point or editor view. Use `make test` rather than `xcodebuild test`. The only package dependency is Apple’s [swift-argument-parser](https://github.com/apple/swift-argument-parser), used by the command-line tool. Swift 6 concurrency checks and Swift warnings-as-errors are enabled for the app.
+Tests use Swift Testing through `Package.swift`, compiling the same production source files without the app entry point. Use `make test` rather than `xcodebuild test`. The only package dependency is Apple’s [swift-argument-parser](https://github.com/apple/swift-argument-parser), used by the command-line tool. Swift 6 concurrency checks and Swift warnings-as-errors are enabled for the app.
+
+Snapshot tests draw the settings window with fixture browsers and configuration, in light and dark, into `.build/snapshots`, and compare each image with its golden in `Tests/SwitchboardCoreTests/Snapshots`. A mismatch writes the actual image and a diff with changed pixels in red to `.build/snapshots/failures`. Rerun with `SNAPSHOT_RECORD=1` to accept an intended change. The images depend on the macOS version and your appearance settings, so CI renders them without comparing and uploads them as the `snapshots` artifact.
 
 Normal verification does not install the app or modify your configuration. Xcode automatically registers build products; the build commands unregister their local products afterward. Explicit installation registers the copy in `/Applications`.
 

@@ -5,15 +5,16 @@ import PackageDescription
 // Foundation-only core and the tests that run without them. macOS always builds and tests everything.
 #if os(Linux)
     let appleOnlySources = [
-        "BrowserDiscovery.swift", "ConfigViewModel.swift", "CurrentTabReader.swift", "GlobalShortcut.swift",
-        "LoginItem.swift", "PickerSettings.swift", "ShortcutRecorder.swift", "SwitchboardApp.swift",
-        "TabPicker.swift",
+        "BrowserDiscovery.swift", "ConfigViewModel.swift", "ContentView.swift", "CurrentTabReader.swift",
+        "GlobalShortcut.swift", "LoginItem.swift", "PickerSettings.swift", "ShortcutRecorder.swift",
+        "SwitchboardApp.swift", "TabPicker.swift",
     ]
     // InstallTests needs codesign. LauncherTests needs Bundle.executableURL, which Linux Foundation
-    // doesn't resolve for macOS app bundles.
+    // doesn't resolve for macOS app bundles. The snapshot tests render SwiftUI.
     let appleOnlyTests = [
         "ConfigViewModelTests.swift", "CurrentTabTests.swift", "InstallTests.swift", "LauncherTests.swift",
-        "LoginItemTests.swift", "PickerTests.swift", "ReopenTests.swift",
+        "LoginItemTests.swift", "PickerTests.swift", "ReopenTests.swift", "Snapshot.swift",
+        "SnapshotTests.swift",
     ]
 #else
     let appleOnlySources: [String] = []
@@ -32,14 +33,13 @@ let package = Package(
             name: "SwitchboardCore",
             dependencies: [.product(name: "ArgumentParser", package: "swift-argument-parser")],
             path: "Switchboard",
-            exclude: [
-                "Assets.xcassets", "ContentView.swift", "Info.plist",
-                "Switchboard.entitlements",
-            ] + appleOnlySources
+            exclude: ["Assets.xcassets", "Info.plist", "Switchboard.entitlements"] + appleOnlySources
         ),
         .executableTarget(name: "switchboard", dependencies: ["SwitchboardCore"], path: "CLI"),
+        // Snapshots holds golden PNGs, which the snapshot tests read from the source tree.
         .testTarget(
-            name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore"], exclude: appleOnlyTests),
+            name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore"],
+            exclude: ["Snapshots"] + appleOnlyTests),
     ],
     swiftLanguageModes: [.v6]
 )
