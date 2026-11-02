@@ -212,21 +212,23 @@ As `HANDOFF.md` "Suggested order", with two changes:
 
 Things only a person on a Mac can confirm. Record the date and macOS version when each is seen.
 
-- [ ] `scripts/install` puts `Switchboard RS.app` in `~/Applications`, and it appears under System
-      Settings → Desktop & Dock → Default web browser.
+- [x] `scripts/install` puts `Switchboard RS.app` in `~/Applications`, and it appears under System
+      Settings → Desktop & Dock → Default web browser. Seen 2026-11-02 on the owner's Mac.
 - [ ] Opening the app shows the menu-bar icon and no Dock icon or window; Settings… opens the
       window in front; Quit quits.
-- [ ] With it as the default browser, a link clicked in another app opens in the right browser
-      profile, with no window or icon flashing up.
+- [x] With it as the default browser, a link clicked in another app opens in the right browser
+      profile, with no window or icon flashing up. Seen 2026-11-02 on the owner's Mac. Checked with the owner's
+      contains rules, the exact `localhost:4000/` rule, and links that fall through to the default.
 - [ ] A link that can't open (a rule naming a missing profile) shows Settings with the notice.
 - [ ] Opening the app again from Finder or Spotlight brings Settings forward.
 - [ ] Open at login: the toggle registers it, System Settings → Login Items lists it, and it
       starts at the next login.
 - [ ] `~/.local/bin/switchboard-rs` from `scripts/install --cli` runs and reads the same config.
-- [ ] Quick Switch: ⌃⌥Space over a browser shows the panel without taking focus from it; the first
-      time, macOS asks to allow Automation for that browser; the panel shows the current tab's link.
-- [ ] Choosing a destination (click, Return, or ⌘1–⌘9) opens the page in that profile, brings the
-      browser forward, and records a `picker` entry (`switchboard-rs history`).
+- [x] Quick Switch: ⌃⌥Space over a browser shows the panel without taking focus from it; the first
+      time, macOS asks to allow Automation for that browser; the panel shows the current tab's link. Seen 2026-11-02 on the owner's Mac.
+- [x] Choosing a destination (click, Return, or ⌘1–⌘9) opens the page in that profile, brings the
+      browser forward, and records a `picker` entry (`switchboard-rs history`). Seen 2026-11-02 on the owner's Mac. Which
+      of click, Return and ⌘-number were tried wasn't recorded.
 - [ ] With Automation denied, the panel says so and Automation Settings… opens the right pane.
 - [ ] Recording a new shortcut in Settings → Quick Switch works at once, and a taken chord is refused.
 - [ ] A change made with `switchboard-rs` while Settings is open shows up within a second.
