@@ -1,6 +1,7 @@
 //! General: the default destination and history.
 
 use rune::El;
+use switchboard_core::platform::LoginStatus;
 
 use super::controls::{
     Choice, Kind, Paint, button, note, page, scroll_body, section, select, setting_row, toggle_row,
@@ -79,6 +80,36 @@ pub fn pane(ui: &Ui, p: Paint, layer: &mut Vec<El>) -> El {
         history.push(note("history-error", error, p.danger()));
     }
 
+    let mut startup = Vec::new();
+    let on = matches!(ui.login.status, Some(LoginStatus::Enabled | LoginStatus::RequiresApproval));
+    let description = match ui.login.status {
+        Some(LoginStatus::RequiresApproval) => "Waiting for you to allow it in System Settings → Login Items",
+        None => "Checking…",
+        _ => "Keeps the menu-bar icon and Quick Switch ready",
+    };
+    startup.push(toggle_row(
+        p,
+        "login-toggle",
+        "Open at login",
+        Some(description),
+        on,
+        move |ui: &mut Ui| ui.login.set_enabled(!on),
+    ));
+    if ui.login.status == Some(LoginStatus::RequiresApproval) {
+        startup.push(setting_row(
+            p,
+            "login-settings-row",
+            "Login Items",
+            None,
+            button(p, "login-settings", "Open System Settings", Kind::Secondary, |ui: &mut Ui, _| {
+                ui.login.open_settings()
+            }),
+        ));
+    }
+    if let Some(error) = &ui.login.error {
+        startup.push(note("login-error", error, p.danger()));
+    }
+
     let path = e
         .store
         .path
@@ -96,6 +127,7 @@ pub fn pane(ui: &Ui, p: Paint, layer: &mut Vec<El>) -> El {
         "general",
         page("general-page")
             .child(section(p, "destination", "Default destination", destination))
+            .child(section(p, "startup", "Startup", startup))
             .child(section(p, "history", "History", history))
             .child(section(p, "file", "Configuration", file)),
     )

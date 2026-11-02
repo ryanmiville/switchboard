@@ -154,3 +154,36 @@ pub fn write_local_state(user_data: &std::path::Path, profiles: &[(&str, &str)])
         serde_json::json!({ "profile": { "info_cache": cache } }).to_string(),
     )
 }
+
+/// What the menu-bar or tray menu asks the app to do.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MenuAction {
+    OpenSettings,
+    Quit,
+}
+
+/// The menu-bar icon (macOS) or tray icon (Linux) and its menu. Dropping it removes the icon.
+pub trait MenuBar: Sized {
+    /// Shows the icon. Call it on the main thread. `on_action` runs for each menu choice, on the
+    /// main thread on macOS and on the tray's own thread on Linux.
+    fn install(on_action: Box<dyn Fn(MenuAction) + Send + Sync>) -> Result<Self, String>;
+}
+
+/// Whether the app opens when the person logs in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LoginStatus {
+    Disabled,
+    Enabled,
+    /// Registered, but waiting for the person to allow it in System Settings (macOS).
+    RequiresApproval,
+}
+
+/// Launch at login. Calls can block (macOS asks a system service), so the app makes them off
+/// the main thread.
+pub trait LoginItem: Send + Sync {
+    fn status(&self) -> Result<LoginStatus, String>;
+    /// Turns it on or off and returns the status afterwards.
+    fn set_enabled(&self, enabled: bool) -> Result<LoginStatus, String>;
+    /// Opens the system's own login-items settings, where they exist.
+    fn open_settings(&self) {}
+}

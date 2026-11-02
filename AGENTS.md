@@ -36,7 +36,7 @@ live only in `crates/core/src/identity.rs`.
   --theme dark --scale 1`. List scenes with `--list-scenes`; dump the element tree with `--tree`.
   Headless runs use the fixture home only. Without a GPU, set
   `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`.
-- Scenes (`crates/app/src/scenes.rs`): `general`, `general-menu`, `no-default-browser`,
+- Scenes (`crates/app/src/scenes.rs`): `general`, `login-approval`, `general-menu`, `no-default-browser`,
   `routing`, `routing-empty`, `missing-profile`, `rule-new`, `rule-edit`, `rule-error`,
   `conflict`, `load-error`, `link-failure`, `quick-switch`. Add one for every new pane or state.
 - Goldens: `crates/app/tests/golden/`, every scene in both themes, compared on Linux only.
@@ -44,6 +44,11 @@ live only in `crates/core/src/identity.rs`.
   it with the change. CI uploads mismatches as the `golden-actual` artifact.
 - Run the CLI against a scratch home: `HOME=$(mktemp -d) cargo run -q -p switchboard-cli -- rules list`.
 - Rust is pinned in `rust-toolchain.toml`; rustup installs it on first use.
+- Build the macOS app: `scripts/bundle` (into `target/bundle/`; CI's macOS job runs it). Install it
+  on a Mac: `scripts/install [--cli]`, only when the owner asks.
+- Type-check macOS-only code from Linux: `rustup target add aarch64-apple-darwin`, then
+  `cargo clippy -p switchboard-macos --target aarch64-apple-darwin -- -D warnings`. The app crate
+  needs Apple's SDK, so only CI's macOS job builds it.
 
 ## How things are tested
 
@@ -103,7 +108,8 @@ live only in `crates/core/src/identity.rs`.
 - Read or write the real home folder's config, history or browser data in tests or scenes.
 - Open a real browser from a test.
 - Weaken or skip a test to get a change through.
-- Claim something works on macOS from a Linux run. Say what ran where: "check passed on Linux",
+- Claim something works on macOS from a Linux run (the Mac checklist is in
+  `docs/rewrite/architecture.md`). Say what ran where: "check passed on Linux",
   "not run on macOS". Link delivery, the status item, the shortcut, the picker over a real browser,
   Automation prompts, launch at login and the right browser window opening need a person on a Mac.
 

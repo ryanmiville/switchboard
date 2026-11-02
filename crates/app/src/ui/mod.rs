@@ -137,6 +137,9 @@ pub struct Ui {
     pub quit_at: Option<(u64, f64)>,
     /// The app clock at the last poll.
     pub now: f64,
+    pub login: crate::login::Login,
+    /// The real login item, until `setup` starts its worker with the app's waker.
+    pub login_item: Option<Box<dyn switchboard_core::platform::LoginItem>>,
     /// Scenes and tests own their temporary home; it is removed with the state.
     pub fixture: Option<tempfile::TempDir>,
 }
@@ -152,6 +155,8 @@ impl Ui {
             session: Session::default(),
             quit_at: None,
             now: 0.0,
+            login: crate::login::Login::shown(switchboard_core::platform::LoginStatus::Disabled),
+            login_item: None,
             fixture: None,
         }
     }
@@ -165,6 +170,7 @@ impl Ui {
 
     pub fn poll(&mut self, now: f64, tx: &mut Tx) -> bool {
         self.now = now;
+        let login = self.login.drain();
         let before = (self.editor.has_unsaved_changes(), self.editor.error().map(str::to_owned));
         if let Some(wait) = self.editor.poll(now) {
             tx.wake_after(wait);
@@ -179,7 +185,7 @@ impl Ui {
                 tx.wake_after(std::time::Duration::from_secs_f64(at - now));
             }
         }
-        before != (self.editor.has_unsaved_changes(), self.editor.error().map(str::to_owned))
+        login || before != (self.editor.has_unsaved_changes(), self.editor.error().map(str::to_owned))
     }
 
     /// A link from the system. Pending edits are saved first, so routing uses what the person sees.
@@ -250,6 +256,7 @@ pub fn view(ui: &Ui, cx: &mut Cx<Ui>) -> El {
         // The CLI may have changed the file while the window was in the background.
         if focused {
             ui.editor.check_external();
+            ui.login.refresh();
         }
     })
 }

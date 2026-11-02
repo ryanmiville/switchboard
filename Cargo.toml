@@ -24,7 +24,8 @@ rune = { git = "https://github.com/anomalyco/rune.git", rev = "8844e9bfdc57c6369
 rune-kit = { git = "https://github.com/anomalyco/rune.git", rev = "8844e9bfdc57c6369b485d8f4336ded379bf1000" }
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# Denied everywhere; only the macOS AppKit glue allows it, module by module, with SAFETY comments.
+unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 unused_must_use = "deny"
 

@@ -12,5 +12,14 @@ switchboard-core.workspace = true
 # Browser discovery reads Info.plist files, which works (and is tested) on every platform.
 plist = "1"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-app-kit = "0.3.2"
+objc2-foundation = "0.3.2"
+objc2-service-management = { version = "0.3.2", features = ["SMAppService"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
 [lints]
 workspace = true

@@ -7,8 +7,18 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# The tray icon, through Rune's StatusNotifierItem tray. The app turns it on; the CLI doesn't, so
+# it never links Rune.
+tray = ["dep:rune", "dep:png"]
+
 [dependencies]
 switchboard-core.workspace = true
+rune = { workspace = true, optional = true }
+png = { version = "0.17", optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

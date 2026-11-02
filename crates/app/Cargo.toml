@@ -22,6 +22,9 @@ serde_json.workspace = true
 switchboard-macos.workspace = true
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
+switchboard-linux = { workspace = true, features = ["tray"] }
+
+[target.'cfg(not(target_os = "macos"))'.dev-dependencies]
 switchboard-linux.workspace = true
 
 [dev-dependencies]

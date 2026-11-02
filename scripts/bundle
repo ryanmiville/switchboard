@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Builds "Switchboard RS.app" into target/bundle/: the app, the switchboard-rs CLI in
+# Contents/Helpers, Info.plist with the browser declarations, the icon, and an ad hoc signature.
+# It installs nothing; scripts/install does that.
+#
+#   scripts/bundle            release build
+#   scripts/bundle --debug    debug build (faster to build)
+#
+# On macOS it also makes the .icns (iconutil) and signs (codesign; MAC_APP_SIGN picks an identity,
+# ad hoc by default). Elsewhere it assembles the folder only, so its layout can be checked.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+profile=release
+[[ "${1:-}" == "--debug" ]] && profile=debug
+identity() { sed -n "s/^pub const $1: &str = \"\(.*\)\";/\1/p" crates/core/src/identity.rs; }
+name=$(identity APP_NAME)
+id=$(identity BUNDLE_ID)
+cli=$(identity CLI_NAME)
+exe=switchboard-rs-app
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+
+flags=(--locked -p switchboard-app -p switchboard-cli)
+[[ $profile == release ]] && flags+=(--release)
+cargo build "${flags[@]}"
+
+app="target/bundle/$name.app"
+rm -rf "$app"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Helpers" "$app/Contents/Resources"
+cp "target/$profile/$exe" "$app/Contents/MacOS/$exe"
+cp "target/$profile/$cli" "$app/Contents/Helpers/$cli"
+sed -e "s/@NAME@/$name/g" -e "s/@ID@/$id/g" -e "s/@EXE@/$exe/g" -e "s/@VERSION@/$version/g" \
+  packaging/macos/Info.plist > "$app/Contents/Info.plist"
+printf 'APPL????' > "$app/Contents/PkgInfo"
+
+if [[ "$(uname -s)" == Darwin ]]; then
+  iconset=$(mktemp -d)/AppIcon.iconset
+  mkdir -p "$iconset"
+  for size in 16 32 128 256 512; do
+    cp "assets/AppIcon/icon_${size}x${size}.png" "$iconset/icon_${size}x${size}.png"
+    double=$((size * 2))
+    cp "assets/AppIcon/icon_${double}x${double}.png" "$iconset/icon_${size}x${size}@2x.png"
+  done
+  iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+  plutil -lint "$app/Contents/Info.plist" >/dev/null
+  sign=${MAC_APP_SIGN:--}
+  codesign --force --options runtime --sign "$sign" "$app/Contents/Helpers/$cli"
+  codesign --force --options runtime --entitlements packaging/macos/Switchboard.entitlements \
+    --sign "$sign" "$app"
+  codesign --verify --deep --strict "$app"
+else
+  echo "bundle: not on macOS, so no icon or signature; the folder layout is complete otherwise." >&2
+fi
+echo "Built $app"

@@ -207,3 +207,19 @@ As `HANDOFF.md` "Suggested order", with two changes:
 
 - Step 1 also deletes the Swift sources, the Xcode project and the old `Makefile`.
 - The macOS link probe runs before UI work, not at step 5.
+
+## Mac checklist
+
+Things only a person on a Mac can confirm. Record the date and macOS version when each is seen.
+
+- [ ] `scripts/install` puts `Switchboard RS.app` in `~/Applications`, and it appears under System
+      Settings → Desktop & Dock → Default web browser.
+- [ ] Opening the app shows the menu-bar icon and no Dock icon or window; Settings… opens the
+      window in front; Quit quits.
+- [ ] With it as the default browser, a link clicked in another app opens in the right browser
+      profile, with no window or icon flashing up.
+- [ ] A link that can't open (a rule naming a missing profile) shows Settings with the notice.
+- [ ] Opening the app again from Finder or Spotlight brings Settings forward.
+- [ ] Open at login: the toggle registers it, System Settings → Login Items lists it, and it
+      starts at the next login.
+- [ ] `~/.local/bin/switchboard-rs` from `scripts/install --cli` runs and reads the same config.

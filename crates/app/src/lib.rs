@@ -3,6 +3,7 @@
 
 pub mod editor;
 pub mod fixture;
+pub mod login;
 pub mod routing;
 pub mod scenes;
 pub mod ui;
@@ -26,6 +27,11 @@ pub fn spec() -> AppSpec<Ui> {
         min_size: Some(SIZE),
         scenes: scenes::SCENES,
         poll: Some(|ui, now, tx| ui.poll(now, tx)),
+        setup: Some(|ui, wake| {
+            if let Some(item) = ui.login_item.take() {
+                ui.login = login::Login::start(item, wake);
+            }
+        }),
         on_key: Some(|ui, ev, tx| ui.on_key(ev, tx)),
         ..AppSpec::new(identity::APP_NAME, SIZE, fixture::ui, ui::view)
     }

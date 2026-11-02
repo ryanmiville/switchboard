@@ -10,6 +10,9 @@ pub type Scene = (&'static str, fn(&mut Ui));
 
 pub const SCENES: &[Scene] = &[
     ("general", |_| {}),
+    ("login-approval", |ui| {
+        ui.login = crate::login::Login::shown(switchboard_core::platform::LoginStatus::RequiresApproval)
+    }),
     ("general-menu", |ui| ui.open = Some(Open::DefaultBrowser)),
     ("no-default-browser", |ui| {
         ui.editor.edit(|c| c.browser.clear());

@@ -10,6 +10,7 @@ mod app {
     mod editor;
     mod goldens;
     mod links;
+    mod login;
     mod scenes;
     mod settings;
 }
