@@ -48,7 +48,7 @@ import the Swift config, which it reads without changes. Every name above lives 
 
 ```
 crates/
-  core/             switchboard-core     every rule and file format; the platform traits; fakes
+  core/             switchboard-core     every rule and file format; the platform traits
   cli/              switchboard-cli      binary `switchboard-rs`; core + this platform's crate
   app/              switchboard-app      Rune UI, the editor model, scenes, goldens, the app binary
   platform-macos/   switchboard-macos    the traits, for macOS (objc2, plist)
@@ -61,8 +61,9 @@ crates/
   picks its implementation in one place:
   `#[cfg(target_os = "macos")] use switchboard_macos as platform;`, through target-specific
   dependencies in `Cargo.toml`.
-- **Every trait has a fake** in `core::fake`, behind a `fake` feature. Tests, scenes and headless
-  runs use only fakes, so they never touch real browsers, files or settings.
+- **No fakes.** Tests use the real implementation for the platform they run on (Linux in CI,
+  macOS on the owner's Mac). Isolation comes from a temporary home, not from substitutes: see
+  [Testing](#testing).
 - Linux CI builds and tests core, the CLI, the app (headless) and `platform-linux`. macOS CI
   builds everything and tests `platform-macos`.
 
@@ -108,14 +109,14 @@ map.
 - `history`: storage, trimming, redaction, best-effort recording.
 - `launch`: launcher over `Browsers` and `ProcessRunner`.
 - `error`: error codes and their exit codes.
-- `platform`: the traits above. `fake`: their fakes.
+- `platform`: the traits above.
 
 The clock, the random history ids and the home folder are passed in.
 
 ## App
 
 - `editor`: a port of `ConfigViewModel` with no UI code: autosave delay, flush, reload, conflict
-  with external changes, profile normalisation. It runs on a fake clock in plain unit tests.
+  with external changes, profile normalisation. Its autosave delay is a parameter, so tests can use a short one.
 - `session`: a port of `RoutingSession`, which decides when a link-only launch quits.
 - `picker`: the Quick Switch model and view, in a `launcher_panel` window.
 - `ui/`: a Hex-style layer of reusable pieces; General, Routing and Quick Switch panes; the rule
@@ -124,7 +125,65 @@ The clock, the random history ids and the home folder are passed in.
 - Config watching: a thread that wakes the UI when the config folder changes. The app also
   compares revisions before routing a link and when the window comes forward.
 - Lifetime: `rune::App` with `.accessory().windowless().keep_running()`; `on_reopen` returns true.
-- Scenes for every pane and state, element-tree goldens, and light and dark renders.
+- Scenes for every pane and state, element-tree goldens, and light and dark renders (see
+  [Seeing the UI](#seeing-the-ui)).
+
+## Testing
+
+Decided 2026-11-02 after reading how Deadbolt, Hex and Hokum test (below): real implementations
+end to end, isolated by a temporary home.
+
+- **Everything takes a home folder.** Config, history, browser discovery and `Local State` are all
+  found under it. A test creates a temporary home holding fixture browsers (`.app` folders with
+  an `Info.plist` on macOS, `.desktop` files on Linux) and their `Local State` files, then runs
+  the real code against it.
+- **The CLI is tested as a binary.** Tests run the built `switchboard-rs` with `--home <tmp>` (or
+  `--config`/`--history-file`) and check its JSON, exit code and the resulting files.
+- **Launching is tested with a real process.** Each fixture browser's executable is a tiny
+  program that writes its arguments to a file in the temporary home. A test then checks the
+  `--profile-directory` and URL a real launch passed. No real browser opens, and nothing is
+  substituted.
+- **App tests** drive Rune's headless `Runtime` on the real editor and the real store in a
+  temporary home, as Deadbolt's app tests drive its real daemon.
+- **What can't run safely stays out of automated tests,** and goes on the Mac checklist instead:
+  registering a login item, the status item, reading a real browser tab over Apple Events,
+  becoming the default browser. Their code is kept thin so the logic around them (what to show
+  for each login-item status, how to parse a tab's reply) is tested with plain values.
+- **Test-only switches, if ever needed,** are read only in debug builds (Deadbolt's
+  `DEADBOLT_KDF=fast` pattern) and listed in `AGENTS.md`.
+- **A new trait needs two real implementations** (macOS and Linux), never a test double alone.
+  This is Hex's rule: add a seam once there are two real adapters or a current test needs
+  substitution.
+
+What the reference apps do:
+
+| App | Approach |
+|---|---|
+| Deadbolt | End to end. CLI tests start real daemon processes in temporary homes and sync them over localhost. App tests drive the headless Rune runtime against a real daemon. Debug-only switches make key derivation fast and keep networking local |
+| Hex | A `Service::Fixture` that records requests, for UI tests and scenes, so they never write the user's settings |
+| Hokum | Mock PipeWire and Bluetooth backends (about 2,000 lines), chosen by an environment variable, because the real ones would change the developer's actual audio devices |
+
+Switchboard is closest to Deadbolt: its platform work is reading files and starting processes,
+which a temporary home makes safe. That is why we don't need Hokum's mocks.
+
+## Seeing the UI
+
+Agents must be able to see every screen without a display, as in Hex and Deadbolt:
+
+- **Scenes.** Each pane and state is a named scene built on a fixture home checked into the repo
+  (`crates/app/fixtures/home`): fixture browsers, profiles, rules and history. Headless runs use
+  only that home and never read the real one, so renders are the same on every machine and can't
+  contain personal data.
+- **Headless flags** (Rune's): `--list-scenes`, `--snap out.png --scene <name> --theme dark`,
+  `--tree out.json`, `--script`. On a machine with no GPU, Mesa's software Vulkan renders them.
+- **Element-tree goldens** (keys, roles, text, rects) for every scene, checked on every platform.
+- **Image goldens** for every scene in light and dark, at scale 2, compared with a tolerance.
+  Like Hex, they run on Linux only, since pixels differ by GPU and OS. CI uploads the actual
+  renders when one fails, so a Mac session can download and look at them.
+  `UPDATE_GOLDENS=1 scripts/check` rewrites them; look at every changed image before committing.
+- **`scripts/snap`** renders every scene in both themes into a folder, to compare before and
+  after a change or a Rune bump.
+- Scenes are fixtures, not end-to-end proof; reports say so.
 
 ## Checking on a Mac
 
