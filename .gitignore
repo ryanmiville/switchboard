@@ -1,6 +1,6 @@
 .DS_Store
-.opencode/plans
-.build/
-.swiftpm/
-**/xcuserdata/
 target/
+# Local scratch output and agent handoff notes; never committed.
+/scratch/
+/REVIEW-TO-PARENT.md
+*-FROM-PARENT.md

@@ -1,0 +1,11 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-dbg-in-tests = true
+disallowed-methods = [
+  { path = "std::env::var", reason = "read the environment in the binary's main and pass values in, so tests stay isolated" },
+  { path = "std::env::var_os", reason = "read the environment in the binary's main and pass values in, so tests stay isolated" },
+  { path = "std::env::home_dir", reason = "take the home folder as a parameter (core::Home), so tests can use a temporary one" },
+  { path = "std::time::SystemTime::now", reason = "take the time as a parameter, so tests are deterministic" },
+  { path = "std::process::Command::new", reason = "start browsers only through core::launch" },
+]

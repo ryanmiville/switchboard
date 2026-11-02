@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# The local check loop. It runs exactly what CI runs.
+#
+#   scripts/check            format, file sizes, clippy, then every test
+#   scripts/check <filter>   format and file sizes, then only the tests matching <filter>
+#                            (a nextest filter, such as `route` or `cli::history`)
+#
+# Exit codes: 10 format, 11 clippy, 12 tests, 13 file sizes. Failures are summarised at the end of
+# the output; read it whole rather than through a filter.
+# Tests run through cargo-nextest (.config/nextest.toml): each test in its own process, and one
+# that hangs is killed and reported by name. NEXTEST_PROFILE=ci selects CI's slower timeouts.
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  sed -n '2,/^set /p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
+  exit 0
+fi
+
+stage() { printf '\n==> %s\n' "$1"; }
+
+stage "format"
+cargo fmt --all --check || { echo "check: run \`cargo fmt --all\`" >&2; exit 10; }
+
+stage "file sizes"
+scripts/file-size || exit 13
+
+if [[ $# -eq 0 ]]; then
+  stage "clippy"
+  cargo clippy --locked --workspace --all-targets -- -D warnings || exit 11
+fi
+
+if command -v cargo-nextest >/dev/null 2>&1; then
+  stage "test (nextest${1:+: $*})"
+  cargo nextest run --locked --workspace --no-tests=warn "$@" || exit 12
+  # nextest doesn't run doctests.
+  [[ $# -eq 0 ]] && { cargo test --locked --workspace --doc -q || exit 12; }
+else
+  stage "test (cargo test${1:+: $*})"
+  echo "cargo-nextest isn't installed, so a hung test stalls the run without a name." >&2
+  echo "Install it: cargo install --locked cargo-nextest (or brew install cargo-nextest)" >&2
+  cargo test --locked --workspace -- "$@" || exit 12
+fi
+
+stage "done"
+echo "All checks passed."

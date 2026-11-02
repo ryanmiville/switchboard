@@ -1,0 +1,27 @@
+# Each test runs in its own process. A test still running after `period * terminate-after` is
+# killed and reported by name as TIMEOUT.
+[profile.default]
+slow-timeout = { period = "15s", terminate-after = 2 }
+status-level = "slow"
+final-status-level = "fail"
+failure-output = "final"
+fail-fast = false
+
+[test-groups]
+gpu = { max-threads = 2 }
+
+# Golden renders use the GPU (software Vulkan in CI); creating many devices at once crashes drivers.
+[[profile.default.overrides]]
+filter = "test(/golden/)"
+test-group = "gpu"
+slow-timeout = { period = "60s", terminate-after = 2 }
+
+# CI runners are slower.
+[profile.ci]
+slow-timeout = { period = "60s", terminate-after = 2 }
+failure-output = "immediate-final"
+
+[[profile.ci.overrides]]
+filter = "test(/golden/)"
+test-group = "gpu"
+slow-timeout = { period = "120s", terminate-after = 2 }

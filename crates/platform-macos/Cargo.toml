@@ -1,0 +1,16 @@
+[package]
+name = "switchboard-macos"
+description = "Switchboard's platform traits, implemented for macOS"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+switchboard-core.workspace = true
+# Browser discovery reads Info.plist files, which works (and is tested) on every platform.
+plist = "1"
+
+[lints]
+workspace = true

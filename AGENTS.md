@@ -1,64 +1,99 @@
 # Switchboard
 
-Personal macOS URL router built with SwiftUI/AppKit. Keep changes small and use the standard library and Apple frameworks unless a dependency has a clear payoff.
+A personal URL router: set as the default browser, it opens each link in a Chromium browser profile
+chosen by ordered rules. A Rust rewrite of the Swift app on `main`, with a Rune UI, a CLI that can
+do everything the app can, and macOS and Linux support. Until it replaces the Swift app it is called
+**Switchboard RS** (`switchboard-rs`, `com.switchboard.rs`, `~/.config/switchboard-rs/`); those names
+live only in `crates/core/src/identity.rs`.
+
+## Layout
+
+- `crates/core`: everything that isn't drawing or OS glue: `config.json` and its compare-and-swap
+  store, routing, rule edits (`ops.rs`), Chromium profiles, history, launching, and the platform
+  traits (`platform.rs`). Reads no environment, clock or home folder on its own.
+- `crates/cli`: the `switchboard-rs` binary. `src/cli.rs` is the command line, `src/commands/` one
+  file per command, `src/guide.md` the agent guide `skill show` prints.
+- `crates/app`: the Rune app: settings window, Quick Switch picker, scenes and goldens.
+- `crates/platform-macos`, `crates/platform-linux`: the platform traits for each OS, plus
+  `fixture.rs`, which installs fixture browsers for tests and scenes. File-only code compiles and
+  is tested on both platforms; AppKit glue is `cfg(target_os = "macos")`.
+- `docs/rewrite/architecture.md`: the agreed design. Read it before changing structure.
+- `docs/rewrite/rune-guide.md`: how to build Rune UIs. Read it before UI work.
+- `docs/rewrite/swift-cli-design.md`: the Swift CLI's design, the source of the CLI's behaviour.
+- `spikes/mac-probe`: a throwaway probe of macOS link delivery (results in `architecture.md`).
 
 ## Commands
 
-Requires full Xcode 26.4 (including its command-line tools), Swift 6, and macOS. The app targets macOS 13+.
+- Everything CI runs: `scripts/check` (exit codes: 10 format, 11 clippy, 12 tests, 13 file sizes).
+- A subset: `scripts/check <filter>`, such as `scripts/check route`. Read the output whole;
+  failures are summarised at the end.
+- Format: `cargo fmt --all`.
+- Run the CLI against a scratch home: `HOME=$(mktemp -d) cargo run -q -p switchboard-cli -- rules list`.
+- Rust is pinned in `rust-toolchain.toml`; rustup installs it on first use.
 
-- `make test` — fast, unhosted Swift Testing tests against the same source files the app compiles.
-- `make verify` — formatting, tests, Debug/Release builds, bundle checks, and whitespace checks. This is the completion check for code/build changes and runs in CI.
-- `make format` — apply the checked-in Swift formatting rules.
-- `make snapshots` — render the settings window's snapshot scenes into `.build/snapshots` and compare them with the goldens in `Tests/SwitchboardCoreTests/Snapshots`; `SNAPSHOT_RECORD=1 make snapshots` rewrites the goldens. `make test` runs them too. With `CI` set they render without comparing, since pixels depend on the macOS version. macOS only.
-- `make verify-linux` — on Linux (cloud sessions): formatting, the Foundation-only tests, and whitespace checks. Use it while developing the core and CLI there. It does not replace `make verify`; report `make verify` as not run.
-- `make debug` / `make release` — build into `.build/xcode`.
-- `make debug-install` / `make install` — build, copy to `/Applications`, and register the app. Run only when installation is requested.
-- `make install-cli` — link `~/.local/bin/switchboard` to the tool inside the installed app. Run only when installation is requested.
+## How things are tested
 
-Tests use temporary files and fake browsers; they have no personal configuration or real browser access. Run them, fix relevant failures, and rerun without asking for permission at each step. Use `make verify` before handing off code changes, and report any checks you could not run. CI uses the Xcode 26.4 family on `macos-26`.
+- **Real implementations, isolated by a temporary home.** No mocks or fakes. A test builds a home
+  with fixture browsers (`platform::fixture::install_browser`): real app bundles on macOS, real
+  desktop entries on Linux, whose program records its arguments to a file instead of opening
+  anything. `$SWITCHBOARD_RS_APPLICATIONS` limits browser discovery to the fixture folder.
+- **The CLI is tested as a binary** (`crates/cli/tests/cli/`, one module per command), checking
+  JSON, exit codes and the resulting files.
+- Each crate has at most one integration-test binary; add modules to it, not new files in `tests/`.
+- Name tests as sentences: `a_stale_revision_exits_5_and_leaves_the_file_alone`.
+- For a behaviour fix, add a test that reaches the failing behaviour first.
+- Cross-browser cases to keep covered: a Chrome rule with a Helium default, the same profile
+  directory in two browsers meaning different people, and legacy rules with no `browser`.
 
-## Where to look
+## Behaviour to preserve
 
-| Area | Source |
-| --- | --- |
-| URL events, launch mode, shutdown and recovery UI | `Switchboard/SwitchboardApp.swift` |
-| Routing lifetime decisions | `Switchboard/RoutingSession.swift` |
-| JSON configuration and atomic persistence | `Switchboard/Config.swift` |
-| Compare-and-swap saves, revisions, and file locks | `Switchboard/ConfigStore.swift` |
-| Link history: storage, redaction, recording | `Switchboard/History.swift` |
-| CLI rule edits: resolution, shadowing, verification | `Switchboard/RuleOperations.swift` |
-| CLI commands, output, doctor, and agent skill | `Switchboard/CLI/`, entry point `CLI/main.swift` |
-| Editor state, autosave and flush | `Switchboard/ConfigViewModel.swift` |
-| Rule matching and preview decisions | `Switchboard/Router.swift` |
-| Browser-specific profile paths and legacy names | `Switchboard/BrowserProfiles.swift` |
-| Installed browsers and executable launching | `Switchboard/BrowserDiscovery.swift`, `Switchboard/BrowserLauncher.swift` |
-| Editor and URL preview | `Switchboard/ContentView.swift` |
-| Regression tests | `Tests/SwitchboardCoreTests/` |
-| Settings window snapshots and their goldens | `Tests/SwitchboardCoreTests/SnapshotTests.swift`, `Snapshot.swift`, `Snapshots/` |
+- First matching rule wins. Contains and Exact compare the whole link ignoring case; Domain matches
+  the host or a subdomain at a dot. Empty patterns never match. A rule without `browser` inherits
+  the default browser. Links are kept as the exact string received: never re-serialise a URL.
+- Profiles are saved as directory identifiers (`Default`, `Profile 1`) and resolved within their
+  own browser. Directory identifiers beat colliding display names; ambiguous names are refused.
+  Changing a rule's browser needs a new profile.
+- `config.json` is shared by the app and the CLI with no daemon. Every save is a compare-and-swap
+  against the loaded revision under a `flock`; never overwrite a file that changed since it was
+  read. Malformed files are reported, never replaced. Edits change only what they were asked to.
+- Launch the browser's executable directly with an argument array, never `open -a`, so profiles
+  work while the browser runs. Pass only complete http(s) links or local files.
+- Surface failures with a recovery action. Never fall back to another browser or profile, or to
+  the system default browser (which may be Switchboard).
+- History recording is best effort: it never blocks or fails a link. CLI output redacts URLs
+  unless `--full-urls`.
+- The CLI never opens links and refuses ambiguous names with exit 3 instead of guessing.
+- Every setting in `config.json` can be read and changed through the CLI.
 
-The Swift package leaves out the app entry point (it is behind `#if !SWIFT_PACKAGE`) and compiles the editor view on macOS only, for the snapshot tests. The CLI's command definitions in `Switchboard/CLI` compile into `SwitchboardCore` in the package; Xcode's `SwitchboardCLI` target compiles them as one module with only the Foundation-only core files they need, and the app embeds the result in `Contents/Helpers`. Add a core file the CLI uses to both Sources phases. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
+## Changes
 
-## Behavior to preserve
+- Work lands on `rune-rewrite`, not `main`, until the owner merges the rewrite.
+- One change per commit, one line: `area: what changed`.
+- Files stay under 1000 lines (`scripts/file-size`; warning at 600). Move code to a new module in
+  its own commit before changing it.
+- Lint rules are errors. `clippy.toml` bans reading the environment, the clock and starting
+  processes outside their owning modules; an `#[expect(..., reason = "...")]` needs a real reason.
+- Add a seam (trait) only when there are two real implementations (macOS and Linux), never for a
+  test alone.
+- A CLI or config change updates `crates/cli/src/guide.md` when agents need to know.
 
-- First matching rule wins. Contains and Exact match the complete URL case-insensitively. Domain matches the host or a subdomain at a dot boundary. Empty patterns are ignored. Routing returns a browser/profile pair; unmatched URLs use the configured default browser and profile. A rule can override its browser; omitted browser fields inherit the top-level browser for compatibility with existing JSON.
-- Configuration lives at `~/.config/switchboard/config.json`. Keep existing JSON readable. A missing file may use defaults; malformed or unreadable files must not be silently replaced. Saves use atomic replacement, and failures retain edits for retry.
-- Persist Chromium directory identifiers (`Default`, `Profile 1`, etc.), and show display names only in the UI. Discover and validate each profile within its destination’s browser; identical directory IDs in Chrome and Helium can refer to different people. Changing a rule’s browser requires a new profile selection. Accept legacy display names only when unambiguous. Directory identifiers take precedence over colliding display names. Browser data locations are browser-specific.
-- Launch the browser executable directly using `Bundle.executableURL` and a Process argument array. Do not use `open -a --args`; profiles must work when the browser is already running. Pass only complete HTTP/HTTPS URLs and preserve the original URL when launching.
-- Surface failures with a recovery action. Do not guess a different browser/profile or fall back through the system default browser, which may be Switchboard itself.
-- Routing must preserve an existing editor session. Flush pending edits before routing from the editor or quitting it. A temporary routing launch exits only after the latest URL's idle delay.
-- Opening or reopening the app starts its menu bar and shortcut without opening Settings. Settings is a single window opened explicitly from the menu; repeated Settings requests focus or restore it, creating a window only when none is open. Suppress AppKit's default reopening.
-- The CLI and the app share `config.json` with no daemon. Every save is a compare-and-swap against the loaded revision under a `flock`; never overwrite a file that changed since it was read. The CLI changes only the rules it was asked to change, refuses ambiguous names (exit 3) instead of guessing, and never opens links.
-- History recording is best effort: it never blocks, delays, or fails opening a link. URLs are redacted in CLI output unless `--full-urls` is passed.
-- Keep App Sandbox disabled: launching the browser requires subprocess control. Preserve HTTP/HTTPS and HTML declarations in `Info.plist` so macOS recognizes the app as a browser.
+## Autonomy
 
-## Verification and review
+- Run the checks, fix failures, and rerun without asking.
+- Commit and push to `rune-rewrite` once `scripts/check` passes.
+- Ask first before: installing the app or CLI on a real machine, changing the default browser, or
+  anything that touches the owner's real `~/.config` or browser data.
 
-For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Cross-browser tests should cover a Chrome rule with a Helium default, browser-specific profile choices, and legacy rules with no browser override. Do not weaken tests to make a change pass.
+## Never
 
-For changes to the settings window, run `make snapshots` and look at the images in `.build/snapshots`. When a change is intended, rerun with `SNAPSHOT_RECORD=1`, review the golden diff, and commit the new goldens. Snapshots show layout and drawing; they don't exercise clicks or window behavior.
+- Read or write the real home folder's config, history or browser data in tests or scenes.
+- Open a real browser from a test.
+- Weaken or skip a test to get a change through.
+- Claim something works on macOS from a Linux run. Say what ran where: "check passed on Linux",
+  "not run on macOS". Link delivery, the status item, the shortcut, the picker over a real browser,
+  Automation prompts, launch at login and the right browser window opening need a person on a Mac.
 
-Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and unintended writes to personal files. Keep installation separate from normal verification. Mention whether actual browser delivery or GUI behavior was exercised; a successful process launch alone does not prove the right browser window opened.
+## Current constraints
 
-## Git
-
-Commit, merge, and push directly to `main`. Feature branches and pull requests aren't needed, including in cloud sessions that start on another branch: merge that work into `main` and push it.
+- 2026-11-02: the rewrite is in progress. Order: core and CLI (done), then the Rune app, then the
+  macOS glue. See `docs/rewrite/architecture.md`.

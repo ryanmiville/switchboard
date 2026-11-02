@@ -1,0 +1,39 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+switchboard-core = { path = "crates/core" }
+switchboard-macos = { path = "crates/platform-macos" }
+switchboard-linux = { path = "crates/platform-linux" }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+# Rune isn't on crates.io. Every Rune crate pins this one revision of `dev`; bump them together
+# (AGENTS.md, "Rune").
+rune = { git = "https://github.com/anomalyco/rune.git", rev = "8844e9bfdc57c6369b485d8f4336ded379bf1000" }
+rune-kit = { git = "https://github.com/anomalyco/rune.git", rev = "8844e9bfdc57c6369b485d8f4336ded379bf1000" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+disallowed_methods = "deny"
+disallowed_types = "deny"
+expect_used = "warn"
+let_underscore_must_use = "deny"
+todo = "warn"
+undocumented_unsafe_blocks = "deny"
+unwrap_used = "warn"
