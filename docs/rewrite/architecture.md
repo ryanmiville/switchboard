@@ -131,7 +131,15 @@ The clock, the random history ids and the home folder are passed in.
 `spikes/mac-probe/run.sh` builds a throwaway windowless accessory Rune app that declares
 `http`/`https`, sends it links with `open -a`, and reports whether they arrive (cold launch,
 warm, exact string, reopen, one process, no Dock icon). It never changes the default browser.
-Run it before building `LinkSource` on macOS. The remaining Mac checklist in `HANDOFF.md` still
+Run it before building `LinkSource` on macOS.
+
+**Result, 2026-11-02 (owner's Mac, macOS 26.6.2, arm64, Rune `8844e9b`):** all five probes
+passed. A cold launch received the link that launched it, a running app received later links,
+links arrived byte for byte (case and percent escapes kept), `on_reopen` ran, every link went to
+one process, and the app ran as `UIElement` (no Dock icon). Not yet observed: delivery as the
+system default browser (`run.sh --keep`), which uses the same Apple event.
+
+The remaining Mac checklist in `HANDOFF.md` still
 applies once the app exists.
 
 ## Order
