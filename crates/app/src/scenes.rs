@@ -39,6 +39,12 @@ pub const SCENES: &[Scene] = &[
         let rule: Rule = ui.editor.config.rules[1].clone();
         ui.draft = Some(Draft::editing(&rule));
     }),
+    ("rule-browser-menu", |ui| {
+        ui.pane = Pane::Routing;
+        let rule: Rule = ui.editor.config.rules[1].clone();
+        ui.draft = Some(Draft::editing(&rule));
+        ui.open = Some(Open::DraftBrowser);
+    }),
     ("rule-error", |ui| {
         ui.pane = Pane::Routing;
         let mut draft = Draft::new_rule();

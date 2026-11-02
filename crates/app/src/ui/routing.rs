@@ -218,7 +218,9 @@ pub fn sheet(ui: &Ui, p: Paint, layer: &mut Vec<El>) {
         None => format!("Default browser ({})", e.browser_name(&default_browser)),
         Some(b) => e.browser_name(b),
     };
-    let browser = select(p, Open::DraftBrowser, &browser_label, ui.open, browsers, layer);
+    // The sheet's menus anchor to fields inside the sheet, so they mount after it (below).
+    let mut menus = Vec::new();
+    let browser = select(p, Open::DraftBrowser, &browser_label, ui.open, browsers, &mut menus);
 
     let choices: Vec<Choice> = e
         .profiles_of(&target)
@@ -239,7 +241,7 @@ pub fn sheet(ui: &Ui, p: Paint, layer: &mut Vec<El>) {
         })
         .collect();
     let profile =
-        select(p, Open::DraftProfile, &e.profile_name(&target, &draft.profile), ui.open, choices, layer);
+        select(p, Open::DraftProfile, &e.profile_name(&target, &draft.profile), ui.open, choices, &mut menus);
 
     let mut body = col()
         .key("draft-body")
@@ -284,6 +286,7 @@ pub fn sheet(ui: &Ui, p: Paint, layer: &mut Vec<El>) {
         })
         .child(body)
         .build(p.k, layer);
+    layer.extend(menus);
 }
 
 /// Validates the draft and saves it into the config, or shows why not.

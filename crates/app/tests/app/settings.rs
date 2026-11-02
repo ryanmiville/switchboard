@@ -130,3 +130,22 @@ fn a_recorded_shortcut_is_saved_and_a_refused_one_is_not() {
     });
     assert_eq!(saved(&rt)["picker"]["shortcut"], "ctrl+shift+k", "a refused chord is never saved");
 }
+
+#[test]
+fn a_menu_inside_the_rule_sheet_opens_under_its_field() {
+    let rt = runtime("rule-browser-menu");
+    let elements = rt.elements();
+    let field =
+        elements.iter().find(|e| e.key.as_deref() == Some("draft-browser-field-trigger")).expect("the field");
+    let item = elements
+        .iter()
+        .find(|e| e.text.as_deref() == Some("Default browser (Helium)") && !e.exiting)
+        .expect("the menu's first item");
+    let ([fx, fy, fw, fh], [ix, iy, _, _]) = (field.rect, item.rect);
+    assert!(ix >= fx - 8.0 && ix <= fx + fw, "the menu lines up with its field ({ix} vs {fx}..{})", fx + fw);
+    assert!(
+        iy >= fy + fh && iy <= fy + fh + 40.0,
+        "the menu opens just below its field ({iy} vs {})",
+        fy + fh
+    );
+}
