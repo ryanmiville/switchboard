@@ -9,6 +9,7 @@ mod app {
 
     mod editor;
     mod goldens;
+    mod icons;
     mod links;
     mod login;
     mod picker;

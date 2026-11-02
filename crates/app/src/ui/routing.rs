@@ -290,9 +290,9 @@ fn drag(ui: &mut Ui, d: &mut Drag, tx: &mut Tx, index: usize, id: switchboard_co
 /// The browser's icon, or an empty square until it has decoded (or when it has none).
 fn icon(ui: &Ui, browser: &str) -> El {
     let slot = el().key("icon").size(ICON, ICON).radius(3.0);
-    let Some(cache) = &ui.icons else { return slot };
+    let Some(icons) = &ui.icons else { return slot };
     let Some(info) = ui.editor.browsers.at(browser) else { return slot };
-    let image = cache.app_icon(&info.locator, ICON);
+    let image = icons.get(&info.locator, ICON);
     if image.error().is_some() {
         return slot;
     }

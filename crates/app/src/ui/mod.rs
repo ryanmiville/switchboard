@@ -3,6 +3,7 @@
 
 pub mod controls;
 mod general;
+pub mod icons;
 pub mod picker;
 mod quick_switch;
 pub mod routing;
@@ -159,7 +160,7 @@ pub struct Ui {
     /// Routing's "Test a URL" field.
     pub test_url: rune::TextEdit,
     /// Browser icons, decoded off the main thread. Created in `setup` with the app's waker.
-    pub icons: Option<rune::ImageCache>,
+    pub icons: Option<icons::Icons>,
     /// The Quick Switch shortcut's recorder.
     pub recorder: rune_kit::ShortcutRecorderState,
     /// Registers a new global shortcut, replacing the old one. `None` in headless runs and tests,

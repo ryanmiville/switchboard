@@ -40,11 +40,11 @@ pub fn spec() -> AppSpec<Ui> {
         scenes: scenes::SCENES,
         poll: Some(|ui, now, tx| ui.poll(now, tx)),
         setup: Some(|ui, wake| {
-            let icons = rune::ImageCache::new(wake.clone());
+            let icons = ui::icons::Icons::new(wake.clone());
             if rune::is_headless() {
                 // A render shows the icons, not the frame before they decoded.
                 for browser in &ui.editor.installed {
-                    icons.app_icon(&browser.locator, ui::routing::ICON).wait().ok();
+                    icons.get(&browser.locator, ui::routing::ICON).wait().ok();
                 }
             }
             ui.icons = Some(icons);
