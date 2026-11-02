@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use switchboard_app::scenes::SCENES;
+use switchboard_app::scenes::{PICKER_SCENES, SCENES};
 
 const BIN: &str = env!("CARGO_BIN_EXE_switchboard-rs-app");
 
@@ -19,9 +19,20 @@ fn actual_dir() -> PathBuf {
 }
 
 #[expect(clippy::disallowed_methods, reason = "goldens render through the real binary")]
-fn snap(scene: &str, theme: &str, out: &Path) -> Result<(), String> {
+fn snap(window: &str, scene: &str, theme: &str, out: &Path) -> Result<(), String> {
     let output = std::process::Command::new(BIN)
-        .args(["--snap", &out.to_string_lossy(), "--scene", scene, "--theme", theme, "--scale", "1"])
+        .args([
+            "--window",
+            window,
+            "--snap",
+            &out.to_string_lossy(),
+            "--scene",
+            scene,
+            "--theme",
+            theme,
+            "--scale",
+            "1",
+        ])
         .output()
         .map_err(|e| e.to_string())?;
     if output.status.success() && out.exists() {
@@ -56,11 +67,13 @@ fn golden_every_scene_in_light_and_dark() {
     let update = std::env::var_os("UPDATE_GOLDENS").is_some();
     let scratch = tempfile::tempdir().unwrap();
     let mut misses = Vec::new();
-    for (scene, _) in SCENES {
+    let scenes =
+        SCENES.iter().map(|(s, _)| ("settings", *s)).chain(PICKER_SCENES.iter().map(|(s, _)| ("picker", *s)));
+    for (window, scene) in scenes {
         for theme in ["light", "dark"] {
             let name = format!("{scene}-{theme}.png");
             let out = scratch.path().join(&name);
-            if let Err(e) = snap(scene, theme, &out) {
+            if let Err(e) = snap(window, scene, theme, &out) {
                 misses.push(format!("{name}: render failed: {e}"));
                 continue;
             }

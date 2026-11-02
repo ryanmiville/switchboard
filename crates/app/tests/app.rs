@@ -11,6 +11,7 @@ mod app {
     mod goldens;
     mod links;
     mod login;
+    mod picker;
     mod scenes;
     mod settings;
 }

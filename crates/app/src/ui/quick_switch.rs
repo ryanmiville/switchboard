@@ -1,6 +1,7 @@
 //! Quick Switch: the shortcut and which destinations the picker shows.
 
 use rune::{El, text};
+
 use switchboard_core::Destination;
 use switchboard_core::picker::{Favorite, PickerSettings};
 
@@ -10,12 +11,17 @@ use super::controls::{DESCRIPTION, Paint, note, page, scroll_body, section, sett
 pub fn pane(ui: &Ui, p: Paint, _layer: &mut Vec<El>) -> El {
     let e = &ui.editor;
     let settings = e.config.picker.clone().unwrap_or_default();
+    let recorder =
+        rune_kit::ShortcutRecorder::new("shortcut-recorder", &ui.recorder, |ui: &mut Ui| &mut ui.recorder)
+            .on_change(|ui: &mut Ui, shortcut, _| ui.record_shortcut(shortcut))
+            .build(p.k)
+            .key("shortcut");
     let shortcut = setting_row(
         p,
         "shortcut-row",
         "Shortcut",
-        Some("Opens the current page in another profile. Change it with switchboard-rs picker shortcut"),
-        text(settings.shortcut.as_str()).key("shortcut").font(p.k.ty.mono).color(p.text()),
+        Some("Opens the current page in another profile"),
+        recorder,
     );
 
     let mut rows = Vec::new();

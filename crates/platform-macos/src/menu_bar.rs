@@ -33,6 +33,12 @@ define_class!(
 
     impl Target {
         // SAFETY: the selector takes one object argument and returns nothing, as declared.
+        #[unsafe(method(quickSwitch:))]
+        fn quick_switch(&self, _sender: &AnyObject) {
+            (self.ivars().on_action)(MenuAction::QuickSwitch);
+        }
+
+        // SAFETY: as above.
         #[unsafe(method(openSettings:))]
         fn open_settings(&self, _sender: &AnyObject) {
             (self.ivars().on_action)(MenuAction::OpenSettings);
@@ -72,6 +78,7 @@ impl MenuBar for MacMenuBar {
         let mtm = MainThreadMarker::new().ok_or("the menu-bar icon must be installed on the main thread")?;
         let target = Target::new(on_action, mtm);
         let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(identity::APP_NAME));
+        add(&menu, &target, "Open Current Page…", sel!(quickSwitch:), "", mtm);
         add(&menu, &target, "Settings…", sel!(openSettings:), ",", mtm);
         menu.addItem(&NSMenuItem::separatorItem(mtm));
         add(&menu, &target, &format!("Quit {}", identity::APP_NAME), sel!(quit:), "q", mtm);

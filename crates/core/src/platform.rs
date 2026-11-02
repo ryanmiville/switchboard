@@ -158,6 +158,8 @@ pub fn write_local_state(user_data: &std::path::Path, profiles: &[(&str, &str)])
 /// What the menu-bar or tray menu asks the app to do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuAction {
+    /// Open the current page in another profile (the Quick Switch panel).
+    QuickSwitch,
     OpenSettings,
     Quit,
 }
@@ -186,4 +188,52 @@ pub trait LoginItem: Send + Sync {
     fn set_enabled(&self, enabled: bool) -> Result<LoginStatus, String>;
     /// Opens the system's own login-items settings, where they exist.
     fn open_settings(&self) {}
+}
+
+/// The app in front when the picker was summoned.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Frontmost {
+    /// Its bundle identifier (macOS) or desktop entry id (Linux).
+    pub id: String,
+    pub pid: i32,
+}
+
+/// Why the current tab's link couldn't be read.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TabError {
+    UnsupportedBrowser,
+    AutomationDenied,
+    NoTab,
+    NotWeb,
+    Unreadable,
+}
+
+impl std::fmt::Display for TabError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            TabError::UnsupportedBrowser => {
+                "Focus a supported browser and try the shortcut again,, or paste a link above."
+            }
+            TabError::AutomationDenied => {
+                "Switchboard isn't allowed to read this browser. In System Settings → Privacy & Security → Automation, turn on the browser under Switchboard RS. You can also paste the link above."
+            }
+            TabError::NoTab => "The browser has no open tab. Open a web page and try again,, or paste a link above.",
+            TabError::NotWeb => "This tab isn't an HTTP or HTTPS page. Paste a complete web link above.",
+            TabError::Unreadable => {
+                "The current tab couldn't be read. Try again from the browser, or copy its address and paste it above."
+            }
+        })
+    }
+}
+
+/// The focused browser's current tab, for Quick Switch.
+pub trait CurrentTab: Send + Sync {
+    /// The app in front now. Call it before showing any window.
+    fn frontmost(&self) -> Option<Frontmost>;
+    /// The link in `app`'s frontmost window's active tab. Can block for a few seconds.
+    fn read(&self, app: &Frontmost) -> Result<String, TabError>;
+    /// Brings `browser` forward after opening a link in it.
+    fn activate(&self, browser: &BrowserInfo);
+    /// Opens the system's Automation privacy settings, where they exist.
+    fn open_automation_settings(&self) {}
 }

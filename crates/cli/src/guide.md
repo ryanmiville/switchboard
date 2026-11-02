@@ -73,7 +73,7 @@ switchboard-rs profiles [--browser <browser>]
 switchboard-rs history [--limit <n>] [--full-urls]
 switchboard-rs history clear [--dry-run]
 switchboard-rs history (on | off)
-switchboard-rs picker (show | shortcut <keys> | favorite | unfavorite | destination | show-all)
+switchboard-rs picker (show | shortcut <keys> | favorite | unfavorite | destination [--only | --hide] | show-all)
 switchboard-rs config
 switchboard-rs doctor
 ```

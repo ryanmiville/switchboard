@@ -1,12 +1,14 @@
 //! Switchboard's platform traits on Linux. Browsers are found through XDG desktop entries.
 
 pub mod browsers;
+pub mod current_tab;
 pub mod fixture;
 pub mod login_item;
 #[cfg(feature = "tray")]
 pub mod menu_bar;
 
 pub use browsers::LinuxBrowsers;
+pub use current_tab::NoCurrentTab as PlatformCurrentTab;
 pub use login_item::Autostart;
 #[cfg(feature = "tray")]
 pub use menu_bar::LinuxTray as PlatformMenuBar;

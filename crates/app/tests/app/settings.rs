@@ -111,3 +111,22 @@ fn moving_a_rule_down_swaps_it_with_the_next() {
     assert_eq!(rules[0]["value"], "acme");
     assert_eq!(rules[1]["value"], "github.com");
 }
+
+#[test]
+fn a_recorded_shortcut_is_saved_and_a_refused_one_is_not() {
+    let mut rt = runtime("quick-switch");
+    let shortcut: rune::Shortcut = "ctrl+shift+k".parse().unwrap();
+    rt.update(move |ui, _| ui.record_shortcut(Some(&shortcut)).unwrap());
+    rt.update(|ui, _| {
+        ui.editor.flush();
+    });
+    assert_eq!(saved(&rt)["picker"]["shortcut"], "ctrl+shift+k");
+
+    rt.update(|ui, _| ui.register_shortcut = Some(Box::new(|_| Err(rune::ShortcutError::Conflict))));
+    let other: rune::Shortcut = "ctrl+alt+j".parse().unwrap();
+    rt.update(move |ui, _| assert!(ui.record_shortcut(Some(&other)).is_err()));
+    rt.update(|ui, _| {
+        ui.editor.flush();
+    });
+    assert_eq!(saved(&rt)["picker"]["shortcut"], "ctrl+shift+k", "a refused chord is never saved");
+}

@@ -5,6 +5,8 @@
 //! item, reading the current tab) is compiled on macOS only.
 
 pub mod browsers;
+#[cfg(target_os = "macos")]
+pub mod current_tab;
 pub mod fixture;
 #[cfg(target_os = "macos")]
 pub mod login_item;
@@ -12,6 +14,8 @@ pub mod login_item;
 pub mod menu_bar;
 
 pub use browsers::MacBrowsers;
+#[cfg(target_os = "macos")]
+pub use current_tab::MacCurrentTab as PlatformCurrentTab;
 #[cfg(target_os = "macos")]
 pub use login_item::MacLoginItem;
 #[cfg(target_os = "macos")]

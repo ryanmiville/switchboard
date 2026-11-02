@@ -3,6 +3,7 @@
 
 pub mod controls;
 mod general;
+pub mod picker;
 mod quick_switch;
 mod routing;
 
@@ -119,6 +120,9 @@ impl Draft {
     }
 }
 
+/// Registers a global shortcut with the system.
+pub type RegisterShortcut = Box<dyn Fn(&rune::Shortcut) -> Result<(), rune::ShortcutError>>;
+
 /// A link that couldn't be opened, and why.
 #[derive(Clone, Debug)]
 pub struct Failure {
@@ -140,13 +144,21 @@ pub struct Ui {
     pub login: crate::login::Login,
     /// The real login item, until `setup` starts its worker with the app's waker.
     pub login_item: Option<Box<dyn switchboard_core::platform::LoginItem>>,
+    /// The Quick Switch shortcut's recorder.
+    pub recorder: rune_kit::ShortcutRecorderState,
+    /// Registers a new global shortcut, replacing the old one. `None` in headless runs and tests,
+    /// where a recorded shortcut is only saved.
+    pub register_shortcut: Option<RegisterShortcut>,
     /// Scenes and tests own their temporary home; it is removed with the state.
     pub fixture: Option<tempfile::TempDir>,
 }
 
 impl Ui {
     pub fn new(editor: Editor) -> Ui {
+        let shortcut = editor.config.picker.clone().unwrap_or_default().shortcut;
         Ui {
+            recorder: rune_kit::ShortcutRecorderState::new(shortcut.as_str().parse().ok()),
+            register_shortcut: None,
             editor,
             pane: Pane::General,
             open: None,
@@ -211,6 +223,24 @@ impl Ui {
                 self.failure = Some(Failure { url: link.to_owned(), reason });
             }
         }
+    }
+
+    /// A newly recorded Quick Switch shortcut: registered first, so a chord the system refuses
+    /// is never saved.
+    pub fn record_shortcut(&mut self, shortcut: Option<&rune::Shortcut>) -> Result<(), rune::ShortcutError> {
+        let Some(shortcut) = shortcut else {
+            return Err(rune::ShortcutError::InvalidAccelerator("Quick Switch needs a shortcut".into()));
+        };
+        if let Some(register) = &self.register_shortcut {
+            register(shortcut)?;
+        }
+        let text = shortcut.to_string();
+        self.editor.edit(|c| {
+            let mut picker = c.picker.clone().unwrap_or_default();
+            picker.shortcut = switchboard_core::picker::Shortcut::new(text);
+            c.picker = Some(picker);
+        });
+        Ok(())
     }
 
     /// Escape closes the innermost open thing.

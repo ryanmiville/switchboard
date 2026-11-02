@@ -38,7 +38,9 @@ live only in `crates/core/src/identity.rs`.
   `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`.
 - Scenes (`crates/app/src/scenes.rs`): `general`, `login-approval`, `general-menu`, `no-default-browser`,
   `routing`, `routing-empty`, `missing-profile`, `rule-new`, `rule-edit`, `rule-error`,
-  `conflict`, `load-error`, `link-failure`, `quick-switch`. Add one for every new pane or state.
+  `conflict`, `load-error`, `link-failure`, `quick-switch`; the picker's (`--window picker`):
+  `picker`, `picker-permission`, `picker-unavailable-favorite`, `picker-empty`. Add one for every
+  new pane or state.
 - Goldens: `crates/app/tests/golden/`, every scene in both themes, compared on Linux only.
   `UPDATE_GOLDENS=1 scripts/check golden` rewrites them; look at every changed image and commit
   it with the change. CI uploads mismatches as the `golden-actual` artifact.

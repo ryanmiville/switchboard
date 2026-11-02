@@ -15,9 +15,11 @@ if [[ "$(uname -s)" == Linux && -z "${VK_ICD_FILENAMES:-}" && -f /usr/share/vulk
 fi
 cargo build -q -p switchboard-app
 app=target/debug/switchboard-rs-app
-for scene in $("$app" --list-scenes); do
-  for theme in light dark; do
-    "$app" --snap "$out/$scene-$theme.png" --scene "$scene" --theme "$theme" --scale 1 >/dev/null
+for window in settings picker; do
+  for scene in $("$app" --window "$window" --list-scenes); do
+    for theme in light dark; do
+      "$app" --window "$window" --snap "$out/$scene-$theme.png" --scene "$scene" --theme "$theme" --scale 1 >/dev/null
+    done
   done
 done
 echo "Rendered $(ls "$out" | wc -l) images into $out"

@@ -4,9 +4,11 @@
 pub mod editor;
 pub mod fixture;
 pub mod login;
+pub mod picker;
 pub mod routing;
 pub mod scenes;
 pub mod ui;
+pub mod watch;
 
 #[cfg(not(target_os = "macos"))]
 pub use switchboard_linux as platform;
@@ -16,6 +18,16 @@ pub use switchboard_macos as platform;
 use rune::AppSpec;
 use switchboard_core::identity;
 use ui::Ui;
+
+/// The Quick Switch panel's spec, with the same fixture rule as [`spec`].
+pub fn picker_spec() -> AppSpec<picker::Picker> {
+    AppSpec {
+        min_size: Some((picker::WIDTH, 200.0)),
+        scenes: scenes::PICKER_SCENES,
+        on_key: Some(|p, ev, tx| p.on_key(ev, tx)),
+        ..AppSpec::new("Quick Switch", (picker::WIDTH, 460.0), fixture::picker, ui::picker::view)
+    }
+}
 
 /// The window's one fixed size: tiling window managers float it instead of stretching it.
 pub const SIZE: (f32, f32) = (860.0, 620.0);

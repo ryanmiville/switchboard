@@ -14,6 +14,7 @@ pub struct LinuxTray {
 impl MenuBar for LinuxTray {
     fn install(on_action: Box<dyn Fn(MenuAction) + Send + Sync>) -> Result<Self, String> {
         let menu = vec![
+            TrayItem::action("quick-switch", "Open Current Page…"),
             TrayItem::action("settings", "Settings…"),
             TrayItem::Separator,
             TrayItem::action("quit", format!("Quit {}", identity::APP_NAME)),
@@ -23,6 +24,7 @@ impl MenuBar for LinuxTray {
             .menu(menu);
         let tray = Tray::new(spec, move |event| match event {
             TrayEvent::Activate { .. } => on_action(MenuAction::OpenSettings),
+            TrayEvent::Menu(id) if id == "quick-switch" => on_action(MenuAction::QuickSwitch),
             TrayEvent::Menu(id) if id == "settings" => on_action(MenuAction::OpenSettings),
             TrayEvent::Menu(id) if id == "quit" => on_action(MenuAction::Quit),
             _ => {}

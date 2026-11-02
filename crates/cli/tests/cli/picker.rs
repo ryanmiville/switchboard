@@ -27,3 +27,15 @@ fn picker_settings_are_changed_through_the_cli() {
     f.json(&["picker", "unfavorite", "--browser", "Chrome", "--profile", "Profile 3"]).ok();
     assert_eq!(f.read_config()["picker"]["favorites"], json!([]));
 }
+
+#[test]
+fn only_then_adding_sets_an_exact_list_of_destinations() {
+    let f = Fixture::new();
+    f.rules(json!([]));
+    f.json(&["picker", "destination", "--browser", "Helium", "--profile", "Default", "--only"]).ok();
+    f.json(&["picker", "destination", "--browser", "Chrome", "--profile", "Profile 1"]).ok();
+    assert_eq!(
+        f.read_config()["picker"]["destinations"],
+        json!([{ "browser": f.helium, "profile": "Default" }, { "browser": f.chrome, "profile": "Profile 1" }])
+    );
+}

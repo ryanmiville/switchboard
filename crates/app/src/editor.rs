@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 
 use switchboard_core::config::{Config, Rule, RuleId};
 use switchboard_core::history::HistoryStore;
+use switchboard_core::picker::{Favorite, PickerSettings};
+use switchboard_core::platform::Family;
 use switchboard_core::profiles::{self, Profile};
 use switchboard_core::store::{ConfigStore, StoreError};
 use switchboard_core::{BrowserInfo, Browsers, Home};
@@ -285,6 +287,30 @@ impl Editor {
             None => self.edit(|c| c.rules.push(rule)),
         }
         true
+    }
+
+    /// The first time the picker is used (no `picker` section yet), starts it with the owner's own
+    /// favorites, as the Swift app did. TO REMOVE: these name one person's profiles; a fresh
+    /// install should start with none (docs/rewrite/architecture.md, "Decisions").
+    pub fn initialize_picker(&mut self) {
+        if self.config.picker.is_some() || self.load_error.is_some() {
+            return;
+        }
+        let wanted = [(Family::Helium, "Ryan", "Ryan"), (Family::Chrome, "horizon3.ai", "Horizon 3")];
+        let mut settings = PickerSettings::default();
+        for (family, profile_name, label) in wanted {
+            let Some(browser) = self.installed.iter().find(|b| b.family == family) else { continue };
+            let Ok(list) = profiles::read(browser) else { continue };
+            let named: Vec<_> = list.iter().filter(|p| p.name == profile_name).collect();
+            if let [one] = named.as_slice() {
+                settings.favorites.push(Favorite {
+                    browser: browser.locator.clone(),
+                    profile: one.directory.clone(),
+                    name: label.into(),
+                });
+            }
+        }
+        self.edit(|c| c.picker = Some(settings));
     }
 
     pub fn set_history_enabled(&mut self, enabled: bool) {

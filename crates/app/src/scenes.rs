@@ -65,3 +65,28 @@ pub const SCENES: &[Scene] = &[
     }),
     ("quick-switch", |ui| ui.pane = Pane::QuickSwitch),
 ];
+
+/// The Quick Switch panel's scenes: `--window picker --scene <name>`.
+pub type PickerScene = (&'static str, fn(&mut crate::picker::Picker));
+
+pub const PICKER_SCENES: &[PickerScene] = &[
+    ("picker", |_| {}),
+    ("picker-permission", |p| {
+        p.link = rune::TextEdit::new("");
+        p.tab_read(Err(switchboard_core::platform::TabError::AutomationDenied));
+    }),
+    ("picker-unavailable-favorite", |p| {
+        let mut settings = p.settings.clone();
+        let browser = settings.favorites[0].browser.clone();
+        settings.favorites.push(switchboard_core::picker::Favorite {
+            browser,
+            profile: "Profile 9".into(),
+            name: "Old work".into(),
+        });
+        p.settings = settings.clone();
+        p.all = crate::picker::choices(&p.browsers.installed(), &settings);
+    }),
+    ("picker-empty", |p| {
+        p.settings.destinations = Some(Vec::new());
+    }),
+];

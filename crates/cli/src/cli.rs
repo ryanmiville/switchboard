@@ -306,8 +306,11 @@ pub enum Picker {
         #[arg(long)]
         profile: String,
         /// Hide it instead of showing it.
-        #[arg(long)]
+        #[arg(long, conflicts_with = "only")]
         hide: bool,
+        /// Show only this destination, hiding every other one. Add more with `destination` after.
+        #[arg(long)]
+        only: bool,
         #[command(flatten)]
         change: Change,
     },

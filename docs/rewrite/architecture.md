@@ -223,3 +223,10 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
 - [ ] Open at login: the toggle registers it, System Settings → Login Items lists it, and it
       starts at the next login.
 - [ ] `~/.local/bin/switchboard-rs` from `scripts/install --cli` runs and reads the same config.
+- [ ] Quick Switch: ⌃⌥Space over a browser shows the panel without taking focus from it; the first
+      time, macOS asks to allow Automation for that browser; the panel shows the current tab's link.
+- [ ] Choosing a destination (click, Return, or ⌘1–⌘9) opens the page in that profile, brings the
+      browser forward, and records a `picker` entry (`switchboard-rs history`).
+- [ ] With Automation denied, the panel says so and Automation Settings… opens the right pane.
+- [ ] Recording a new shortcut in Settings → Quick Switch works at once, and a taken chord is refused.
+- [ ] A change made with `switchboard-rs` while Settings is open shows up within a second.

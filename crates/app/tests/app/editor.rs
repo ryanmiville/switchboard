@@ -62,3 +62,40 @@ fn a_new_default_browser_clears_the_profiles_chosen_in_the_old_one() {
     assert_eq!(c.rules[1].profile, "Profile 2", "a rule with its own browser keeps its profile");
     assert!(!rt.state.editor.flush(), "saving waits for a profile");
 }
+
+#[test]
+fn the_watcher_notices_a_save_made_elsewhere() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.json");
+    std::fs::write(&path, b"{}").unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    switchboard_app::watch::watch(path.clone(), move || {
+        tx.send(()).ok();
+    });
+    // An atomic replace, as every save does.
+    let temp = dir.path().join("config.json.tmp");
+    std::fs::write(&temp, b"{\"browser\":\"x\"}").unwrap();
+    std::fs::rename(&temp, &path).unwrap();
+    assert!(rx.recv_timeout(std::time::Duration::from_secs(3)).is_ok());
+}
+
+#[test]
+fn a_config_without_picker_settings_starts_with_the_owners_favorites_once() {
+    let mut rt = runtime("general");
+    rt.update(|ui, _| {
+        ui.editor.edit(|c| c.picker = None);
+        ui.editor.initialize_picker();
+    });
+    let favorites = rt.state.editor.config.picker.clone().unwrap().favorites;
+    // The fixture has Helium's "Ryan" but no Chrome profile named "horizon3.ai".
+    assert_eq!(favorites.len(), 1);
+    assert_eq!((favorites[0].profile.as_str(), favorites[0].name.as_str()), ("Default", "Ryan"));
+    rt.update(|ui, _| {
+        ui.editor.edit(|c| c.picker.as_mut().unwrap().favorites.clear());
+        ui.editor.initialize_picker();
+    });
+    assert!(
+        rt.state.editor.config.picker.as_ref().unwrap().favorites.is_empty(),
+        "an existing section is left alone"
+    );
+}

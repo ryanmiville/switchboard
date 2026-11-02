@@ -109,13 +109,18 @@ pub fn run(session: &Session<'_>, command: &Picker) -> Result<Output, OpError> {
             value,
             describe,
         ),
-        Picker::Destination { browser, profile, hide, change } => change_setting(
+        Picker::Destination { browser, profile, hide, only, change } => change_setting(
             session,
             change,
             |ops, config| {
                 let (d, _) = destination(ops, browser, profile)?;
                 let mut s = settings(config);
                 // Hiding one destination from "show everything" starts an explicit list of the rest.
+                if *only {
+                    s.destinations = Some(vec![d]);
+                    config.picker = Some(s);
+                    return Ok(());
+                }
                 let mut shown = s.destinations.clone().unwrap_or_else(|| {
                     let mut all = Vec::new();
                     for info in ops.known_browsers() {
