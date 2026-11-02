@@ -13,7 +13,7 @@ fn switching_panes_is_instant() {
         assert!(!e.exiting, "{} is still leaving", e.path);
         assert!(!e.moving, "{} is still moving", e.path);
     }
-    assert!(shows(&rt, "Rules are checked in order"));
+    assert!(shows(&rt, "First match wins"));
 }
 
 #[test]
@@ -101,18 +101,6 @@ fn escape_closes_the_innermost_open_thing() {
 }
 
 #[test]
-fn moving_a_rule_down_swaps_it_with_the_next() {
-    let mut rt = runtime("routing");
-    tap(&mut rt, "rule-0/actions/down");
-    rt.update(|ui, _| {
-        ui.editor.flush();
-    });
-    let rules = saved(&rt)["rules"].clone();
-    assert_eq!(rules[0]["value"], "acme");
-    assert_eq!(rules[1]["value"], "github.com");
-}
-
-#[test]
 fn a_recorded_shortcut_is_saved_and_a_refused_one_is_not() {
     let mut rt = runtime("quick-switch");
     let shortcut: rune::Shortcut = "ctrl+shift+k".parse().unwrap();
@@ -147,5 +135,101 @@ fn a_menu_inside_the_rule_sheet_opens_under_its_field() {
         iy >= fy + fh && iy <= fy + fh + 40.0,
         "the menu opens just below its field ({iy} vs {})",
         fy + fh
+    );
+}
+
+fn row(rt: &rune::Runtime<switchboard_app::ui::Ui>, index: usize) -> String {
+    format!("rule-{}", switchboard_app::ui::routing::rule_key(&rt.state.editor.config.rules[index]))
+}
+
+fn values(rt: &rune::Runtime<switchboard_app::ui::Ui>) -> Vec<String> {
+    rt.state.editor.config.rules.iter().map(|r| r.value.clone()).collect()
+}
+
+#[test]
+fn clicking_a_row_selects_it_and_minus_removes_it() {
+    let mut rt = runtime("routing");
+    let key = row(&rt, 1);
+    tap(&mut rt, &key);
+    assert_eq!(rt.state.selected_index(), Some(1));
+    tap(&mut rt, "remove-rule");
+    assert_eq!(values(&rt), ["github.com", "docs.github.com", "https://example.com/login"]);
+    assert_eq!(rt.state.selected_index(), Some(1), "the next rule is selected");
+}
+
+#[test]
+fn double_clicking_a_row_opens_its_editor() {
+    let mut rt = runtime("routing");
+    let key = row(&rt, 2);
+    let (x, y) = rt.find(&key).unwrap();
+    rt.pointer_down(x, y);
+    rt.pointer_up(x, y);
+    rt.pointer_down(x, y);
+    rt.pointer_up(x, y);
+    frames(&mut rt, 2);
+    let draft = rt.state.draft.as_ref().expect("the rule sheet");
+    assert!(!draft.is_new);
+    assert_eq!(draft.value.text, "docs.github.com");
+}
+
+#[test]
+fn dragging_a_row_down_two_places_drops_it_there() {
+    use switchboard_app::ui::routing::ROW_H;
+    let mut rt = runtime("routing");
+    let key = row(&rt, 0);
+    let (x, y) = rt.find(&key).unwrap();
+    rt.pointer_down(x, y);
+    for step in 1..=10 {
+        rt.pointer_move(x, y + step as f32 * 2.0 * ROW_H / 10.0);
+        rt.frame(1.0 / 60.0);
+    }
+    assert_eq!(rt.state.drag.map(|d| d.to), Some(2), "it would land at the third place");
+    assert_eq!(values(&rt)[0], "github.com", "nothing moves until the drop");
+    rt.pointer_up(x, y + 2.0 * ROW_H);
+    frames(&mut rt, 2);
+    assert_eq!(values(&rt), ["acme", "docs.github.com", "github.com", "https://example.com/login"]);
+    assert!(rt.state.drag.is_none());
+}
+
+#[test]
+fn escape_during_a_drag_puts_the_row_back() {
+    use switchboard_app::ui::routing::ROW_H;
+    let mut rt = runtime("routing");
+    let key = row(&rt, 3);
+    let (x, y) = rt.find(&key).unwrap();
+    rt.pointer_down(x, y);
+    rt.pointer_move(x, y - 2.0 * ROW_H);
+    rt.frame(1.0 / 60.0);
+    assert!(rt.state.drag.is_some());
+    rt.key(KeyEvent { key: Key::Escape, mods: Mods::default() });
+    rt.pointer_up(x, y - 2.0 * ROW_H);
+    frames(&mut rt, 2);
+    assert_eq!(values(&rt)[3], "https://example.com/login");
+}
+
+#[test]
+fn arrows_move_the_selection_return_edits_and_delete_removes() {
+    let mut rt = runtime("routing");
+    let key = |k| KeyEvent { key: k, mods: Mods::default() };
+    rt.key(key(Key::Down));
+    rt.key(key(Key::Down));
+    frames(&mut rt, 1);
+    assert_eq!(rt.state.selected_index(), Some(1));
+    rt.key(key(Key::Enter));
+    frames(&mut rt, 1);
+    assert_eq!(rt.state.draft.as_ref().map(|d| d.value.text.clone()).as_deref(), Some("acme"));
+    rt.key(key(Key::Escape));
+    rt.key(key(Key::Backspace));
+    frames(&mut rt, 1);
+    assert_eq!(values(&rt), ["github.com", "docs.github.com", "https://example.com/login"]);
+}
+
+#[test]
+fn testing_a_url_shows_the_rule_it_matches_without_opening_it() {
+    let rt = runtime("routing-test");
+    assert!(shows(&rt, "Rule 1 (domain github.com) → Helium · Work"), "{:?}", super::support::texts(&rt));
+    assert!(
+        std::fs::read_to_string(rt.state.editor.home.join("launches.log")).is_err(),
+        "nothing was opened"
     );
 }

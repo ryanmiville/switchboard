@@ -20,6 +20,19 @@ pub const SCENES: &[Scene] = &[
         ui.editor.refresh_profiles();
     }),
     ("routing", |ui| ui.pane = Pane::Routing),
+    ("routing-selected", |ui| {
+        ui.pane = Pane::Routing;
+        ui.selected = Some(ui.editor.config.rules[1].id);
+    }),
+    ("routing-dragging", |ui| {
+        ui.pane = Pane::Routing;
+        ui.selected = Some(ui.editor.config.rules[0].id);
+        ui.drag = Some(crate::ui::RuleDrag { from: 0, to: 2, dy: 2.2 * crate::ui::routing::ROW_H });
+    }),
+    ("routing-test", |ui| {
+        ui.pane = Pane::Routing;
+        ui.test_url = rune::TextEdit::new("https://github.com/acme/api");
+    }),
     ("routing-empty", |ui| {
         ui.pane = Pane::Routing;
         ui.editor.edit(|c| c.rules.clear());

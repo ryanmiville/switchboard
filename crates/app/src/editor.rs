@@ -277,6 +277,19 @@ impl Editor {
         self.edit(|c| c.rules.swap(from, to));
     }
 
+    /// Moves a rule to position `to` (0-based), as a drag drops it.
+    pub fn move_rule_to(&mut self, id: RuleId, to: usize) {
+        let Some(from) = self.config.index_of(id) else { return };
+        let to = to.min(self.config.rules.len().saturating_sub(1));
+        if from == to {
+            return;
+        }
+        self.edit(|c| {
+            let rule = c.rules.remove(from);
+            c.rules.insert(to, rule);
+        });
+    }
+
     /// Adds a new rule or replaces the one with the draft's id.
     pub fn commit_rule(&mut self, rule: Rule) -> bool {
         if self.load_error.is_some() {

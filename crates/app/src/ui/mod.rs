@@ -5,7 +5,7 @@ pub mod controls;
 mod general;
 pub mod picker;
 mod quick_switch;
-mod routing;
+pub mod routing;
 
 use std::sync::OnceLock;
 
@@ -123,6 +123,14 @@ impl Draft {
 /// Registers a global shortcut with the system.
 pub type RegisterShortcut = Box<dyn Fn(&rune::Shortcut) -> Result<(), rune::ShortcutError>>;
 
+/// A rule row being dragged: where it started, where it would land, and how far the pointer moved.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RuleDrag {
+    pub from: usize,
+    pub to: usize,
+    pub dy: f32,
+}
+
 /// A link that couldn't be opened, and why.
 #[derive(Clone, Debug)]
 pub struct Failure {
@@ -144,6 +152,14 @@ pub struct Ui {
     pub login: crate::login::Login,
     /// The real login item, until `setup` starts its worker with the app's waker.
     pub login_item: Option<Box<dyn switchboard_core::platform::LoginItem>>,
+    /// The selected rule in the Routing table.
+    pub selected: Option<RuleId>,
+    /// A rule being dragged to a new place.
+    pub drag: Option<RuleDrag>,
+    /// Routing's "Test a URL" field.
+    pub test_url: rune::TextEdit,
+    /// Browser icons, decoded off the main thread. Created in `setup` with the app's waker.
+    pub icons: Option<rune::ImageCache>,
     /// The Quick Switch shortcut's recorder.
     pub recorder: rune_kit::ShortcutRecorderState,
     /// Registers a new global shortcut, replacing the old one. `None` in headless runs and tests,
@@ -157,6 +173,10 @@ impl Ui {
     pub fn new(editor: Editor) -> Ui {
         let shortcut = editor.config.picker.clone().unwrap_or_default().shortcut;
         Ui {
+            selected: None,
+            drag: None,
+            test_url: rune::TextEdit::new(""),
+            icons: None,
             recorder: rune_kit::ShortcutRecorderState::new(shortcut.as_str().parse().ok()),
             register_shortcut: None,
             editor,
@@ -243,10 +263,57 @@ impl Ui {
         Ok(())
     }
 
+    /// The selected rule's index.
+    pub fn selected_index(&self) -> Option<usize> {
+        self.selected.and_then(|id| self.editor.config.index_of(id))
+    }
+
+    pub fn edit_selected(&mut self, tx: &mut Tx) {
+        let Some(i) = self.selected_index() else { return };
+        tx.instant();
+        self.open = None;
+        self.draft = Some(Draft::editing(&self.editor.config.rules[i]));
+    }
+
+    /// Removes the selected rule and selects the one that took its place.
+    pub fn delete_selected(&mut self) {
+        let Some(i) = self.selected_index() else { return };
+        let id = self.editor.config.rules[i].id;
+        self.editor.delete_rule(id);
+        let rules = &self.editor.config.rules;
+        self.selected = rules.get(i).or(rules.last()).map(|r| r.id);
+    }
+
+    /// Routing's keys, when nothing is open: arrows move the selection, Return edits, Delete and
+    /// Backspace remove.
+    fn routing_key(&mut self, ev: &KeyEvent, tx: &mut Tx) -> bool {
+        if self.pane != Pane::Routing || self.draft.is_some() || self.open.is_some() {
+            return false;
+        }
+        let count = self.editor.config.rules.len();
+        if count == 0 {
+            return false;
+        }
+        let at = self.selected_index();
+        let pick = |i: usize| Some(self.editor.config.rules[i].id);
+        match ev.key {
+            Key::Down => self.selected = pick(at.map_or(0, |i| (i + 1).min(count - 1))),
+            Key::Up => self.selected = pick(at.map_or(count - 1, |i| i.saturating_sub(1))),
+            Key::Enter => self.edit_selected(tx),
+            Key::Backspace | Key::Delete => self.delete_selected(),
+            _ => return false,
+        }
+        tx.instant();
+        true
+    }
+
     /// Escape closes the innermost open thing.
     pub fn on_key(&mut self, ev: &KeyEvent, tx: &mut Tx) -> bool {
         if ev.key != Key::Escape {
-            return false;
+            return self.routing_key(ev, tx);
+        }
+        if self.drag.take().is_some() {
+            return true;
         }
         tx.instant();
         if self.open.take().is_some() {
