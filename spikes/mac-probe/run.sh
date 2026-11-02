@@ -20,7 +20,8 @@ if (( KEEP )); then DEST="$HOME/Applications"; else DEST="$(mktemp -d)"; fi
 APP="$DEST/Switchboard Probe.app"
 
 echo "==> building"
-cargo build --release 2>&1 | tail -3 || exit 1
+echo "rust: $(rustc --version)"
+cargo build --release || exit 1
 
 echo "==> bundling $APP"
 rm -rf "$APP"
