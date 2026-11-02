@@ -13,7 +13,10 @@ live only in `crates/core/src/identity.rs`.
   traits (`platform.rs`). Reads no environment, clock or home folder on its own.
 - `crates/cli`: the `switchboard-rs` binary. `src/cli.rs` is the command line, `src/commands/` one
   file per command, `src/guide.md` the agent guide `skill show` prints.
-- `crates/app`: the Rune app: settings window, Quick Switch picker, scenes and goldens.
+- `crates/app`: the Rune app. `editor.rs` is the settings model with no drawing (autosave,
+  conflicts), `routing.rs` opening links and the app's lifetime, `ui/` the window (one module per
+  pane, shared pieces in `ui/controls.rs`), `fixture.rs` and `scenes.rs` the states headless
+  renders and tests start from. Read `docs/rewrite/rune-guide.md` before UI work.
 - `crates/platform-macos`, `crates/platform-linux`: the platform traits for each OS, plus
   `fixture.rs`, which installs fixture browsers for tests and scenes. File-only code compiles and
   is tested on both platforms; AppKit glue is `cfg(target_os = "macos")`.
@@ -28,6 +31,17 @@ live only in `crates/core/src/identity.rs`.
 - A subset: `scripts/check <filter>`, such as `scripts/check route`. Read the output whole;
   failures are summarised at the end.
 - Format: `cargo fmt --all`.
+- See the app without a display: `scripts/snap` renders every scene in light and dark into
+  `scratch/snap/`; one scene: `cargo run -q -p switchboard-app -- --snap out.png --scene routing
+  --theme dark --scale 1`. List scenes with `--list-scenes`; dump the element tree with `--tree`.
+  Headless runs use the fixture home only. Without a GPU, set
+  `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`.
+- Scenes (`crates/app/src/scenes.rs`): `general`, `general-menu`, `no-default-browser`,
+  `routing`, `routing-empty`, `missing-profile`, `rule-new`, `rule-edit`, `rule-error`,
+  `conflict`, `load-error`, `link-failure`, `quick-switch`. Add one for every new pane or state.
+- Goldens: `crates/app/tests/golden/`, every scene in both themes, compared on Linux only.
+  `UPDATE_GOLDENS=1 scripts/check golden` rewrites them; look at every changed image and commit
+  it with the change. CI uploads mismatches as the `golden-actual` artifact.
 - Run the CLI against a scratch home: `HOME=$(mktemp -d) cargo run -q -p switchboard-cli -- rules list`.
 - Rust is pinned in `rust-toolchain.toml`; rustup installs it on first use.
 

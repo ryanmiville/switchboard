@@ -1,0 +1,64 @@
+//! Named starting states for headless renders (`--snap --scene <name>`), tests and goldens. Each
+//! starts from [`crate::fixture::ui`]. Add a scene for every new pane or state, and list the
+//! important ones in AGENTS.md.
+
+use switchboard_core::config::Rule;
+
+use crate::ui::{Draft, Failure, Open, Pane, Ui};
+
+pub type Scene = (&'static str, fn(&mut Ui));
+
+pub const SCENES: &[Scene] = &[
+    ("general", |_| {}),
+    ("general-menu", |ui| ui.open = Some(Open::DefaultBrowser)),
+    ("no-default-browser", |ui| {
+        ui.editor.edit(|c| c.browser.clear());
+        ui.editor.flush();
+        ui.editor.refresh_profiles();
+    }),
+    ("routing", |ui| ui.pane = Pane::Routing),
+    ("routing-empty", |ui| {
+        ui.pane = Pane::Routing;
+        ui.editor.edit(|c| c.rules.clear());
+        ui.editor.flush();
+    }),
+    ("missing-profile", |ui| {
+        ui.pane = Pane::Routing;
+        ui.editor.edit(|c| c.rules[0].profile = "Profile 9".into());
+        ui.editor.refresh_profiles();
+    }),
+    ("rule-new", |ui| {
+        ui.pane = Pane::Routing;
+        ui.draft = Some(Draft::new_rule());
+    }),
+    ("rule-edit", |ui| {
+        ui.pane = Pane::Routing;
+        let rule: Rule = ui.editor.config.rules[1].clone();
+        ui.draft = Some(Draft::editing(&rule));
+    }),
+    ("rule-error", |ui| {
+        ui.pane = Pane::Routing;
+        let mut draft = Draft::new_rule();
+        draft.value = rune::TextEdit::new("github.com/acme");
+        draft.error = Some("“github.com/acme” isn't a domain. Domain rules take a host such as github.com, which also matches its subdomains.".into());
+        ui.draft = Some(draft);
+    }),
+    ("conflict", |ui| {
+        ui.editor.select_default_profile("Profile 1");
+        std::fs::write(&ui.editor.store.path, ui.editor.config.encode()).ok();
+        std::fs::write(&ui.editor.store.path, b"{\"browser\":\"x\",\"defaultProfile\":\"Default\"}\n").ok();
+        ui.editor.check_external();
+    }),
+    ("load-error", |ui| {
+        std::fs::write(&ui.editor.store.path, b"{\"browser\": ").ok();
+        ui.editor.reload();
+    }),
+    ("link-failure", |ui| {
+        ui.pane = Pane::Routing;
+        ui.failure = Some(Failure {
+            url: "https://github.com/acme/api/pull/12".into(),
+            reason: "The profile “Profile 9” is unavailable. Choose an existing profile.".into(),
+        });
+    }),
+    ("quick-switch", |ui| ui.pane = Pane::QuickSwitch),
+];

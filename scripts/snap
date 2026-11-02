@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Renders every scene of the app in light and dark into a folder, to look at or to compare before
+# and after a change or a Rune bump.
+#
+#   scripts/snap [folder]     default: scratch/snap (gitignored); scale 1, the goldens' size
+#
+# Headless runs use the fixture home only. On a machine without a GPU this uses Mesa's software
+# Vulkan (VK_ICD_FILENAMES), as CI does.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+out="${1:-scratch/snap}"
+mkdir -p "$out"
+if [[ "$(uname -s)" == Linux && -z "${VK_ICD_FILENAMES:-}" && -f /usr/share/vulkan/icd.d/lvp_icd.json ]]; then
+  export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json
+fi
+cargo build -q -p switchboard-app
+app=target/debug/switchboard-rs-app
+for scene in $("$app" --list-scenes); do
+  for theme in light dark; do
+    "$app" --snap "$out/$scene-$theme.png" --scene "$scene" --theme "$theme" --scale 1 >/dev/null
+  done
+done
+echo "Rendered $(ls "$out" | wc -l) images into $out"
