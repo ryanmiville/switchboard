@@ -1,0 +1,11 @@
+# A throwaway probe for questions only a Mac can answer. See run.sh.
+[package]
+name = "switchboard-probe"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+rune = { git = "https://github.com/anomalyco/rune.git", rev = "8844e9bfdc57c6369b485d8f4336ded379bf1000" }
