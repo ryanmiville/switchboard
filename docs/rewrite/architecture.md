@@ -218,7 +218,7 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
       window in front; Quit quits.
 - [x] With it as the default browser, a link clicked in another app opens in the right browser
       profile, with no window or icon flashing up. Seen 2026-11-02 on the owner's Mac. Checked with the owner's
-      contains rules, the exact `localhost:4000/` rule, and links that fall through to the default.
+      contains rules, the exact `localhost:4000/` rule, and links that fall through to the default. No window or icon flash was noticed.
 - [ ] A link that can't open (a rule naming a missing profile) shows Settings with the notice.
 - [ ] Opening the app again from Finder or Spotlight brings Settings forward.
 - [ ] Open at login: the toggle registers it, System Settings → Login Items lists it, and it
