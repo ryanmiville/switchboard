@@ -32,6 +32,7 @@ public struct SettingsView: View {
                     .accessibilityIdentifier("pane-\(pane.rawValue)")
                 }
             }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 260)
             .searchable(text: $search, placement: .sidebar)
             .safeAreaInset(edge: .bottom) {
                 SaveStatus(model: model)
@@ -39,15 +40,12 @@ public struct SettingsView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
             }
-            .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 260)
-            .modifier(NoSidebarToggle())
         } detail: {
+            // The sidebar toggle stays: it is the window's only toolbar item, and without a toolbar
+            // macOS gives the window a plain title bar (a centred title over a hard line) instead
+            // of the toolbar with the pane's title and content scrolling under it.
             pane.navigationTitle(model.pane.title)
         }
-        // Keeps the window's toolbar with the sidebar toggle removed: without one macOS gives the
-        // window a plain title bar (a centred title and a hard line) instead of the toolbar
-        // System Settings has, with the pane's title on the left and content scrolling under it.
-        .toolbar(.visible, for: .windowToolbar)
         .frame(width: Self.size.width, height: Self.size.height)
         .sheet(item: draftBinding) { _ in RuleSheet(model: model) }
     }
@@ -79,17 +77,6 @@ public struct SettingsView: View {
         Binding(
             get: { model.draft.map { DraftID(id: $0.id) } },
             set: { if $0 == nil { model.draft = nil } })
-    }
-}
-
-/// System Settings' sidebar can't be collapsed; neither can this one.
-struct NoSidebarToggle: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(macOS 14.0, *) {
-            content.toolbar(removing: .sidebarToggle)
-        } else {
-            content
-        }
     }
 }
 
