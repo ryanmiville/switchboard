@@ -36,7 +36,7 @@ live only in `crates/core/src/identity.rs`.
   --theme dark --scale 1`. List scenes with `--list-scenes`; dump the element tree with `--tree`.
   Headless runs use the fixture home only. Without a GPU, set
   `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`.
-- Scenes (`crates/app/src/scenes.rs`): `general`, `login-approval`, `general-menu`, `no-default-browser`,
+- Scenes (`crates/app/src/scenes.rs`): `general`, `unfocused`, `login-approval`, `general-menu`, `no-default-browser`,
   `routing`, `routing-selected`, `routing-dragging`, `routing-test`, `routing-empty`, `missing-profile`, `rule-new`, `rule-edit`, `rule-browser-menu`, `rule-error`,
   `conflict`, `load-error`, `link-failure`, `quick-switch`; the picker's (`--window picker`):
   `picker`, `picker-permission`, `picker-unavailable-favorite`, `picker-empty`. Add one for every

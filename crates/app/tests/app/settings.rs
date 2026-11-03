@@ -233,3 +233,16 @@ fn testing_a_url_shows_the_rule_it_matches_without_opening_it() {
         "nothing was opened"
     );
 }
+
+#[test]
+fn the_sidebar_edge_is_brighter_while_the_window_has_focus() {
+    let mut rt = runtime("general");
+    let edge = |rt: &rune::Runtime<switchboard_app::ui::Ui>| rt.state.focused;
+    assert!(edge(&rt));
+    rt.window_focus(false);
+    frames(&mut rt, 2);
+    assert!(!edge(&rt), "losing focus dims the edge");
+    rt.window_focus(true);
+    frames(&mut rt, 2);
+    assert!(edge(&rt));
+}

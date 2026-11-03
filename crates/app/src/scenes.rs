@@ -13,6 +13,7 @@ pub const SCENES: &[Scene] = &[
     ("login-approval", |ui| {
         ui.login = crate::login::Login::shown(switchboard_core::platform::LoginStatus::RequiresApproval)
     }),
+    ("unfocused", |ui| ui.focused = false),
     ("general-menu", |ui| ui.open = Some(Open::DefaultBrowser)),
     ("no-default-browser", |ui| {
         ui.editor.edit(|c| c.browser.clear());

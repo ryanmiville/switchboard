@@ -153,6 +153,9 @@ pub struct Ui {
     pub login: crate::login::Login,
     /// The real login item, until `setup` starts its worker with the app's waker.
     pub login_item: Option<Box<dyn switchboard_core::platform::LoginItem>>,
+    /// Whether the window has focus. The sidebar's edge brightens while it does, as macOS's own
+    /// windows show which window is active.
+    pub focused: bool,
     /// The selected rule in the Routing table.
     pub selected: Option<RuleId>,
     /// A rule being dragged to a new place.
@@ -174,6 +177,7 @@ impl Ui {
     pub fn new(editor: Editor) -> Ui {
         let shortcut = editor.config.picker.clone().unwrap_or_default().shortcut;
         Ui {
+            focused: true,
             selected: None,
             drag: None,
             test_url: rune::TextEdit::new(""),
@@ -351,6 +355,7 @@ pub fn view(ui: &Ui, cx: &mut Cx<Ui>) -> El {
     let window = row().key("window").w_full().h_full().fill(p.k.c.bg_deep).child(sidebar(ui, p)).child(panel);
     routing::sheet(ui, p, &mut layer);
     rune_kit::root(window, layer).on_window_focus(|ui: &mut Ui, focused, _| {
+        ui.focused = focused;
         // The CLI may have changed the file while the window was in the background.
         if focused {
             ui.editor.check_external();
@@ -383,7 +388,9 @@ fn sidebar(ui: &Ui, p: Paint) -> El {
         .gap(2.0)
         .radius(p.k.radius.xl)
         .fill(p.k.c.bg_base)
-        .border(p.hair, p.k.c.border_muted)
+        // The edge lights up while the window is the active one.
+        // (The neutral kit's strong border is its separator colour, too faint for this.)
+        .border(1.0, if ui.focused { p.k.c.text_base.alpha(0.2) } else { p.k.c.border_muted })
         .window_drag();
     for shadow in &p.k.elevation.raised {
         list = list.box_shadow(*shadow);
