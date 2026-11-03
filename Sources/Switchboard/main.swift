@@ -46,5 +46,11 @@ if let snapIndex = arguments.firstIndex(of: "--snap") {
     exit(0)
 }
 
+// `--describe-window` runs the real app, opens Settings, prints what macOS made of the window
+// (`WindowReport`) and quits: renders can't show the system's toolbar, sidebar or glass.
+if arguments.contains("--describe-window") {
+    MainActor.assumeIsolated { AppDelegate.describesWindow = true }
+}
+
 // SwiftUI owns the app's windows and menu-bar item; AppDelegate the AppKit side.
 SwitchboardApp.main()

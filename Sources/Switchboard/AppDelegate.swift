@@ -41,6 +41,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     static func now() -> Timestamp { Timestamp(Date()) }
 
+    /// `--describe-window`: open Settings, print `WindowReport`, quit.
+    static var describesWindow = false
+
     override init() {
         let (home, env) = Env.fromProcess()
         // Without $HOME there is nowhere to read settings from; an empty folder lets the app say so.
@@ -96,6 +99,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let startupError {
             settings.failure = Failure(url: "", reason: startupError)
             showSettings()
+        }
+        if Self.describesWindow {
+            showSettings()
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(3))
+                print(WindowReport.describe())
+                exit(0)
+            }
         }
     }
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Opens the bundled app the way a person does (no link, so it stays as a menu-bar app) against a
 # scratch home, and fails if it quits or keeps the CPU busy once it should be idle. It catches a
-# launch that hangs, which builds, tests and renders can't. macOS only; run scripts/bundle first.
+# launch that hangs, which builds, tests and renders can't. Then it prints what macOS made of the
+# settings window. macOS only; run scripts/bundle first.
 #
 #   scripts/launch-check
 #
@@ -38,3 +39,23 @@ if [ "$used" -ge 2 ]; then
   exit 1
 fi
 echo "launch-check: the app launched and settled (${used}s of CPU in 4s)"
+kill "$pid" 2>/dev/null || true
+wait "$pid" 2>/dev/null || true
+
+# What macOS made of the settings window, which renders can't show: the SDK the app was built
+# with (macOS gives the current look only to apps built with its SDK), its toolbar and title bar,
+# and its view classes.
+echo
+echo "launch-check: the executable's build:"
+vtool -show-build "$app/Contents/MacOS/Switchboard" | sed -n '/LC_BUILD_VERSION/,/ntools/p'
+echo "launch-check: the settings window:"
+HOME="$home" SWITCHBOARD_NEXT_APPLICATIONS="$home/Applications" \
+  "$app/Contents/MacOS/Switchboard" --describe-window >"$home/window.txt" 2>/dev/null &
+pid=$!
+for _ in $(seq 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+if kill "$pid" 2>/dev/null; then
+  echo "launch-check: --describe-window didn't finish in 30s" >&2
+  exit 1
+fi
+wait "$pid" || { echo "launch-check: --describe-window failed" >&2; exit 1; }
+cat "$home/window.txt"
