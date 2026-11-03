@@ -2,9 +2,12 @@ import SwiftUI
 import SwitchboardCore
 import SwitchboardEditor
 
-/// The settings window, laid out as System Settings on macOS 26: a sidebar of panes with coloured
-/// icons (Liquid Glass on macOS 26, from the split view itself), and the selected pane as grouped
+/// The settings window, laid out as System Settings on macOS 26: a floating glass sidebar of panes
+/// with coloured icons (the traffic lights sit in its top corner), and the selected pane as grouped
 /// sections under its header card. Notices that need the person sit above the pane.
+///
+/// The sidebar is drawn here rather than by NavigationSplitView: the system's glass sidebar is
+/// composited by the window server, so offscreen renders came out blank.
 public struct SettingsView: View {
     @ObservedObject var model: SettingsModel
 
@@ -16,9 +19,8 @@ public struct SettingsView: View {
     public static let size = CGSize(width: 860, height: 640)
 
     public var body: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
+        HStack(spacing: 0) {
+            Sidebar(model: model)
             VStack(spacing: 0) {
                 Notices(model: model)
                 Group {
@@ -30,45 +32,57 @@ public struct SettingsView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .navigationTitle(model.pane.title)
         }
-        .navigationSplitViewStyle(.balanced)
         .frame(width: Self.size.width, height: Self.size.height)
         .background(Color(nsColor: .windowBackgroundColor))
+        .ignoresSafeArea(.container, edges: .top)
         .sheet(item: draftBinding) { _ in RuleSheet(model: model) }
-    }
-
-    private var sidebar: some View {
-        List(selection: paneBinding) {
-            ForEach(Pane.allCases) { pane in
-                Label {
-                    Text(pane.title)
-                } icon: {
-                    PaneIcon(pane: pane, size: 22)
-                }
-                .padding(.vertical, 2)
-                .tag(pane)
-                .accessibilityIdentifier("pane-\(pane.rawValue)")
-            }
-        }
-        .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
-            SaveStatus(model: model)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 12)
-        }
-        .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 240)
-    }
-
-    private var paneBinding: Binding<Pane?> {
-        Binding(get: { model.pane }, set: { if let pane = $0 { model.pane = pane } })
     }
 
     private var draftBinding: Binding<DraftID?> {
         Binding(
             get: { model.draft.map { DraftID(id: $0.id) } },
             set: { if $0 == nil { model.draft = nil } })
+    }
+}
+
+/// The panes, as a floating glass panel inset from the window's edges.
+struct Sidebar: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // Room for the traffic lights, which sit inside the sidebar's top corner.
+            Spacer().frame(height: 40)
+            ForEach(Pane.allCases) { pane in
+                let selected = model.pane == pane
+                Button {
+                    model.pane = pane
+                } label: {
+                    HStack(spacing: 9) {
+                        PaneIcon(pane: pane, size: 22)
+                        Text(pane.title)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .contentShape(Rectangle())
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(selected ? Color.accentColor.opacity(0.2) : Color.clear))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("pane-\(pane.rawValue)")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+            Spacer()
+            SaveStatus(model: model).padding(.horizontal, 8)
+        }
+        .padding(10)
+        .frame(width: 212)
+        .frame(maxHeight: .infinity)
+        .glass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(8)
     }
 }
 
@@ -88,7 +102,7 @@ struct SaveStatus: View {
             systemImage: saving ? "checkmark.circle" : "exclamationmark.circle"
         )
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color.secondaryLabel)
         .accessibilityIdentifier("save-status")
     }
 }
@@ -162,7 +176,10 @@ struct Banner<Actions: View>: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-        .glass(in: RoundedRectangle(cornerRadius: 14, style: .continuous), tint: .orange.opacity(0.15))
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(
+                Color.orange.opacity(0.3), lineWidth: 0.5))
     }
 }
 

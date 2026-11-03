@@ -141,21 +141,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         session.stayResident()
         startResident()
         if window == nil {
-            // As System Settings: content under a transparent title bar, so the split view's
-            // sidebar runs the full height with the traffic lights inside it, and a unified
-            // toolbar for the pane's title.
+            // As System Settings: content under a transparent title bar, so the glass sidebar
+            // runs the full height with the traffic lights inside its top corner.
             let window = NSWindow(
                 contentRect: NSRect(origin: .zero, size: SettingsView.size),
                 styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                 backing: .buffered, defer: false)
             window.title = Identity.appName
             window.titlebarAppearsTransparent = true
-            window.toolbarStyle = .unified
+            window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
             window.delegate = self
             let controller = NSHostingController(rootView: SettingsView(model: settings))
             window.contentViewController = controller
-            window.toolbar = NSToolbar(identifier: "settings")
             window.setContentSize(SettingsView.size)
             window.center()
             self.window = window

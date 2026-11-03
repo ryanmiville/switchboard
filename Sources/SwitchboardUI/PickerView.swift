@@ -118,7 +118,7 @@ public struct PickerView: View {
             HStack(spacing: 12) {
                 Image(systemName: "link")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.secondaryLabel)
                 TextField("Paste an HTTP or HTTPS link", text: $model.state.link)
                     .textFieldStyle(.plain)
                     .font(.system(size: 20))
@@ -130,7 +130,7 @@ public struct PickerView: View {
                     Image(systemName: "gearshape")
                 }
                 .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.secondaryLabel)
                 .help("Quick Switch settings")
             }
             .padding(.horizontal, 20)
@@ -138,7 +138,7 @@ public struct PickerView: View {
             Divider().opacity(0.5)
             if model.reading {
                 Label("Reading the current tab…", systemImage: "hourglass")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(Color.secondaryLabel)
                     .padding(.horizontal, 20).padding(.top, 8)
             }
             if let error = model.state.error {
@@ -149,7 +149,7 @@ public struct PickerView: View {
                         if model.state.needsPermission {
                             Button("Automation Settings…") { model.services.openAutomationSettings() }
                                 .controlSize(.small)
-                                .glassButton()
+                                .buttonStyle(.bordered)
                         }
                     }
                 }
@@ -165,7 +165,8 @@ public struct PickerView: View {
                     Image(systemName: "rectangle.stack.badge.minus").font(.system(size: 24)).foregroundStyle(
                         .tertiary)
                     Text("No destinations are shown.").font(.headline)
-                    Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(.secondary)
+                    Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(
+                        Color.secondaryLabel)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -233,7 +234,7 @@ struct KeyHint: View {
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
             Text(label).font(.caption)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color.secondaryLabel)
     }
 }
 
@@ -252,16 +253,16 @@ struct ChoiceRow: View {
                 Text(choice.profileName).font(.body.weight(.medium))
                 Text(choice.error ?? choice.browserName)
                     .font(.caption)
-                    .foregroundStyle(choice.error == nil ? Color.secondary : Color.red)
+                    .foregroundStyle(choice.error == nil ? Color.secondaryLabel : Color.red)
                     .lineLimit(2)
             }
             Spacer()
             if let number {
-                Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(Color.secondaryLabel)
             }
             Button(action: star) {
                 Image(systemName: choice.favorite ? "star.fill" : "star")
-                    .foregroundStyle(choice.favorite ? Color.yellow : Color.secondary)
+                    .foregroundStyle(choice.favorite ? Color.yellow : Color.secondaryLabel)
             }
             .buttonStyle(.borderless)
         }

@@ -20,7 +20,8 @@ public enum Renderer {
         window.animationBehavior = .none
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         defer { window.close() }
-        let host = NSHostingView(rootView: view.environment(\.colorScheme, dark ? .dark : .light))
+        let host = NSHostingView(
+            rootView: view.environment(\.colorScheme, dark ? .dark : .light).environment(\.flatGlass, true))
         window.contentView = host
         // SwiftUI and the AppKit views it hosts settle over a few run loop turns.
         for _ in 0..<6 {

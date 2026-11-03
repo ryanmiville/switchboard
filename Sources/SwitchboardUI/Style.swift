@@ -65,23 +65,29 @@ struct SymbolTile: View {
     }
 }
 
-/// A browser's own app icon, or the generic app icon when it isn't installed.
+/// A browser's own app icon. An app with no icon of its own (or none installed) gets a globe
+/// tile rather than the generic app placeholder.
 struct BrowserIcon: View {
     let locator: String
     var size: CGFloat = 20
 
     var body: some View {
-        Image(nsImage: Self.icon(locator))
-            .resizable()
-            .interpolation(.high)
-            .frame(width: size, height: size)
+        if let icon = Self.icon(locator) {
+            Image(nsImage: icon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: size, height: size)
+        } else {
+            SymbolTile(symbol: "globe", color: .gray, size: size * 0.86)
+                .frame(width: size, height: size)
+        }
     }
 
-    static func icon(_ locator: String) -> NSImage {
-        if !locator.isEmpty, FileManager.default.fileExists(atPath: locator) {
-            return NSWorkspace.shared.icon(forFile: locator)
-        }
-        return NSWorkspace.shared.icon(for: .application)
+    static func icon(_ locator: String) -> NSImage? {
+        guard !locator.isEmpty, let bundle = Bundle(path: locator) else { return nil }
+        let info = bundle.infoDictionary ?? [:]
+        guard info["CFBundleIconFile"] != nil || info["CFBundleIconName"] != nil else { return nil }
+        return NSWorkspace.shared.icon(forFile: locator)
     }
 }
 
@@ -132,35 +138,54 @@ extension RowLabel where Icon == EmptyView {
     }
 }
 
+/// Whether glass is drawn as a flat fill: offscreen renders (`Renderer`) can't capture Liquid
+/// Glass, which the window server composites, so they show its layout and colour instead.
+struct FlatGlassKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var flatGlass: Bool {
+        get { self[FlatGlassKey.self] }
+        set { self[FlatGlassKey.self] = newValue }
+    }
+}
+
+struct GlassSurface<S: Shape>: ViewModifier {
+    let shape: S
+    let tint: Color?
+    @Environment(\.flatGlass) private var flat
+
+    func body(content: Content) -> some View {
+        if flat {
+            content
+                .background(Color(nsColor: .windowBackgroundColor), in: shape)
+                .background((tint ?? .clear), in: shape)
+                .overlay(shape.stroke(Color(nsColor: .separatorColor), lineWidth: 0.5))
+        } else if #available(macOS 26.0, *) {
+            content.glassEffect(Glass.regular.tint(tint), in: shape)
+        } else {
+            content
+                .background(.regularMaterial, in: shape)
+                .overlay(shape.stroke(Color(nsColor: .separatorColor), lineWidth: 0.5))
+        }
+    }
+}
+
 extension View {
-    /// Liquid Glass in `shape` on macOS 26; a regular material before it.
-    @ViewBuilder
-    func glass(in shape: some Shape, tint: Color? = nil, interactive: Bool = false) -> some View {
-        if #available(macOS 26.0, *) {
-            self.glassEffect(
-                interactive ? Glass.regular.tint(tint).interactive() : Glass.regular.tint(tint), in: shape)
-        } else {
-            self.background(.regularMaterial, in: shape)
-        }
+    /// Liquid Glass in `shape` on macOS 26, a regular material before it, and a flat fill in renders.
+    func glass(in shape: some Shape, tint: Color? = nil) -> some View {
+        modifier(GlassSurface(shape: shape, tint: tint))
     }
 
-    /// The prominent glass button style on macOS 26; the bordered prominent style before it.
-    @ViewBuilder
+    /// The prominent button style. On macOS 26 the system draws it as Liquid Glass itself.
     func prominentButton() -> some View {
-        if #available(macOS 26.0, *) {
-            self.buttonStyle(.glassProminent)
-        } else {
-            self.buttonStyle(.borderedProminent)
-        }
+        buttonStyle(.borderedProminent)
     }
+}
 
-    /// The glass button style on macOS 26; the bordered style before it.
-    @ViewBuilder
-    func glassButton() -> some View {
-        if #available(macOS 26.0, *) {
-            self.buttonStyle(.glass)
-        } else {
-            self.buttonStyle(.bordered)
-        }
-    }
+extension Color {
+    /// Secondary text and symbols that keep their colour on glass, where SwiftUI's hierarchical
+    /// `.secondary` turns vibrant (and offscreen renders lose it).
+    static let secondaryLabel = Color(nsColor: .secondaryLabelColor)
 }
