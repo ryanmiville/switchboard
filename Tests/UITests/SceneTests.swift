@@ -6,8 +6,12 @@ import Testing
 @testable import SwitchboardUI
 
 // Every scene drawn in light and dark into .build/snapshots, and compared with its golden in
-// Tests/UITests/Goldens when one exists. Pixels depend on the macOS version, so goldens are
-// compared only when SNAPSHOT_COMPARE=1; SNAPSHOT_RECORD=1 rewrites them. CI uploads the renders.
+// Tests/UITests/Goldens when one exists.
+//
+// - SNAPSHOT_COMPARE=1 compares. CI does; goldens are recorded on CI's runner, since pixels depend
+//   on the macOS version, so a Mac with another version may not match them.
+// - SNAPSHOT_RECORD=1 rewrites every golden; SNAPSHOT_RECORD=routing,picker only those scenes'.
+//   On CI, the "Record goldens" workflow does this and commits the result.
 @MainActor
 @Suite(.serialized)
 struct SceneTests {
@@ -22,8 +26,16 @@ struct SceneTests {
             let scene = try Scenes.make(name)
             defer { scene.remove() }
             let pixels = try await Renderer.render(scene.view, size: scene.size, dark: dark)
-            try check("\(name)-\(dark ? "dark" : "light")", pixels)
+            try check(scene: name, "\(name)-\(dark ? "dark" : "light")", pixels)
         }
+    }
+
+    @Test func recordingTakesEveryScenesOrAList() {
+        #expect(Self.records("routing", "1"))
+        #expect(Self.records("routing", "general, routing"))
+        #expect(!Self.records("routing", "routing-test"))
+        #expect(!Self.records("routing", nil))
+        #expect(!Self.records("routing", "0"))
     }
 
     @Test func scenesNeverUseTheRealHome() throws {
@@ -50,13 +62,20 @@ struct SceneTests {
         #expect(scene.settings.editor.config.defaultProfile == "Profile 1")
     }
 
-    private func check(_ name: String, _ pixels: Pixels) throws {
+    /// Whether SNAPSHOT_RECORD asks for `scene`: `1` for every scene, or a comma-separated list.
+    static func records(_ scene: String, _ setting: String?) -> Bool {
+        guard let setting, !setting.isEmpty, setting != "0" else { return false }
+        return setting == "1"
+            || setting.split(separator: ",").contains { $0.trimmingCharacters(in: .whitespaces) == scene }
+    }
+
+    private func check(scene: String, _ name: String, _ pixels: Pixels) throws {
         let environment = ProcessInfo.processInfo.environment
         try FileManager.default.createDirectory(at: Self.output, withIntermediateDirectories: true)
         let png = try pixels.png()
         try png.write(to: Self.output.appendingPathComponent("\(name).png"))
         let golden = Self.goldens.appendingPathComponent("\(name).png")
-        if environment["SNAPSHOT_RECORD"] == "1" {
+        if Self.records(scene, environment["SNAPSHOT_RECORD"]) {
             try png.write(to: golden)
             return
         }
@@ -73,6 +92,11 @@ struct SceneTests {
         guard share > 0.001 else { return }
         let diffURL = Self.output.appendingPathComponent("\(name)-diff.png")
         try diff.png().write(to: diffURL)
-        Issue.record("\(name) differs from its golden in \(changed) pixels. Diff: \(diffURL.path)")
+        Issue.record(
+            """
+            \(name) differs from its golden in \(changed) pixels. Diff: \(diffURL.path)
+            If the change is intended, look at the render, then re-record it: on CI, run the "Record goldens" \
+            workflow with scenes "\(scene)"; on the runner's macOS, SNAPSHOT_RECORD=\(scene) scripts/check SceneTests.
+            """)
     }
 }

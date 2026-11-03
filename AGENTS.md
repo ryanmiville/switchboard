@@ -45,9 +45,14 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
   named ones) in light and dark into `.build/snap/`; one scene:
   `swift run Switchboard --snap out.png --scene routing [--theme dark]`; list them with
   `--list-scenes`. The UI tests render every
-  scene in both themes into `.build/snapshots` (CI uploads them as `scene-renders`);
-  `SNAPSHOT_COMPARE=1` compares them with `Tests/UITests/Goldens`, `SNAPSHOT_RECORD=1` rewrites
-  those. Scenes use fixture homes only. Add a scene for every new pane or state.
+  scene in both themes into `.build/snapshots` (CI uploads them as `scene-renders`). Scenes use
+  fixture homes only. Add a scene for every new pane or state.
+- Goldens: `Tests/UITests/Goldens/<scene>-<light|dark>.png`, recorded on CI's runner and compared
+  there (`SNAPSHOT_COMPARE=1`); another macOS version may not match them locally. When a change
+  is meant to change a scene, look at its render and `-diff` image in the failed run's
+  `scene-renders` artifact, then run the **Record goldens** workflow on the branch with those
+  scenes (`scenes: routing,picker`, empty for all). It records, compares again, and commits the
+  goldens. Never re-record a scene you haven't looked at, or to hide a change you didn't mean.
 - Build the app: `scripts/bundle [--debug]` (into `.build/bundle/`; CI's macOS job runs it).
   Install it: `scripts/install [--cli]`, only when the owner asks.
 

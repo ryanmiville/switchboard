@@ -19,6 +19,8 @@ jobs:
     timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+      # Scene goldens are recorded on this runner (the Record goldens workflow), so they compare.
+      SNAPSHOT_COMPARE: "1"
     steps:
       - uses: actions/checkout@v6
         with:
@@ -35,7 +37,7 @@ jobs:
         run: '".build/bundle/Switchboard Next.app/Contents/MacOS/Switchboard" --snap .build/snapshots/app-routing.png --scene routing'
       - name: Render every scene through scripts/snap
         run: SNAP_DIR=.build/snapshots/snap scripts/snap
-      # The scene renders from the UI tests and the app, for review; goldens are compared only on request.
+      # The scene renders from the UI tests and the app, with a -diff image for each golden that differs.
       - name: Upload scene renders
         if: always()
         uses: actions/upload-artifact@v7
