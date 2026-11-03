@@ -1,0 +1,67 @@
+name: Record goldens
+
+# Re-records scene goldens on CI's runner and commits them to the branch it runs on. Run it after
+# a change that is meant to change how scenes look: from the Actions tab ("Run workflow"), or
+# `gh workflow run record-goldens.yml --ref <branch> -f scenes=routing,picker`. Look at the
+# renders first: the Verify run's scene-renders artifact has them, with -diff images.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenes:
+        description: "Scenes to re-record, comma-separated (empty for every scene)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: record-goldens-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+      SCENES: ${{ inputs.scenes }}
+    steps:
+      - uses: actions/checkout@v6
+      # GitHub starts manual workflows only from a file on the default branch, so this file is on
+      # main too; it runs the chosen branch's code, which needs scene goldens to record.
+      - name: Check the branch and the scene names
+        shell: bash
+        run: |
+          [[ -d Tests/UITests/Goldens ]] || { echo "This branch has no scene goldens (Tests/UITests/Goldens)." >&2; exit 2; }
+          [[ "$SCENES" =~ ^[a-z0-9,\ -]*$ ]] || { echo "Scenes are lowercase names separated by commas." >&2; exit 2; }
+      - name: Record
+        shell: bash
+        run: SNAPSHOT_RECORD="${SCENES:-1}" scripts/check SceneTests
+      # Rendering again and comparing proves the new goldens are stable on this runner.
+      - name: Compare with what was just recorded
+        shell: bash
+        run: SNAPSHOT_COMPARE=1 scripts/check SceneTests
+      - name: Commit changed goldens
+        shell: bash
+        run: |
+          git add Tests/UITests/Goldens
+          if git diff --cached --quiet; then
+            echo "No golden changed."
+            exit 0
+          fi
+          git diff --cached --stat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "ui: record scene goldens on CI (${SCENES:-every scene})"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Upload the recorded goldens
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: recorded-goldens
+          path: |
+            Tests/UITests/Goldens
+            .build/snapshots
+          if-no-files-found: ignore
