@@ -1,21 +1,29 @@
 # Switchboard
 
-Personal macOS URL router built with SwiftUI/AppKit. Keep changes small and use the standard library and Apple frameworks unless a dependency has a clear payoff.
+A personal macOS URL router built with SwiftUI/AppKit: set as the default browser, it opens each
+link in a Chromium browser profile chosen by ordered rules. A `switchboard` CLI shares its
+configuration. Keep changes small and use the standard library and Apple frameworks unless a
+dependency has a clear payoff. A Rust rewrite is in progress on `rune-rewrite`; this branch is the
+shipped app.
 
 ## Commands
 
-Requires full Xcode 26.4 (including its command-line tools), Swift 6, and macOS. The app targets macOS 13+.
-
-- `make test` — fast, unhosted Swift Testing tests against the same source files the app compiles.
-- `make verify` — formatting, tests, Debug/Release builds, bundle checks, and whitespace checks. This is the completion check for code/build changes and runs in CI.
-- `make format` — apply the checked-in Swift formatting rules.
-- `make snapshots` — render the settings window's snapshot scenes into `.build/snapshots` and compare them with the goldens in `Tests/SwitchboardCoreTests/Snapshots`; `SNAPSHOT_RECORD=1 make snapshots` rewrites the goldens. `make test` runs them too. With `CI` set they render without comparing, since pixels depend on the macOS version. macOS only.
-- `make verify-linux` — on Linux (cloud sessions): formatting, the Foundation-only tests, and whitespace checks. Use it while developing the core and CLI there. It does not replace `make verify`; report `make verify` as not run.
-- `make debug` / `make release` — build into `.build/xcode`.
-- `make debug-install` / `make install` — build, copy to `/Applications`, and register the app. Run only when installation is requested.
-- `make install-cli` — link `~/.local/bin/switchboard` to the tool inside the installed app. Run only when installation is requested.
-
-Tests use temporary files and fake browsers; they have no personal configuration or real browser access. Run them, fix relevant failures, and rerun without asking for permission at each step. Use `make verify` before handing off code changes, and report any checks you could not run. CI uses the Xcode 26.4 family on `macos-26`.
+- Everything CI runs: `scripts/check`. Exit codes: 10 format, 11 lint, 12 tests, 13 file sizes,
+  14 Xcode build, 15 bundle, 16 whitespace. Test failures are repeated at the end; the full log is
+  in `.build/check.log`. `make verify` runs the same script.
+- A subset while iterating: `scripts/check <filter>`, such as `scripts/check RouterTests` (a
+  `swift test --filter` pattern). A filter that matches nothing fails. Finish with a full run.
+- On Linux (cloud sessions), `scripts/check` runs formatting, lint, file sizes, the Foundation-only
+  tests and whitespace, then names what it skipped. A Linux pass means "make verify not run".
+  `scripts/cloud-setup.sh` is the environment's setup script; it installs the matching Swift.
+- Format: `make format`. Requires Xcode 26.4 on macOS (CI: `macos-26`), Swift 6.3.x on Linux.
+- Snapshots: `make snapshots` renders the settings window's scenes into `.build/snapshots` and
+  compares them with `Tests/SwitchboardCoreTests/Snapshots`; `SNAPSHOT_RECORD=1 make snapshots`
+  rewrites the goldens. With `CI` set they render without comparing (pixels depend on the macOS
+  version); CI uploads them as the `snapshots` artifact. macOS only.
+- Run the CLI against a scratch home: `HOME=$(mktemp -d) swift run switchboard rules list`.
+- `make debug` / `make release` build into `.build/xcode`. `make debug-install`, `make install`
+  and `make install-cli` install on the real machine: only when the owner asks.
 
 ## Where to look
 
@@ -35,8 +43,34 @@ Tests use temporary files and fake browsers; they have no personal configuration
 | Editor and URL preview | `Switchboard/ContentView.swift` |
 | Regression tests | `Tests/SwitchboardCoreTests/` |
 | Settings window snapshots and their goldens | `Tests/SwitchboardCoreTests/SnapshotTests.swift`, `Snapshot.swift`, `Snapshots/` |
+| Banned calls and their exceptions | `scripts/lint.py`, `scripts/lint-exceptions.txt` |
 
-The Swift package leaves out the app entry point (it is behind `#if !SWIFT_PACKAGE`) and compiles the editor view on macOS only, for the snapshot tests. The CLI's command definitions in `Switchboard/CLI` compile into `SwitchboardCore` in the package; Xcode's `SwitchboardCLI` target compiles them as one module with only the Foundation-only core files they need, and the app embeds the result in `Contents/Helpers`. Add a core file the CLI uses to both Sources phases. Reopen tests call the real app delegate with isolated configuration and temporary AppKit windows; they do not launch the app or browsers. New app sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI, Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along with tests that need them; keep configuration types Foundation-only so the CLI can share them. Services are structs; observable UI state and AppKit delegates are classes with main-actor isolation where appropriate.
+The Swift package leaves out the app entry point (behind `#if !SWIFT_PACKAGE`) and compiles the
+editor view on macOS only, for the snapshot tests. The CLI's command definitions in
+`Switchboard/CLI` compile into `SwitchboardCore` in the package; Xcode's `SwitchboardCLI` target
+compiles them as one module with only the Foundation-only core files they need, and the app embeds
+the result in `Contents/Helpers`. Add a core file the CLI uses to both Sources phases. New app
+sources must also be added to the Xcode project's Sources phase. Files that import AppKit, SwiftUI,
+Carbon, Combine, or ServiceManagement must be listed in `Package.swift`'s Linux exclusions, along
+with tests that need them; keep configuration types Foundation-only so the CLI can share them.
+Services are structs; observable UI state and AppKit delegates are classes with main-actor
+isolation where appropriate.
+
+## How things are tested
+
+- Tests use temporary files and fixture browsers (`Tests/SwitchboardCoreTests/Fixtures.swift`):
+  isolated configuration and Local State files, and an injected process runner instead of real
+  browsers. Reopen tests call the real app delegate with isolated configuration and temporary
+  AppKit windows; they don't launch the app or browsers.
+- The CLI is tested in-process through `CommandContext` (`CLITests`), checking JSON, exit codes and
+  the resulting files.
+- One test target, `SwitchboardCoreTests`: add files to it, not new targets. Name tests as
+  sentences: `malformedFileIsNotTreatedAsMissing`.
+- For a behaviour fix, add a test that reaches the failing behaviour first.
+- Cross-browser cases to keep covered: a Chrome rule with a Helium default, browser-specific
+  profile choices, and legacy rules with no browser override.
+- Snapshots show layout and drawing; they don't exercise clicks or window behaviour. Add a scene
+  for every new pane or state, and record its golden on a Mac.
 
 ## Behavior to preserve
 
@@ -51,14 +85,46 @@ The Swift package leaves out the app entry point (it is behind `#if !SWIFT_PACKA
 - History recording is best effort: it never blocks, delays, or fails opening a link. URLs are redacted in CLI output unless `--full-urls` is passed.
 - Keep App Sandbox disabled: launching the browser requires subprocess control. Preserve HTTP/HTTPS and HTML declarations in `Info.plist` so macOS recognizes the app as a browser.
 
-## Verification and review
+## Changes
 
-For behavior fixes, add a regression test that reaches the failing behavior. Use isolated fixture configuration and Local State files, and inject the process runner instead of opening real browsers. Cross-browser tests should cover a Chrome rule with a Helium default, browser-specific profile choices, and legacy rules with no browser override. Do not weaken tests to make a change pass.
+- One change per commit, one line: `area: what changed` (such as `cli: refuse a stale revision`).
+- Files stay under 1000 lines (`scripts/file-size`; warning at 600; existing exceptions in
+  `scripts/file-size-exceptions.txt` may not grow). Move code to a new file in its own commit
+  before changing it, and add the file to the Xcode project.
+- `scripts/lint.py` bans reading the real home folder, the environment or the clock, starting
+  processes, and `NSWorkspace.open` outside their owners. An exception in
+  `scripts/lint-exceptions.txt` needs a real reason.
+- A CLI or config change updates the agent guide in `Switchboard/CLI/Skill.swift` when agents need
+  to know.
+- Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and
+  unintended writes to personal files.
 
-For changes to the settings window, run `make snapshots` and look at the images in `.build/snapshots`. When a change is intended, rerun with `SNAPSHOT_RECORD=1`, review the golden diff, and commit the new goldens. Snapshots show layout and drawing; they don't exercise clicks or window behavior.
+## Autonomy
 
-Review changes for configuration compatibility, wrong-profile launches, swallowed failures, and unintended writes to personal files. Keep installation separate from normal verification. Mention whether actual browser delivery or GUI behavior was exercised; a successful process launch alone does not prove the right browser window opened.
+- Run the checks, fix failures, and rerun without asking.
+- Commit, merge, and push directly to `main` once `scripts/check` passes. Feature branches and
+  pull requests aren't needed, including in cloud sessions that start on another branch (other
+  than `rune-rewrite`, which stays separate).
+- After pushing from Linux, watch CI's macOS `verify` job: it is the only check of the app sources,
+  snapshots and Xcode builds. Fix it if it goes red.
+- Ask first before: installing the app or CLI, changing the default browser, or anything that
+  touches the owner's real `~/.config` or browser data.
 
-## Git
+## Never
 
-Commit, merge, and push directly to `main`. Feature branches and pull requests aren't needed, including in cloud sessions that start on another branch: merge that work into `main` and push it.
+- Read or write the real home folder's config, history or browser data in tests or snapshots.
+- Open a real browser from a test.
+- Weaken or skip a test, or re-record a golden you haven't looked at, to get a change through.
+- Claim something works on macOS from a Linux run. Say what ran where: "checks passed on Linux;
+  make verify not run", "CI's macOS job passed". A successful process launch doesn't prove the right
+  browser window opened. These need a person on a Mac: link delivery from other apps, the menu bar
+  item, the global shortcut, Settings opening and focusing, the picker reading a real browser's tab
+  and its Automation prompt, launch at login, default-browser registration, and the right browser
+  window and profile opening.
+
+## Current constraints
+
+- 2026-11-03: snapshots cover only the three settings panes. The error, conflict and rule-sheet
+  states have none yet; add them on a Mac. Goldens aren't compared in CI.
+- `scripts/check` stops tests still running after 10 minutes (`CHECK_TEST_TIMEOUT`), but Swift
+  buffers test output, so it can't name the hung test; bisect with filters.
