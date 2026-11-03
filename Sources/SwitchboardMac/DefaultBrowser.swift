@@ -33,7 +33,11 @@ public enum DefaultBrowser {
         NSWorkspace.shared.setDefaultApplication(at: app, toOpenURLsWithScheme: scheme) { error in
             let message = error?.localizedDescription
             Task { @MainActor in
-                if let message { done(message) } else { setDefault(app, schemes: Array(schemes.dropFirst()), done: done) }
+                if let message {
+                    done(message)
+                } else {
+                    setDefault(app, schemes: Array(schemes.dropFirst()), done: done)
+                }
             }
         }
     }

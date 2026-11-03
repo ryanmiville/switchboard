@@ -18,14 +18,16 @@ public final class GlobalShortcut {
         guard chord.isValid else { throw .invalid }
         if current == chord { return }
         if eventHandler == nil {
-            var event = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+            var event = EventTypeSpec(
+                eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
             let status = InstallEventHandler(
                 GetApplicationEventTarget(),
                 { _, event, context in
                     guard let event, let context else { return OSStatus(eventNotHandledErr) }
                     var identifier = EventHotKeyID()
                     let status = GetEventParameter(
-                        event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
+                        event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                        nil,
                         MemoryLayout<EventHotKeyID>.size, nil, &identifier)
                     guard status == noErr, identifier.signature == 0x5357_4E58, identifier.id == 1 else {
                         return OSStatus(eventNotHandledErr)
@@ -40,7 +42,8 @@ public final class GlobalShortcut {
         }
         var replacement: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            chord.keyCode, chord.modifiers, EventHotKeyID(signature: 0x5357_4E58, id: 1), GetApplicationEventTarget(),
+            chord.keyCode, chord.modifiers, EventHotKeyID(signature: 0x5357_4E58, id: 1),
+            GetApplicationEventTarget(),
             0, &replacement)
         guard status == noErr else { throw .registration(status) }
         if let hotKey { UnregisterEventHotKey(hotKey) }

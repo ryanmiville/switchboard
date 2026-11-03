@@ -45,13 +45,15 @@ public enum CurrentTab {
     /// Brings `browser` forward after opening a link in it.
     @MainActor
     public static func activate(_ browser: BrowserInfo) {
-        NSRunningApplication.runningApplications(withBundleIdentifier: browser.id).first?.activate(options: [])
+        NSRunningApplication.runningApplications(withBundleIdentifier: browser.id).first?.activate(options: []
+        )
     }
 
     /// Opens System Settings → Privacy & Security → Automation.
     @MainActor
     public static func openAutomationSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+        {
             NSWorkspace.shared.open(url)
         }
     }
@@ -88,10 +90,12 @@ public enum CurrentTab {
     }
 
     private static func object(
-        _ desiredClass: DescType, form: OSType, key: NSAppleEventDescriptor, container: NSAppleEventDescriptor = .null()
+        _ desiredClass: DescType, form: OSType, key: NSAppleEventDescriptor,
+        container: NSAppleEventDescriptor = .null()
     ) -> NSAppleEventDescriptor {
         let record = NSAppleEventDescriptor.record()
-        record.setDescriptor(NSAppleEventDescriptor(typeCode: desiredClass), forKeyword: AEKeyword(keyAEDesiredClass))
+        record.setDescriptor(
+            NSAppleEventDescriptor(typeCode: desiredClass), forKeyword: AEKeyword(keyAEDesiredClass))
         record.setDescriptor(NSAppleEventDescriptor(enumCode: form), forKeyword: AEKeyword(keyAEKeyForm))
         record.setDescriptor(key, forKeyword: AEKeyword(keyAEKeyData))
         record.setDescriptor(container, forKeyword: AEKeyword(keyAEContainer))

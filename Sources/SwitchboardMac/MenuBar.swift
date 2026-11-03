@@ -34,7 +34,8 @@ public final class MenuBar: NSObject {
         settings.target = self
         menu.addItem(settings)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit \(Identity.appName)", action: #selector(chooseQuit), keyEquivalent: "q")
+        let quit = NSMenuItem(
+            title: "Quit \(Identity.appName)", action: #selector(chooseQuit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
         item.menu = menu
@@ -57,7 +58,9 @@ public final class MenuBar: NSObject {
     /// isn't there (a `swift run` outside the bundle).
     private static func icon() -> NSImage? {
         let image =
-            Bundle.main.url(forResource: "MenuBarIcon", withExtension: "pdf").flatMap { NSImage(contentsOf: $0) }
+            Bundle.main.url(forResource: "MenuBarIcon", withExtension: "pdf").flatMap {
+                NSImage(contentsOf: $0)
+            }
             ?? NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: Identity.appName)
         image?.isTemplate = true
         image?.size = NSSize(width: 18, height: 18)
