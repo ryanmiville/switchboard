@@ -4,3 +4,7 @@
 Sources/SwitchboardCore/Home.swift environment # Env.fromProcess is the one read of the environment and $HOME
 Sources/SwitchboardCore/Launch.swift process # the one place browsers are started
 Sources/switchboard-next/main.swift clock # the CLI binary reads the clock once and passes it in
+Sources/Switchboard/AppDelegate.swift clock # the app's entry point reads the clock and passes it to routing and history
+Sources/SwitchboardMac/CurrentTab.swift system-open # opens System Settings' Automation pane, a settings URL rather than a web link
+Sources/SwitchboardMac/DefaultBrowser.swift system-open # opens System Settings' Desktop & Dock pane, a settings URL rather than a web link
+Tests/UITests/SceneTests.swift environment # SNAPSHOT_RECORD and SNAPSHOT_COMPARE choose whether goldens are recorded or compared

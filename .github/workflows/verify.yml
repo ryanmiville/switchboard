@@ -16,7 +16,7 @@ concurrency:
 jobs:
   verify:
     runs-on: macos-26
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
     steps:
@@ -29,6 +29,18 @@ jobs:
           set -o pipefail
           mkdir -p .build
           scripts/check 2>&1 | tee .build/verify.log
+      - name: Bundle the app
+        run: scripts/bundle --debug
+      - name: Render a scene from the bundled app
+        run: '".build/bundle/Switchboard Next.app/Contents/MacOS/Switchboard" --snap .build/snapshots/app-routing.png --scene routing'
+      # The scene renders from the UI tests and the app, for review; goldens are compared only on request.
+      - name: Upload scene renders
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scene-renders
+          path: .build/snapshots
+          if-no-files-found: ignore
       - name: Upload failure log
         if: failure()
         uses: actions/upload-artifact@v7

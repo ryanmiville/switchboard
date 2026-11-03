@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Builds "Switchboard Next.app" into .build/bundle/: the app, the switchboard-next CLI in
+# Contents/Helpers, Info.plist with the browser declarations, the icons, and a signature.
+# It installs nothing; scripts/install does that.
+#
+#   scripts/bundle            release build
+#   scripts/bundle --debug    debug build (faster to build)
+#
+# CODESIGN_IDENTITY picks a signing identity; the default is an ad hoc signature, with which
+# macOS may ask for Automation permission again after each rebuild. macOS only.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+[[ "$(uname -s)" == Darwin ]] || { echo "bundle: macOS only" >&2; exit 2; }
+
+configuration=release
+[[ "${1:-}" == "--debug" ]] && configuration=debug
+identity() { sed -n "s/^ *public static let $1 = \"\(.*\)\"$/\1/p" Sources/SwitchboardCore/Identity.swift; }
+name=$(identity appName)
+id=$(identity bundleID)
+cli=$(identity cliName)
+version=$(sed -n 's/^public let cliVersion = "\(.*\)"$/\1/p' Sources/SwitchboardCLI/Arguments.swift)
+exe=Switchboard
+[[ -n "$name" && -n "$id" && -n "$cli" && -n "$version" ]] || { echo "bundle: couldn't read the identity" >&2; exit 1; }
+
+swift build -c "$configuration" --product "$exe"
+swift build -c "$configuration" --product "$cli"
+products=$(swift build -c "$configuration" --show-bin-path)
+
+app=".build/bundle/$name.app"
+rm -rf "$app"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Helpers" "$app/Contents/Resources"
+cp "$products/$exe" "$app/Contents/MacOS/$exe"
+cp "$products/$cli" "$app/Contents/Helpers/$cli"
+cp assets/MenuBarIcon.pdf "$app/Contents/Resources/MenuBarIcon.pdf"
+sed -e "s/@NAME@/$name/g" -e "s/@ID@/$id/g" -e "s/@EXE@/$exe/g" -e "s/@VERSION@/$version/g" \
+  packaging/Info.plist > "$app/Contents/Info.plist"
+printf 'APPL????' > "$app/Contents/PkgInfo"
+plutil -lint "$app/Contents/Info.plist" >/dev/null
+
+iconset=$(mktemp -d)/AppIcon.iconset
+mkdir -p "$iconset"
+for size in 16 32 128 256 512; do
+  cp "assets/AppIcon/icon_${size}x${size}.png" "$iconset/icon_${size}x${size}.png"
+  double=$((size * 2))
+  cp "assets/AppIcon/icon_${double}x${double}.png" "$iconset/icon_${size}x${size}@2x.png"
+done
+iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+
+sign=${CODESIGN_IDENTITY:--}
+codesign --force --options runtime --sign "$sign" "$app/Contents/Helpers/$cli"
+codesign --force --options runtime --entitlements packaging/Switchboard.entitlements --sign "$sign" "$app"
+codesign --verify --deep --strict "$app"
+
+# The bundle a browser needs: macOS lists the app as a browser only with these declarations.
+plist="$app/Contents/Info.plist"
+for key in CFBundleURLTypes CFBundleDocumentTypes LSUIElement NSAppleEventsUsageDescription; do
+  /usr/libexec/PlistBuddy -c "Print :$key" "$plist" >/dev/null || { echo "bundle: $key is missing" >&2; exit 1; }
+done
+"$app/Contents/Helpers/$cli" --version >/dev/null || { echo "bundle: the bundled CLI doesn't run" >&2; exit 1; }
+echo "Built $app"

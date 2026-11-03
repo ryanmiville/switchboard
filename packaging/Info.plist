@@ -33,7 +33,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Switchboard reads the current browser tab’s URL when you ask to open it in another profile.</string>
+	<string>Switchboard Next reads the current browser tab’s URL when you ask to open it in another profile.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
