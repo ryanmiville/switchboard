@@ -9,6 +9,7 @@ import SwitchboardUI
 /// Quick Switch panel) lives in `AppDelegate`.
 struct SwitchboardApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @ObservedObject private var menuBar = MenuBarState.shared
 
     var body: some Scene {
         Window(Identity.appName, id: SettingsWindow.id) {
@@ -24,8 +25,8 @@ struct SwitchboardApp: App {
             }
         }
 
-        MenuBarExtra(isInserted: $delegate.menuBarShown) {
-            Button("Quick Switch\(delegate.shortcutHint.map { "   \($0)" } ?? "")…") {
+        MenuBarExtra(isInserted: $menuBar.shown) {
+            Button("Quick Switch\(menuBar.shortcutHint.map { "   \($0)" } ?? "")…") {
                 delegate.summonPicker()
             }
             Button("Settings…") { delegate.showSettings() }

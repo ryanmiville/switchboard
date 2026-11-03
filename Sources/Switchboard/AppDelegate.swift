@@ -5,17 +5,24 @@ import SwitchboardEditor
 import SwitchboardMac
 import SwitchboardUI
 
+/// What the menu-bar item shows. The `App` observes it directly: SwiftUI's delegate adaptor
+/// gives no binding to the delegate's own properties.
+@MainActor
+final class MenuBarState: ObservableObject {
+    static let shared = MenuBarState()
+    /// Whether the item is shown: only while the app is resident, never for a launch that only
+    /// delivers links.
+    @Published var shown = false
+    /// The registered shortcut, shown next to Quick Switch in the menu.
+    @Published var shortcutHint: String?
+}
+
 /// The AppKit side of the app: link delivery and the app's lifetime, the Quick Switch panel and
 /// shortcut, and following config.json. SwiftUI owns the settings window and the menu-bar item
 /// (`SwitchboardApp`); this asks it to show them.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
-    /// Whether the menu-bar item is shown: only while the app is resident, never for a launch
-    /// that only delivers links.
-    @Published var menuBarShown = false
-    /// The registered shortcut, shown next to Quick Switch in the menu.
-    @Published private(set) var shortcutHint: String?
-
+    let menuBar = MenuBarState.shared
     let settings: SettingsModel
     let opener = WindowOpener()
     private let home: Home
@@ -92,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private func startResident() {
         guard !resident else { return }
         resident = true
-        menuBarShown = true
+        menuBar.shown = true
         shortcut.onPress = { [weak self] in self?.summonPicker() }
         if let chord = KeyChord(settings.shortcut) {
             if let error = register(chord) { settings.shortcutRefused(error) }
@@ -112,7 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func register(_ chord: KeyChord) -> String? {
         do {
             try shortcut.register(chord)
-            shortcutHint = chord.display
+            menuBar.shortcutHint = chord.display
             return nil
         } catch {
             return error.description
