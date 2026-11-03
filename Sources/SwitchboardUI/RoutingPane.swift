@@ -195,7 +195,8 @@ struct RuleRow: View {
     }
 }
 
-/// The add/edit sheet, as a grouped form. Only Done changes the config.
+/// The add/edit sheet, as a grouped form with the sheet's own Cancel and Done. Only Done changes the
+/// config. Scene renders draw the form alone: the buttons belong to the sheet, which they can't show.
 struct RuleSheet: View {
     @ObservedObject var model: SettingsModel
 
@@ -203,55 +204,50 @@ struct RuleSheet: View {
         if let draft = model.draft {
             let e = model.editor
             let browser = draft.browser ?? e.config.browser
-            VStack(spacing: 0) {
-                Form {
+            Form {
+                Section {
+                    Picker("Match", selection: binding(\.condition)) {
+                        ForEach(Condition.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    TextField(
+                        "Pattern", text: binding(\.value), prompt: Text(placeholder(draft.condition))
+                    )
+                    .accessibilityIdentifier("draft-value")
+                } header: {
+                    Text(draft.isNew ? "New Rule" : "Edit Rule").font(.headline)
+                } footer: {
+                    Footer(hint(draft.condition))
+                }
+                Section("Open in") {
+                    BrowserPicker(
+                        title: "Browser", selection: draft.browser, browsers: e.installed, editor: e,
+                        allowsDefault: true
+                    ) { chosen in
+                        model.draft?.selectBrowser(chosen, defaultBrowser: e.config.browser)
+                    }
+                    ProfilePicker(title: "Profile", browser: browser, selection: draft.profile, editor: e) {
+                        model.draft?.profile = $0
+                    }
+                }
+                if let error = draft.error {
                     Section {
-                        Picker("Match", selection: binding(\.condition)) {
-                            ForEach(Condition.allCases, id: \.self) { Text($0.label).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        TextField(
-                            "Pattern", text: binding(\.value), prompt: Text(placeholder(draft.condition))
-                        )
-                        .accessibilityIdentifier("draft-value")
-                    } header: {
-                        Text(draft.isNew ? "New Rule" : "Edit Rule").font(.headline)
-                    } footer: {
-                        Footer(hint(draft.condition))
-                    }
-                    Section("Open in") {
-                        BrowserPicker(
-                            title: "Browser", selection: draft.browser, browsers: e.installed, editor: e,
-                            allowsDefault: true
-                        ) { chosen in
-                            model.draft?.selectBrowser(chosen, defaultBrowser: e.config.browser)
-                        }
-                        ProfilePicker(title: "Profile", browser: browser, selection: draft.profile, editor: e)
-                        {
-                            model.draft?.profile = $0
-                        }
-                    }
-                    if let error = draft.error {
-                        Section {
-                            Label(error, systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
-                                .accessibilityIdentifier("draft-error")
-                        }
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("draft-error")
                     }
                 }
-                .formStyle(.grouped)
-                .scrollDisabled(true)
-                HStack {
-                    Spacer()
+            }
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+            // SwiftUI puts these along the bottom of a sheet on macOS, with Return and Escape.
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { model.draft = nil }
-                        .keyboardShortcut(.cancelAction)
-                    Button(draft.isNew ? "Add Rule" : "Done") { model.commitDraft() }
-                        .keyboardShortcut(.defaultAction)
-                        .buttonStyle(.borderedProminent)
                 }
-                .controlSize(.large)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 18)
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(draft.isNew ? "Add Rule" : "Done") { model.commitDraft() }
+                }
             }
             .frame(width: 500)
             .fixedSize(horizontal: false, vertical: true)
