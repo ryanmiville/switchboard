@@ -55,6 +55,8 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
   goldens. Never re-record a scene you haven't looked at, or to hide a change you didn't mean.
 - Build the app: `scripts/bundle [--debug]` (into `.build/bundle/`; CI's macOS job runs it).
   Install it: `scripts/install [--cli]`, only when the owner asks.
+- Check the bundled app launches and settles (no hang): `scripts/launch-check`, against a scratch
+  home; CI runs it after every bundle. It is the only check that starts the app.
 
 ## How things are tested
 

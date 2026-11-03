@@ -31,8 +31,14 @@ jobs:
           set -o pipefail
           mkdir -p .build
           scripts/check 2>&1 | tee .build/verify.log
+      # The bundle and the launch check run even when golden comparisons fail, so a look change
+      # still shows whether the app starts.
       - name: Bundle the app
+        if: ${{ !cancelled() }}
         run: scripts/bundle --debug
+      - name: Launch the bundled app and check it settles
+        if: ${{ !cancelled() }}
+        run: scripts/launch-check
       - name: Render a scene from the bundled app
         run: '".build/bundle/Switchboard Next.app/Contents/MacOS/Switchboard" --snap .build/snapshots/app-routing.png --scene routing'
       - name: Render every scene through scripts/snap

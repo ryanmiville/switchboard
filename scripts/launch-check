@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Opens the bundled app the way a person does (no link, so it stays as a menu-bar app) against a
+# scratch home, and fails if it quits or keeps the CPU busy once it should be idle. It catches a
+# launch that hangs, which builds, tests and renders can't. macOS only; run scripts/bundle first.
+#
+#   scripts/launch-check
+#
+# Never touches the real home: $HOME and browser discovery point at a temporary folder.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+app=".build/bundle/Switchboard Next.app"
+[ -d "$app" ] || { echo "launch-check: no $app; run scripts/bundle first" >&2; exit 1; }
+
+home=$(mktemp -d)
+mkdir -p "$home/Applications"
+HOME="$home" SWITCHBOARD_NEXT_APPLICATIONS="$home/Applications" \
+  "$app/Contents/MacOS/Switchboard" >"$home/app.log" 2>&1 &
+pid=$!
+trap 'kill "$pid" 2>/dev/null || true; rm -rf "$home"' EXIT
+
+sleep 8
+if ! kill -0 "$pid" 2>/dev/null; then
+  echo "launch-check: the app quit during launch; its output:" >&2
+  cat "$home/app.log" >&2
+  exit 1
+fi
+
+# CPU seconds used over 4 idle seconds. A settled menu-bar app uses almost none; a loop on the
+# main thread uses all of them.
+seconds() { ps -o time= -p "$pid" | awk -F'[:.]' '{ print $1 * 60 + $2 }'; }
+before=$(seconds)
+sleep 4
+used=$(($(seconds) - before))
+if [ "$used" -ge 2 ]; then
+  echo "launch-check: the app is still busy after launch (${used}s of CPU in 4s). Main thread:" >&2
+  sample "$pid" 2 2>/dev/null | sed -n '/com.apple.main-thread/,/^ *[0-9]* Thread_/p' | head -120 >&2
+  exit 1
+fi
+echo "launch-check: the app launched and settled (${used}s of CPU in 4s)"
