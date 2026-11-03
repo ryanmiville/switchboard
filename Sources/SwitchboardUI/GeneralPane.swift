@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import SwitchboardCore
 import SwitchboardEditor
@@ -10,7 +11,31 @@ struct GeneralPane: View {
         let e = model.editor
         Form {
             NoticesSection(model: model)
-            Section { PaneHeader(pane: .general) }
+            Section {
+                LabeledContent {
+                    if model.isDefaultBrowser {
+                        Label("Default Browser", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button("Make Default…") { model.makeDefaultBrowser() }
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(nsImage: NSApplication.shared.applicationIconImage)
+                            .resizable()
+                            .frame(width: 32, height: 32)
+                        RowLabel(
+                            title: Identity.appName,
+                            caption: model.isDefaultBrowser
+                                ? "Opens the links you click, then sends them where your rules say."
+                                : "Isn’t your default web browser, so links you click skip it.")
+                    }
+                }
+                if let error = model.defaultBrowserError {
+                    ErrorText(error)
+                    Button("Open System Settings") { model.services.openDefaultBrowserSettings() }
+                }
+            }
 
             Section {
                 BrowserPicker(
@@ -31,26 +56,6 @@ struct GeneralPane: View {
                 Text("Default destination")
             } footer: {
                 Footer("Links that match no rule open here.")
-            }
-
-            Section {
-                LabeledContent {
-                    if model.isDefaultBrowser {
-                        Label("Yes", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    } else {
-                        Button("Make Default…") { model.makeDefaultBrowser() }
-                    }
-                } label: {
-                    RowLabel(
-                        title: "\(Identity.appName) is the default web browser",
-                        caption: "Links you click in other apps come here first, then go where the rules say."
-                    )
-                }
-                if let error = model.defaultBrowserError {
-                    ErrorText(error)
-                    Button("Open System Settings") { model.services.openDefaultBrowserSettings() }
-                }
             }
 
             Section {

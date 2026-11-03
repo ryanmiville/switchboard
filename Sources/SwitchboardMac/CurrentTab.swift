@@ -102,3 +102,9 @@ public enum CurrentTab {
         return record.coerce(toDescriptorType: typeObjectSpecifier) ?? record
     }
 }
+
+/// Brings this app forward, as opening Settings from the menu-bar item does.
+@MainActor
+public func bringToFront() {
+    NSApplication.shared.activate(ignoringOtherApps: true)
+}

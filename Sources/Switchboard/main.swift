@@ -46,11 +46,5 @@ if let snapIndex = arguments.firstIndex(of: "--snap") {
     exit(0)
 }
 
-MainActor.assumeIsolated {
-    let app = NSApplication.shared
-    let delegate = AppDelegate()
-    app.delegate = delegate
-    app.setActivationPolicy(.accessory)
-    app.run()
-    _ = delegate
-}
+// SwiftUI owns the app's windows and menu-bar item; AppDelegate the AppKit side.
+SwitchboardApp.main()

@@ -5,29 +5,32 @@ import SwitchboardEditor
 import SwitchboardMac
 import SwitchboardUI
 
-/// Wires the app together: link delivery and the app's lifetime, the menu-bar item, the settings
-/// window, the Quick Switch panel and shortcut, and following config.json.
+/// The AppKit side of the app: link delivery and the app's lifetime, the Quick Switch panel and
+/// shortcut, and following config.json. SwiftUI owns the settings window and the menu-bar item
+/// (`SwitchboardApp`); this asks it to show them.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    private var home: Home!
-    private var settings: SettingsModel!
+final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    /// Whether the menu-bar item is shown: only while the app is resident, never for a launch
+    /// that only delivers links.
+    @Published var menuBarShown = false
+    /// The registered shortcut, shown next to Quick Switch in the menu.
+    @Published private(set) var shortcutHint: String?
+
+    let settings: SettingsModel
+    let opener = WindowOpener()
+    private let home: Home
     private var picker: QuickSwitchPanel!
     private var session = RoutingSession()
-    private var menuBar: MenuBar?
-    private var window: NSWindow?
     private let shortcut = GlobalShortcut()
     private var watcher: FileWatcher?
     private var startupError: String?
+    private var resident = false
+    /// Settings was asked for, so the window stays when it appears.
+    private var settingsWanted = false
 
     static func now() -> Timestamp { Timestamp(Date()) }
 
-    func applicationWillFinishLaunching(_ notification: Notification) {
-        // Links arrive as GetURL Apple Events. Reading the event's string, not a URL, keeps the link
-        // exactly as it was sent. Registered before launch finishes, so the launching link arrives.
-        NSAppleEventManager.shared().setEventHandler(
-            self, andSelector: #selector(handleGetURL(_:withReplyEvent:)),
-            forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
-
+    override init() {
         let (home, env) = Env.fromProcess()
         // Without $HOME there is nowhere to read settings from; an empty folder lets the app say so.
         self.home = home ?? Home(path: "/var/empty")
@@ -37,19 +40,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             home: self.home, store: ConfigStore(url: self.home.configFile),
             history: HistoryStore(url: self.home.historyFile), browsers: browsers)
         let loginItem = LoginItem()
+        let holder = Holder()
         settings = SettingsModel(
             editor: editor,
             services: SettingsServices(
                 loginStatus: { loginItem.status() }, setLoginEnabled: { try loginItem.setEnabled($0) },
                 openLoginSettings: { loginItem.openSettings() },
-                registerShortcut: { [weak self] chord in self?.register(chord) },
+                registerShortcut: { chord in holder.delegate?.register(chord) },
                 isDefaultBrowser: { DefaultBrowser.isDefault },
                 makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
-                openQuickSwitch: { [weak self] in self?.picker.summon() },
+                openQuickSwitch: { holder.delegate?.summonPicker() },
                 openDefaultBrowserSettings: { DefaultBrowser.openSettings() }))
+        super.init()
+        holder.delegate = self
         picker = QuickSwitchPanel(
             store: ConfigStore(url: self.home.configFile), history: HistoryStore(url: self.home.historyFile),
             browsers: browsers, settings: settings, openSettings: { [weak self] in self?.showSettings() })
+    }
+
+    /// Lets the settings services reach the delegate, which doesn't exist yet when they are made.
+    @MainActor
+    private final class Holder {
+        weak var delegate: AppDelegate?
+    }
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Links arrive as GetURL Apple Events. Reading the event's string, not a URL, keeps the link
+        // exactly as it was sent. Registered before launch finishes, so the launching link arrives.
+        NSAppleEventManager.shared().setEventHandler(
+            self, andSelector: #selector(handleGetURL(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -67,15 +87,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// The menu-bar item, the shortcut and the file watcher: what a running app needs.
     private func startResident() {
-        guard menuBar == nil else { return }
-        menuBar = MenuBar { [weak self] action in
-            switch action {
-            case .quickSwitch: self?.picker.summon()
-            case .openSettings: self?.showSettings()
-            case .quit: NSApp.terminate(nil)
-            }
-        }
-        shortcut.onPress = { [weak self] in self?.picker.summon() }
+        guard !resident else { return }
+        resident = true
+        menuBarShown = true
+        shortcut.onPress = { [weak self] in self?.summonPicker() }
         if let chord = KeyChord(settings.shortcut) {
             if let error = register(chord) { settings.shortcutRefused(error) }
         } else {
@@ -91,15 +106,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// Registers the Quick Switch shortcut. Returns why it was refused.
-    private func register(_ chord: KeyChord) -> String? {
+    func register(_ chord: KeyChord) -> String? {
         do {
             try shortcut.register(chord)
-            menuBar?.setShortcutHint(chord.display)
+            shortcutHint = chord.display
             return nil
         } catch {
             return error.description
         }
     }
+
+    func summonPicker() { picker.summon() }
 
     // MARK: Links
 
@@ -140,39 +157,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func showSettings() {
         session.stayResident()
         startResident()
-        if window == nil {
-            // The split view lays the glass sidebar under the title bar, with the traffic lights
-            // inside it, and SwiftUI owns the toolbar and title, as in System Settings.
-            let window = NSWindow(
-                contentRect: NSRect(origin: .zero, size: SettingsView.size),
-                styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
-                backing: .buffered, defer: false)
-            window.title = Identity.appName
-            window.toolbarStyle = .unified
-            window.isReleasedWhenClosed = false
-            window.delegate = self
-            let controller = NSHostingController(rootView: SettingsView(model: settings))
-            controller.sizingOptions = .preferredContentSize
-            if #available(macOS 14.0, *) {
-                controller.sceneBridgingOptions = [.toolbars, .title]
-            }
-            window.contentViewController = controller
-            window.setContentSize(SettingsView.size)
-            window.center()
-            self.window = window
-        }
+        settingsWanted = true
         settings.refresh()
         bringToFront()
-        if window?.isMiniaturized == true { window?.deminiaturize(nil) }
-        window?.makeKeyAndOrderFront(nil)
+        opener.openSettings()
     }
 
-    func windowWillClose(_ notification: Notification) {
-        settings.flush()
-    }
-
-    func windowDidBecomeKey(_ notification: Notification) {
-        settings.refresh()
+    /// SwiftUI opens the settings window at launch on its own. Unless Settings was asked for, it
+    /// closes again: opening the app starts its menu-bar item without opening Settings.
+    func settingsWindowAppeared() {
+        guard !settingsWanted else { return }
+        Task { @MainActor in
+            for window in NSApp.windows where window.identifier?.rawValue.hasPrefix(SettingsWindow.id) == true
+            {
+                window.close()
+            }
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
