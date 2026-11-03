@@ -17,14 +17,15 @@ LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Versions/Current
 
 .PHONY: verify verify-linux test snapshots format format-check debug release debug-install install install-cli clean
 
-verify: format-check test debug release
-	python3 scripts/check-bundle.py "$(BUILD_DIR)/Build/Products/Debug/Switchboard.app" "$(BUILD_DIR)/Build/Products/Release/Switchboard.app"
-	git diff --check
+# Everything CI runs. scripts/check lists its stages and exit codes.
+verify:
+	scripts/check
 
-# Linux subset for cloud sessions: formatting, the Foundation-only tests and whitespace. Not a
-# substitute for verify, which also covers the app sources, Xcode builds and bundle checks.
-verify-linux: format-check test
-	git diff --check
+# The same script on Linux runs the Foundation-only subset and names what it skipped. Not a substitute
+# for verify on a Mac, which also covers the app sources, snapshots, Xcode builds and bundle checks.
+verify-linux:
+	@test "$$(uname -s)" != Darwin || { echo 'On macOS, run make verify.'; exit 1; }
+	scripts/check
 
 test:
 	@mkdir -p .build
