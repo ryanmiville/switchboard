@@ -29,7 +29,7 @@ scripts/check              # Everything CI runs, on macOS or Linux
 scripts/check RouterTests  # Format, lint and file sizes, then only the matching tests
 scripts/format             # Apply the checked-in formatting
 scripts/bundle --debug     # Build the .app into .build/bundle without installing it
-swift run Switchboard --snap out.png --scene routing   # Render a scene (see --list-scenes)
+scripts/snap               # Render every scene in light and dark into .build/snap
 ```
 
 The core, CLI and editor model also build and test on Linux; `scripts/cloud-setup.sh` prepares a

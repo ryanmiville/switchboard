@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Renders every scene (or the ones named) in light and dark through the app's --snap, into a
+# folder, so a change can be compared before and after. Scenes use fixture homes only.
+#
+#   scripts/snap                        every scene into .build/snap/
+#   scripts/snap routing picker         just these scenes
+#   SNAP_DIR=/tmp/before scripts/snap   somewhere else
+#
+# Then open the folder: `open .build/snap`. macOS only.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+[[ "$(uname -s)" == Darwin ]] || { echo "snap: macOS only" >&2; exit 2; }
+
+out="${SNAP_DIR:-.build/snap}"
+swift build --product Switchboard >/dev/null
+app="$(swift build --show-bin-path)/Switchboard"
+
+if [[ $# -gt 0 ]]; then
+  scenes=("$@")
+else
+  scenes=()
+  while IFS= read -r name; do scenes+=("$name"); done < <("$app" --list-scenes)
+fi
+
+mkdir -p "$out"
+failed=0
+for scene in "${scenes[@]}"; do
+  for theme in light dark; do
+    if "$app" --snap "$out/$scene-$theme.png" --scene "$scene" --theme "$theme"; then
+      echo "$out/$scene-$theme.png"
+    else
+      failed=1
+    fi
+  done
+done
+exit $failed

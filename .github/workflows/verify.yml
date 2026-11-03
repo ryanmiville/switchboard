@@ -33,6 +33,8 @@ jobs:
         run: scripts/bundle --debug
       - name: Render a scene from the bundled app
         run: '".build/bundle/Switchboard Next.app/Contents/MacOS/Switchboard" --snap .build/snapshots/app-routing.png --scene routing'
+      - name: Render every scene through scripts/snap
+        run: SNAP_DIR=.build/snapshots/snap scripts/snap
       # The scene renders from the UI tests and the app, for review; goldens are compared only on request.
       - name: Upload scene renders
         if: always()

@@ -41,8 +41,10 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 - Format: `scripts/format`. Swift 6.3 (Xcode 26.4 on macOS); `scripts/cloud-setup.sh` installs it
   in cloud sessions.
 - Run the CLI against a scratch home: `HOME=$(mktemp -d) swift run switchboard-next rules list`.
-- See the app without a person (macOS): `swift run Switchboard --list-scenes`, then
-  `swift run Switchboard --snap out.png --scene routing [--theme dark]`. The UI tests render every
+- See the app without a person (macOS): `scripts/snap [scene…]` renders every scene (or the
+  named ones) in light and dark into `.build/snap/`; one scene:
+  `swift run Switchboard --snap out.png --scene routing [--theme dark]`; list them with
+  `--list-scenes`. The UI tests render every
   scene in both themes into `.build/snapshots` (CI uploads them as `scene-renders`);
   `SNAPSHOT_COMPARE=1` compares them with `Tests/UITests/Goldens`, `SNAPSHOT_RECORD=1` rewrites
   those. Scenes use fixture homes only. Add a scene for every new pane or state.
