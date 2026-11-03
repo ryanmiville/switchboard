@@ -78,6 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             event?.eventClass == kCoreEventClass && event?.eventID == kAEOpenApplication
             && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
         session.finishLaunching(atLogin: atLogin)
+        // SwiftUI has already made the settings window by now; it goes before it is drawn, as on
+        // `main`, so a launch that doesn't ask for Settings never flashes it.
+        if !settingsWanted { hideSettingsWindows() }
         if session.isResident { startResident() }
         if let startupError {
             settings.failure = Failure(url: "", reason: startupError)
@@ -164,14 +167,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     /// SwiftUI opens the settings window at launch on its own. Unless Settings was asked for, it
-    /// closes again: opening the app starts its menu-bar item without opening Settings.
+    /// is ordered out at once, before it is drawn: opening the app starts its menu-bar item
+    /// without opening Settings.
     func settingsWindowAppeared() {
-        guard !settingsWanted else { return }
-        Task { @MainActor in
-            for window in NSApp.windows where window.identifier?.rawValue.hasPrefix(SettingsWindow.id) == true
-            {
-                window.close()
-            }
+        if !settingsWanted { hideSettingsWindows() }
+    }
+
+    /// Orders out the settings window without closing it, so its content stays and the next
+    /// `openWindow` brings the same window back. The menu-bar item's and Quick Switch's windows
+    /// can't become main, so they stay.
+    private func hideSettingsWindows() {
+        for window in NSApp.windows
+        where window.identifier?.rawValue.hasPrefix(SettingsWindow.id) == true || window.canBecomeMain {
+            window.orderOut(nil)
         }
     }
 

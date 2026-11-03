@@ -17,6 +17,12 @@ struct SwitchboardApp: App {
         .windowResizability(.contentSize)
         .windowToolbarStyle(.unified)
         .defaultPosition(.center)
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { delegate.showSettings() }
+                    .keyboardShortcut(",")
+            }
+        }
 
         MenuBarExtra(isInserted: $delegate.menuBarShown) {
             Button("Quick Switch\(delegate.shortcutHint.map { "   \($0)" } ?? "")…") {
