@@ -9,6 +9,8 @@ struct GeneralPane: View {
     var body: some View {
         let e = model.editor
         Form {
+            Section { PaneHeader(pane: .general) }
+
             Section {
                 BrowserPicker(
                     title: "Browser", selection: e.config.browser, browsers: e.installed, editor: e,
@@ -30,29 +32,40 @@ struct GeneralPane: View {
                 Text("Links that match no rule open here.").foregroundStyle(.secondary)
             }
 
-            Section("Default browser") {
-                LabeledContent(
-                    model.isDefaultBrowser
-                        ? "\(Identity.appName) opens your links" : "Another browser opens your links"
-                ) {
-                    if !model.isDefaultBrowser {
+            Section {
+                LabeledContent {
+                    if model.isDefaultBrowser {
+                        Label("Default", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .labelStyle(.titleAndIcon)
+                    } else {
                         Button("Make Default…") { model.makeDefaultBrowser() }
+                    }
+                } label: {
+                    RowLabel(
+                        title: model.isDefaultBrowser
+                            ? "\(Identity.appName) opens your links" : "Another browser opens your links",
+                        caption: "Links you click in other apps come here first, then go where the rules say."
+                    ) {
+                        SymbolTile(symbol: "safari", color: .blue)
                     }
                 }
                 if let error = model.defaultBrowserError {
                     ErrorText(error)
                     Button("Open System Settings") { model.services.openDefaultBrowserSettings() }
                 }
+            } header: {
+                Text("Default web browser")
             }
 
             Section("Startup") {
                 let on = model.login == .enabled || model.login == .requiresApproval
                 Toggle(isOn: Binding(get: { on }, set: { model.setLoginEnabled($0) })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Open at login")
-                        Text(loginDescription).font(.caption).foregroundStyle(.secondary)
+                    RowLabel(title: "Open at login", caption: loginDescription) {
+                        SymbolTile(symbol: "power", color: .green)
                     }
                 }
+                .toggleStyle(.switch)
                 .disabled(model.login == nil)
                 if model.login == .requiresApproval {
                     LabeledContent("Login Items") {
@@ -68,38 +81,46 @@ struct GeneralPane: View {
                         get: { e.config.historyEnabled },
                         set: { on in model.edit { $0.setHistoryEnabled(on) } })
                 ) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Keep a history of opened links")
-                        Text("So you and your agents can ask why a link opened where it did")
-                            .font(.caption).foregroundStyle(.secondary)
+                    RowLabel(
+                        title: "Keep a history of opened links",
+                        caption: "So you and your agents can ask why a link opened where it did"
+                    ) {
+                        SymbolTile(symbol: "clock.arrow.circlepath", color: .purple)
                     }
                 }
+                .toggleStyle(.switch)
                 LabeledContent("Clear history") {
                     Button("Clear") { model.edit { $0.clearHistory() } }
                 }
                 if let error = e.historyError { ErrorText(error) }
             }
 
-            Section("Configuration") {
-                LabeledContent("Settings file") {
-                    HStack {
-                        Text(model.configPath).font(.callout.monospaced()).foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                        Button("Reveal") { model.revealConfigFile() }
+            Section {
+                LabeledContent {
+                    Button("Show in Finder") { model.revealConfigFile() }
+                } label: {
+                    RowLabel(title: "Settings file", caption: model.configPath) {
+                        SymbolTile(symbol: "doc.text", color: .gray)
                     }
                 }
-                Text("\(Identity.cliName) reads and changes the same file.").font(.caption).foregroundStyle(
-                    .secondary)
                 if e.canImportCurrentApp {
-                    LabeledContent("Switchboard’s settings") {
-                        Button("Import") { model.importCurrentApp() }
+                    LabeledContent {
+                        Button("Import") { model.importCurrentApp() }.prominentButton()
+                    } label: {
+                        RowLabel(
+                            title: "Import from Switchboard",
+                            caption:
+                                "Copies the current app’s rules and destinations. Its own file isn’t changed."
+                        ) {
+                            SymbolTile(symbol: "square.and.arrow.down", color: .indigo)
+                        }
                     }
-                    Text(
-                        "Copies the rules and destinations from the current Switchboard app. Its own file isn’t changed."
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
                 }
                 if let error = model.importError { ErrorText(error) }
+            } header: {
+                Text("Configuration")
+            } footer: {
+                Text("\(Identity.cliName) reads and changes the same file.").foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -136,8 +157,8 @@ struct BrowserPicker: View {
     }
 
     var body: some View {
-        Picker(title, selection: Binding(get: { selection ?? "" }, set: { onSelect($0.isEmpty ? nil : $0) }))
-        {
+        let shown = (selection?.isEmpty ?? true) && allowsDefault ? editor.config.browser : (selection ?? "")
+        Picker(selection: Binding(get: { selection ?? "" }, set: { onSelect($0.isEmpty ? nil : $0) })) {
             if allowsDefault {
                 Text("Default browser (\(editor.browserName(editor.config.browser)))").tag("")
             } else if selection?.isEmpty ?? true {
@@ -150,6 +171,8 @@ struct BrowserPicker: View {
             if let selection, !selection.isEmpty, !browsers.contains(where: { $0.locator == selection }) {
                 Text("\(Browsers.fileStem(selection)) (unavailable)").tag(selection)
             }
+        } label: {
+            RowLabel(title: title) { BrowserIcon(locator: shown, size: 22) }
         }
     }
 }
@@ -176,7 +199,7 @@ struct ProfilePicker: View {
     var body: some View {
         let profiles = editor.profiles(of: browser)
         let resolved = (try? Profiles.directory(selection, in: profiles)) ?? selection
-        Picker(title, selection: Binding(get: { resolved }, set: { onSelect($0) })) {
+        Picker(selection: Binding(get: { resolved }, set: { onSelect($0) })) {
             if resolved.isEmpty {
                 Text(browser.isEmpty ? "Choose a browser first" : "Choose a profile").tag("")
             }
@@ -190,6 +213,8 @@ struct ProfilePicker: View {
             if !resolved.isEmpty, !profiles.contains(where: { $0.directory == resolved }) {
                 Text("\(selection) (unavailable)").tag(resolved)
             }
+        } label: {
+            RowLabel(title: title) { SymbolTile(symbol: "person.crop.circle.fill", color: .teal) }
         }
         .disabled(browser.isEmpty)
     }

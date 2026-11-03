@@ -72,14 +72,22 @@ final class QuickSwitchPanel {
     }
 
     private func makePanel() -> Panel {
+        // Borderless and clear, so the view's glass shape is the panel's shape, as Spotlight's.
         let panel = Panel(
             contentRect: NSRect(x: 0, y: 0, width: PickerModel.width, height: model.height),
-            styleMask: [.titled, .closable, .utilityWindow], backing: .buffered, defer: false)
+            styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: false)
         panel.title = "Quick Switch"
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
         panel.level = .floating
-        panel.contentView = NSHostingView(rootView: PickerView(model: model))
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.isMovableByWindowBackground = true
+        let host = NSHostingView(rootView: PickerView(model: model))
+        host.wantsLayer = true
+        host.layer?.backgroundColor = .clear
+        panel.contentView = host
         panel.onResignKey = { [weak panel] in panel?.orderOut(nil) }
         resize = model.objectWillChange.sink { [weak self] in
             Task { @MainActor in

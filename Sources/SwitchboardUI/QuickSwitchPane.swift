@@ -14,56 +14,68 @@ struct QuickSwitchPane: View {
         let choices = QuickSwitch.choices(e.installed, settings)
         let all = choices.filter { $0.error == nil }.map(\.destination)
         Form {
+            Section { PaneHeader(pane: .quickSwitch) }
+
             Section {
-                LabeledContent("Shortcut") {
+                LabeledContent {
                     ShortcutRecorder(chord: KeyChord(model.shortcut)) { model.record($0) }
-                        .frame(width: 220)
+                        .frame(width: 180)
                         .accessibilityIdentifier("shortcut")
+                } label: {
+                    RowLabel(
+                        title: "Keyboard shortcut",
+                        caption: "Press it over a browser to open the page in front."
+                    ) {
+                        SymbolTile(symbol: "command", color: .orange)
+                    }
                 }
                 if let error = model.shortcutError { ErrorText(error) }
-                LabeledContent("Open the panel now") {
-                    Button("Quick Switch…") { model.services.openQuickSwitch() }
+                LabeledContent {
+                    Button("Open Quick Switch") { model.services.openQuickSwitch() }
+                } label: {
+                    RowLabel(title: "Try it now") { SymbolTile(symbol: "bolt.fill", color: .yellow) }
                 }
             } header: {
                 Text("Shortcut")
-            } footer: {
-                Text(
-                    "Over a browser, the shortcut opens its current page in another profile, ignoring the rules."
-                )
-                .foregroundStyle(.secondary)
             }
-            Section("Destinations") {
+
+            Section {
                 if choices.isEmpty {
                     Text("No supported Chromium browsers were found.").foregroundStyle(.secondary)
                 }
                 ForEach(choices, id: \.destination) { choice in
-                    HStack {
-                        Toggle(
-                            isOn: Binding(
-                                get: { settings.includes(choice.destination) },
-                                set: { model.setShown(choice.destination, $0, all: all) })
-                        ) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(choice.label)
-                                if let error = choice.error {
-                                    Text(error).font(.caption).foregroundStyle(.red)
-                                }
+                    Toggle(
+                        isOn: Binding(
+                            get: { settings.includes(choice.destination) },
+                            set: { model.setShown(choice.destination, $0, all: all) })
+                    ) {
+                        HStack(spacing: 10) {
+                            BrowserIcon(locator: choice.destination.browser, size: 26)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(choice.profileName)
+                                Text(choice.error ?? choice.browserName)
+                                    .font(.caption)
+                                    .foregroundStyle(choice.error == nil ? Color.secondary : Color.red)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
+                            Spacer()
+                            Button {
+                                model.toggleFavorite(choice)
+                            } label: {
+                                Image(systemName: choice.favorite ? "star.fill" : "star")
+                                    .foregroundStyle(choice.favorite ? Color.yellow : Color.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .help(choice.favorite ? "Remove from favorites" : "Add to favorites")
                         }
-                        .disabled(choice.error != nil && !settings.includes(choice.destination))
-                        Spacer()
-                        Button {
-                            model.toggleFavorite(choice)
-                        } label: {
-                            Image(systemName: choice.favorite ? "star.fill" : "star")
-                                .foregroundStyle(choice.favorite ? Color.yellow : Color.secondary)
-                        }
-                        .buttonStyle(.borderless)
-                        .help(
-                            choice.favorite
-                                ? "Remove from favorites" : "Add to favorites (⌘1–⌘9 in the panel)")
                     }
+                    .toggleStyle(.switch)
+                    .disabled(choice.error != nil && !settings.includes(choice.destination))
                 }
+            } header: {
+                Text("Destinations")
+            } footer: {
+                Text("Favorites come first in the panel, and ⌘1–⌘9 open them.").foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

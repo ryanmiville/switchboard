@@ -2,116 +2,148 @@ import SwiftUI
 import SwitchboardCore
 import SwitchboardEditor
 
-/// The ordered rules, their controls, and a URL tester.
+/// The ordered rules, as a list inside a grouped section with its controls along the bottom edge
+/// (as System Settings shows Login Items), and a link tester.
 struct RoutingPane: View {
     @ObservedObject var model: SettingsModel
+
+    static let rowHeight: CGFloat = 48
 
     var body: some View {
         let e = model.editor
         let rules = e.config.rules
         let hidden = Dictionary(
             Shadowing.unreachable(rules).map { ($0.rule, $0.by) }, uniquingKeysWith: { first, _ in first })
-        VStack(alignment: .leading, spacing: 0) {
-            PaneHeader(
-                title: "Routing rules", subtitle: "First match wins. Drag rules to change their priority.")
-            if rules.isEmpty {
-                Text("No rules yet. Every link opens in the default destination.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Form {
+            Section { PaneHeader(pane: .routing) }
+
+            Section {
+                if rules.isEmpty {
+                    VStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 26, weight: .light))
+                            .foregroundStyle(.tertiary)
+                        Text("No Rules").font(.headline)
+                        Text(
+                            "Every link opens in the default destination. Add a rule to send some elsewhere."
+                        )
+                        .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 22)
                     .accessibilityIdentifier("routing-empty")
-            } else {
-                List(selection: $model.selected) {
-                    ForEach(Array(rules.enumerated()), id: \.element.id) { index, rule in
-                        RuleRow(index: index, rule: rule, hiddenBy: hidden[index], editor: e)
-                            .tag(rule.id)
-                            .contentShape(Rectangle())
-                            .onTapGesture(count: 2) {
-                                model.selected = rule.id
-                                model.editSelected()
-                            }
-                            .contextMenu {
-                                Button("Edit Rule…") {
+                } else {
+                    List(selection: $model.selected) {
+                        ForEach(Array(rules.enumerated()), id: \.element.id) { index, rule in
+                            RuleRow(index: index, rule: rule, hiddenBy: hidden[index], editor: e)
+                                .frame(height: Self.rowHeight - 8)
+                                .tag(rule.id)
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) {
                                     model.selected = rule.id
                                     model.editSelected()
                                 }
-                                Button("Delete Rule") {
-                                    model.selected = rule.id
-                                    model.deleteSelected()
+                                .contextMenu {
+                                    Button("Edit Rule…") {
+                                        model.selected = rule.id
+                                        model.editSelected()
+                                    }
+                                    Button("Delete Rule", role: .destructive) {
+                                        model.selected = rule.id
+                                        model.deleteSelected()
+                                    }
                                 }
-                            }
+                        }
+                        .onMove { from, to in
+                            guard let first = from.first else { return }
+                            let id = rules[first].id
+                            model.edit { $0.moveRule(id, to: to > first ? to - 1 : to) }
+                        }
                     }
-                    .onMove { from, to in
-                        guard let first = from.first else { return }
-                        let id = rules[first].id
-                        model.edit { $0.moveRule(id, to: to > first ? to - 1 : to) }
-                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .scrollDisabled(true)
+                    .frame(height: CGFloat(rules.count) * Self.rowHeight)
+                    .accessibilityIdentifier("rules")
                 }
-                .listStyle(.inset(alternatesRowBackgrounds: true))
-                .accessibilityIdentifier("rules")
+                controls
+            } header: {
+                Text("Rules")
+            } footer: {
+                Text("The first rule that matches a link wins. Drag rules to change their order.")
+                    .foregroundStyle(.secondary)
             }
-            controls
-            Divider()
-            tester
+
+            Section {
+                TextField(text: $model.testURL, prompt: Text("https://example.com/page")) {
+                    RowLabel(title: "Link") { SymbolTile(symbol: "link", color: .blue) }
+                }
+                .accessibilityIdentifier("test-url")
+                let link = model.testURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !link.isEmpty {
+                    let result = Routing.describe(link, editor: model.editor)
+                    Label(
+                        result.text, systemImage: result.ok ? "arrow.right.circle.fill" : "xmark.circle.fill"
+                    )
+                    .foregroundStyle(result.ok ? Color.primary : Color.red)
+                    .symbolRenderingMode(.multicolor)
+                    .accessibilityIdentifier("test-result")
+                }
+            } header: {
+                Text("Test a link")
+            } footer: {
+                Text("Shows the rule and destination a link would get, without opening it.")
+                    .foregroundStyle(.secondary)
+            }
         }
+        .formStyle(.grouped)
     }
 
+    /// +, −, move up and down, and Edit, along the list's bottom edge.
     private var controls: some View {
-        HStack(spacing: 6) {
-            Button {
-                model.draft = .newRule()
-            } label: {
-                Image(systemName: "plus")
+        HStack(spacing: 8) {
+            ControlGroup {
+                Button {
+                    model.draft = .newRule()
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .help("Add a rule")
+                Button {
+                    model.deleteSelected()
+                } label: {
+                    Image(systemName: "minus")
+                }
+                .help("Delete the selected rule")
+                .disabled(model.selectedIndex == nil)
             }
-            .help("Add a rule")
-            Button {
-                model.deleteSelected()
-            } label: {
-                Image(systemName: "minus")
+            .fixedSize()
+            ControlGroup {
+                Button {
+                    if let id = model.selected { model.edit { $0.moveRule(id, by: -1) } }
+                } label: {
+                    Image(systemName: "chevron.up")
+                }
+                .help("Move up")
+                .disabled((model.selectedIndex ?? 0) == 0)
+                Button {
+                    if let id = model.selected { model.edit { $0.moveRule(id, by: 1) } }
+                } label: {
+                    Image(systemName: "chevron.down")
+                }
+                .help("Move down")
+                .disabled(model.selectedIndex.map { $0 >= model.editor.config.rules.count - 1 } ?? true)
             }
-            .help("Delete the selected rule")
-            .disabled(model.selectedIndex == nil)
-            Button {
-                if let id = model.selected { model.edit { $0.moveRule(id, by: -1) } }
-            } label: {
-                Image(systemName: "arrow.up")
-            }
-            .help("Move up")
-            .disabled((model.selectedIndex ?? 0) == 0)
-            Button {
-                if let id = model.selected { model.edit { $0.moveRule(id, by: 1) } }
-            } label: {
-                Image(systemName: "arrow.down")
-            }
-            .help("Move down")
-            .disabled(model.selectedIndex.map { $0 >= model.editor.config.rules.count - 1 } ?? true)
+            .fixedSize()
             Spacer()
-            Button("Edit Rule…") { model.editSelected() }
+            Button("Edit…") { model.editSelected() }
                 .disabled(model.selectedIndex == nil)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-    }
-
-    private var tester: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Test a URL").font(.callout.weight(.medium)).foregroundStyle(.secondary)
-            TextField("https://example.com", text: $model.testURL)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("test-url")
-            let link = model.testURL.trimmingCharacters(in: .whitespacesAndNewlines)
-            if link.isEmpty {
-                Text("Preview the matching rule and destination without opening the link.")
-                    .font(.callout).foregroundStyle(.secondary)
-            } else {
-                let result = Routing.describe(link, editor: model.editor)
-                Text(result.text).font(.callout).foregroundStyle(result.ok ? Color.primary : Color.red)
-                    .accessibilityIdentifier("test-result")
-            }
-        }
-        .padding(20)
+        .controlSize(.small)
     }
 }
 
+/// One rule: its position, how it matches, the pattern, and where it sends links.
 struct RuleRow: View {
     let index: Int
     let rule: Rule
@@ -120,39 +152,54 @@ struct RuleRow: View {
 
     var body: some View {
         let browser = editor.config.browser(of: rule)
+        let resolves = (try? Profiles.directory(rule.profile, in: editor.profiles(of: browser))) != nil
         HStack(spacing: 12) {
-            Text("\(index + 1)").font(.callout.monospacedDigit()).foregroundStyle(.secondary).frame(width: 22)
-            Text(rule.condition.label).font(.callout).foregroundStyle(.secondary).frame(
-                width: 64, alignment: .leading)
+            Text("\(index + 1)")
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 20)
+                .background(.quaternary, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                Text(rule.value).lineLimit(1).truncationMode(.middle)
+                HStack(spacing: 6) {
+                    Text(rule.condition.label)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(.quaternary.opacity(0.6), in: Capsule())
+                    Text(rule.value).lineLimit(1).truncationMode(.middle)
+                }
                 if let by = hiddenBy {
-                    Text("never matches: rule \(by + 1) always matches first").font(.caption).foregroundStyle(
-                        .orange)
+                    Label(
+                        "Never matches: rule \(by + 1) always matches first",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(
-                    "\(editor.browserName(browser)) · \(editor.profileName(browser: browser, profile: rule.profile))"
-                )
-                .lineLimit(1)
-                .foregroundStyle(profileResolves(browser) ? Color.primary : Color.red)
-                if rule.browser == nil {
-                    Text("default browser").font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(editor.profileName(browser: browser, profile: rule.profile))
+                        .foregroundStyle(resolves ? Color.primary : Color.red)
+                        .lineLimit(1)
+                    Text(
+                        rule.browser == nil
+                            ? "\(editor.browserName(browser)) (default)" : editor.browserName(browser)
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 }
+                BrowserIcon(locator: browser, size: 26)
             }
         }
-        .padding(.vertical, 3)
         .accessibilityElement(children: .combine)
-    }
-
-    private func profileResolves(_ browser: String) -> Bool {
-        (try? Profiles.directory(rule.profile, in: editor.profiles(of: browser))) != nil
     }
 }
 
-/// The add/edit sheet. Only Done changes the config.
+/// The add/edit sheet, as a grouped form. Only Done changes the config.
 struct RuleSheet: View {
     @ObservedObject var model: SettingsModel
 
@@ -160,44 +207,58 @@ struct RuleSheet: View {
         if let draft = model.draft {
             let e = model.editor
             let browser = draft.browser ?? e.config.browser
-            VStack(alignment: .leading, spacing: 14) {
-                Text(draft.isNew ? "Add Rule" : "Edit Rule").font(.title3.weight(.semibold))
+            VStack(spacing: 0) {
                 Form {
-                    Picker("Match", selection: binding(\.condition)) {
-                        ForEach(Condition.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    VStack(alignment: .leading, spacing: 4) {
+                    Section {
+                        Picker("Match", selection: binding(\.condition)) {
+                            ForEach(Condition.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
                         TextField(
                             "Pattern", text: binding(\.value), prompt: Text(placeholder(draft.condition))
                         )
                         .accessibilityIdentifier("draft-value")
-                        Text(hint(draft.condition)).font(.caption).foregroundStyle(.secondary)
+                    } header: {
+                        Text(draft.isNew ? "New Rule" : "Edit Rule").font(.headline)
+                    } footer: {
+                        Text(hint(draft.condition)).foregroundStyle(.secondary)
                     }
-                    BrowserPicker(
-                        title: "Browser", selection: draft.browser, browsers: e.installed, editor: e,
-                        allowsDefault: true
-                    ) { chosen in
-                        model.draft?.selectBrowser(chosen, defaultBrowser: e.config.browser)
+                    Section("Open in") {
+                        BrowserPicker(
+                            title: "Browser", selection: draft.browser, browsers: e.installed, editor: e,
+                            allowsDefault: true
+                        ) { chosen in
+                            model.draft?.selectBrowser(chosen, defaultBrowser: e.config.browser)
+                        }
+                        ProfilePicker(title: "Profile", browser: browser, selection: draft.profile, editor: e)
+                        {
+                            model.draft?.profile = $0
+                        }
                     }
-                    ProfilePicker(title: "Profile", browser: browser, selection: draft.profile, editor: e) {
-                        model.draft?.profile = $0
+                    if let error = draft.error {
+                        Section {
+                            Label(error, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("draft-error")
+                        }
                     }
                 }
-                .formStyle(.columns)
-                if let error = draft.error {
-                    ErrorText(error).accessibilityIdentifier("draft-error")
-                }
+                .formStyle(.grouped)
+                .scrollDisabled(true)
                 HStack {
                     Spacer()
                     Button("Cancel") { model.draft = nil }
                         .keyboardShortcut(.cancelAction)
                     Button(draft.isNew ? "Add Rule" : "Done") { model.commitDraft() }
                         .keyboardShortcut(.defaultAction)
+                        .prominentButton()
                 }
+                .controlSize(.large)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 18)
             }
-            .padding(20)
-            .frame(width: 480)
+            .frame(width: 500)
+            .fixedSize(horizontal: false, vertical: true)
             .background(Color(nsColor: .windowBackgroundColor))
         }
     }

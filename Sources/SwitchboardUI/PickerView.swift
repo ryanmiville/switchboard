@@ -94,13 +94,14 @@ public final class PickerModel: ObservableObject {
     public var height: CGFloat {
         let shown = state.shown
         let rows = CGFloat(min(max(shown.count, 2), 7))
-        return 150 + rows * 44 + (state.error == nil ? 0 : 70)
+        return 118 + rows * PickerView.rowHeight + (state.error == nil ? 0 : 86) + (reading ? 24 : 0)
     }
 
-    public static let width: CGFloat = 460
+    public static let width: CGFloat = 560
 }
 
-/// The Quick Switch panel: the link, then the destinations, favorites first.
+/// The Quick Switch panel, drawn as a Spotlight-style floating glass panel: the link at the top,
+/// then the destinations, favorites first, and the keys at the bottom.
 public struct PickerView: View {
     @ObservedObject var model: PickerModel
 
@@ -108,29 +109,65 @@ public struct PickerView: View {
         self.model = model
     }
 
+    static let rowHeight: CGFloat = 50
+    static let corner: CGFloat = 26
+
     public var body: some View {
         let shown = model.state.shown
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Open in…").font(.headline)
-            TextField("Paste an HTTP or HTTPS link", text: $model.state.link)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit { model.open(model.state.selected) }
-                .accessibilityIdentifier("picker-link")
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "link")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.secondary)
+                TextField("Paste an HTTP or HTTPS link", text: $model.state.link)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 20))
+                    .onSubmit { model.open(model.state.selected) }
+                    .accessibilityIdentifier("picker-link")
+                Button {
+                    model.services.openSettings()
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Quick Switch settings")
+            }
+            .padding(.horizontal, 20)
+            .frame(height: 58)
+            Divider().opacity(0.5)
             if model.reading {
-                Text("Reading the current tab…").font(.callout).foregroundStyle(.secondary)
+                Label("Reading the current tab…", systemImage: "hourglass")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .padding(.horizontal, 20).padding(.top, 8)
             }
             if let error = model.state.error {
-                VStack(alignment: .leading, spacing: 6) {
-                    ErrorText(error)
-                    if model.state.needsPermission {
-                        Button("Automation Settings…") { model.services.openAutomationSettings() }
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(error).font(.callout).fixedSize(horizontal: false, vertical: true)
+                        if model.state.needsPermission {
+                            Button("Automation Settings…") { model.services.openAutomationSettings() }
+                                .controlSize(.small)
+                                .glassButton()
+                        }
                     }
                 }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .padding(.horizontal, 12).padding(.top, 10)
             }
             if shown.isEmpty {
-                Text("No destinations are shown. Choose some in Settings → Quick Switch.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 6) {
+                    Image(systemName: "rectangle.stack.badge.minus").font(.system(size: 24)).foregroundStyle(
+                        .tertiary)
+                    Text("No destinations are shown.").font(.headline)
+                    Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     VStack(spacing: 2) {
@@ -141,21 +178,25 @@ public struct PickerView: View {
                                 open: { model.open(index) }, star: { model.toggleFavorite(index) })
                         }
                     }
+                    .padding(8)
                 }
             }
-            HStack {
-                Button("Settings…") { model.services.openSettings() }
+            Divider().opacity(0.5)
+            HStack(spacing: 14) {
+                KeyHint(keys: "↑↓", label: "Choose")
+                KeyHint(keys: "↩", label: "Open")
+                KeyHint(keys: "⌘1–9", label: "Favorite")
                 Spacer()
-                Button("Cancel") { model.services.close() }.keyboardShortcut(.cancelAction)
-                Button("Open") { model.open(model.state.selected) }.keyboardShortcut(.defaultAction)
-                    .disabled(shown.isEmpty)
+                KeyHint(keys: "esc", label: "Close")
             }
-            // ⌘1–⌘9 open a favorite; arrows move the selection.
+            .padding(.horizontal, 20)
+            .frame(height: 36)
+            // ⌘1–⌘9 open a favorite, arrows move the selection, Escape closes. Return opens through
+            // the link field's submit.
             keyboardButtons
         }
-        .padding(16)
         .frame(width: PickerModel.width)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .glass(in: RoundedRectangle(cornerRadius: Self.corner, style: .continuous))
     }
 
     private func number(of index: Int) -> Int? {
@@ -171,6 +212,7 @@ public struct PickerView: View {
             }
             Button("") { model.state.moveSelection(by: 1) }.keyboardShortcut(.downArrow, modifiers: [])
             Button("") { model.state.moveSelection(by: -1) }.keyboardShortcut(.upArrow, modifiers: [])
+            Button("") { model.services.close() }.keyboardShortcut(.cancelAction)
         }
         .frame(width: 0, height: 0)
         .opacity(0)
@@ -178,6 +220,24 @@ public struct PickerView: View {
     }
 }
 
+/// A key and what it does, in the panel's footer.
+struct KeyHint: View {
+    let keys: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(keys)
+                .font(.caption.weight(.semibold).monospaced())
+                .padding(.horizontal, 5).padding(.vertical, 1)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+            Text(label).font(.caption)
+        }
+        .foregroundStyle(.secondary)
+    }
+}
+
+/// One destination: the browser's icon, the profile and browser, its favorite number, and a star.
 struct ChoiceRow: View {
     let choice: Choice
     let number: Int?
@@ -186,29 +246,30 @@ struct ChoiceRow: View {
     let star: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
+            BrowserIcon(locator: choice.destination.browser, size: 32)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(choice.profileName).font(.body.weight(.medium))
+                Text(choice.error ?? choice.browserName)
+                    .font(.caption)
+                    .foregroundStyle(choice.error == nil ? Color.secondary : Color.red)
+                    .lineLimit(2)
+            }
+            Spacer()
+            if let number {
+                Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+            }
             Button(action: star) {
                 Image(systemName: choice.favorite ? "star.fill" : "star")
                     .foregroundStyle(choice.favorite ? Color.yellow : Color.secondary)
             }
             .buttonStyle(.borderless)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(choice.profileName).font(.body.weight(.medium))
-                Text(choice.browserName).font(.caption).foregroundStyle(.secondary)
-                if let error = choice.error {
-                    Text(error).font(.caption).foregroundStyle(.red).fixedSize(
-                        horizontal: false, vertical: true)
-                }
-            }
-            Spacer()
-            if let number {
-                Text("⌘\(number)").font(.caption.monospaced()).foregroundStyle(.secondary)
-            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .frame(minHeight: PickerView.rowHeight - 2)
         .background(
-            RoundedRectangle(cornerRadius: 6).fill(selected ? Color.accentColor.opacity(0.2) : Color.clear)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(selected ? Color.accentColor.opacity(0.22) : Color.clear)
         )
         .contentShape(Rectangle())
         .onTapGesture(perform: open)

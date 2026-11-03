@@ -138,7 +138,7 @@ public enum Scenes {
             size = SettingsView.size
         case .ruleSheet:
             view = AnyView(RuleSheet(model: settings).fixedSize())
-            size = CGSize(width: 480, height: 330)
+            size = CGSize(width: 500, height: 440)
         case .picker:
             view = AnyView(PickerView(model: picker))
             size = CGSize(width: PickerModel.width, height: picker.height)
