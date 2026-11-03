@@ -109,8 +109,10 @@ Shortcut, favorite, and destination preferences live in the optional `picker` se
 ```sh
 make test     # Fast isolated regression tests; no app or real browser is launched
 make snapshots  # Render the settings window into .build/snapshots and compare with the goldens
-make verify   # Formatting, tests, Debug/Release builds, bundle and whitespace checks
-make verify-linux  # On Linux: formatting, Foundation-only tests and whitespace checks
+scripts/check  # Everything CI runs: format, lint, file sizes, tests, builds, bundle and whitespace checks
+scripts/check RouterTests  # Format, lint and file sizes, then only the matching tests
+make verify   # Same as scripts/check
+make verify-linux  # On Linux: the subset without the app sources, snapshots and Xcode builds
 make format   # Apply Swift formatting
 make install-cli  # Link ~/.local/bin/switchboard to the tool inside the installed app
 make debug    # Build Debug into .build/xcode
@@ -127,6 +129,6 @@ Debug and Release builds are signed locally with their Automation entitlement an
 
 Installation stages and verifies the new app before atomically replacing the installed bundle. Old Debug libraries are removed with the previous bundle instead of being merged into a Release installation, and an invalid replacement leaves the installed app untouched.
 
-GitHub Actions runs `make verify` for pull requests and pushes to `main`, using the Xcode 26.4 family on `macos-26`. Failure logs are uploaded as artifacts. The workflow starts running once it is pushed to GitHub.
+GitHub Actions runs `scripts/check` for pull requests and pushes to `main`: in full with the Xcode 26.4 family on `macos-26`, and the Linux subset on Ubuntu, set up by `scripts/cloud-setup.sh`, the same script that prepares Claude Code cloud sessions. Failure logs are uploaded as artifacts.
 
 For changes to URL handling or launching, also smoke-check the app on macOS: open links with the browser closed and already running, confirm the selected profile, open several links quickly, and verify an open editor stays open. Automated fixtures cannot establish actual browser-window delivery or compatibility with every supported macOS release.

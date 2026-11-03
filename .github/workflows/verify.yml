@@ -28,7 +28,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p .build
-          make verify 2>&1 | tee .build/verify.log
+          scripts/check 2>&1 | tee .build/verify.log
       - name: Upload failure log
         if: failure()
         uses: actions/upload-artifact@v7
@@ -43,3 +43,19 @@ jobs:
           name: snapshots
           path: .build/snapshots
           if-no-files-found: ignore
+
+  # The Linux subset that cloud sessions run, set up by the same script they use.
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Cloud setup script
+        run: sudo scripts/cloud-setup.sh
+      - name: Check
+        shell: bash
+        run: |
+          . /etc/profile.d/switchboard-dev.sh
+          scripts/check
