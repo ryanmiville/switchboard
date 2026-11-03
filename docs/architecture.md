@@ -116,7 +116,7 @@ As the Rust rewrite: real implementations end to end, isolated by a temporary ho
 - **Fixture browsers are real app bundles.** `Fixtures.installBrowser` writes `Name.app` with an
   `Info.plist` and a shell script as its executable that appends its arguments to a log. A test
   checks the `--profile-directory` and link a real launch passed. This runs on Linux too.
-- **The CLI is tested as a binary.** Tests run the built `switchboard-next` with `--home <tmp>`
+- **The CLI is tested as a binary.** Tests run the built `switchboard-next` with `HOME=<tmp>`
   and check its JSON, exit code and the resulting files.
 - **Editor tests** drive the real model and the real store in a temporary home.
 - **What can't run safely stays out of automated tests** and goes on the Mac checklist:

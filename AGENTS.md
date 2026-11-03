@@ -15,9 +15,15 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
   bundles, Chromium profiles, history, launching. Foundation only. Reads no environment, clock or
   home folder on its own.
 - `Sources/SwitchboardFixtures`: temporary homes with fixture browsers for tests and scenes.
-- `Sources/SwitchboardCLI` and `Sources/switchboard-next`: the CLI's commands, and its binary.
-- Later (see the architecture's order): `SwitchboardEditor` (settings model, no SwiftUI),
-  `SwitchboardMac` (AppKit glue), `SwitchboardUI` (SwiftUI and scenes), `Switchboard` (the app).
+- `Sources/SwitchboardCLI` and `Sources/switchboard-next`: the CLI's commands (one file per
+  command group in `Commands/`), the agent guide (`Guide.swift`), and the binary.
+- `Sources/SwitchboardEditor`: the settings model with no SwiftUI (`Editor`: autosave, conflicts,
+  import), link routing and the app's lifetime (`Routing`), the Quick Switch model (`Picker`), and
+  shortcut key codes. Foundation only, so tested on Linux.
+- macOS only: `Sources/SwitchboardMac` (AppKit glue: menu bar, Carbon shortcut, login item,
+  current tab over Apple Events, default browser), `Sources/SwitchboardUI` (SwiftUI panes, the
+  rule sheet, the picker panel, `Scenes`, `Renderer`), `Sources/Switchboard` (the app: wiring,
+  link delivery, windows, `--snap`).
 - `Tests/<Target>Tests`: one test target per library target.
 - References, from `scripts/cloud-setup.sh` in cloud sessions: `~/reference/switchboard-rs` (the
   Rust rewrite: the behaviour and architecture to port, file for file) and
@@ -35,6 +41,13 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 - Format: `scripts/format`. Swift 6.3 (Xcode 26.4 on macOS); `scripts/cloud-setup.sh` installs it
   in cloud sessions.
 - Run the CLI against a scratch home: `HOME=$(mktemp -d) swift run switchboard-next rules list`.
+- See the app without a person (macOS): `swift run Switchboard --list-scenes`, then
+  `swift run Switchboard --snap out.png --scene routing [--theme dark]`. The UI tests render every
+  scene in both themes into `.build/snapshots` (CI uploads them as `scene-renders`);
+  `SNAPSHOT_COMPARE=1` compares them with `Tests/UITests/Goldens`, `SNAPSHOT_RECORD=1` rewrites
+  those. Scenes use fixture homes only. Add a scene for every new pane or state.
+- Build the app: `scripts/bundle [--debug]` (into `.build/bundle/`; CI's macOS job runs it).
+  Install it: `scripts/install [--cli]`, only when the owner asks.
 
 ## How things are tested
 
@@ -106,5 +119,6 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 
 ## Current constraints
 
-- 2026-11-03: step 2 of the architecture's order (the core) is ported with its tests. Next: the
-  CLI from `crates/cli`, then the editor model.
+- 2026-11-03: every step of the architecture's order is written; the macOS targets have been
+  compiled and their tests run only by CI. Nothing has been seen working on a real Mac yet: the
+  Mac checklist in `docs/architecture.md` is all open. No goldens are recorded yet.
