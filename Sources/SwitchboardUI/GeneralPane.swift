@@ -14,8 +14,12 @@ struct GeneralPane: View {
             Section {
                 LabeledContent {
                     if model.isDefaultBrowser {
-                        Label("Default Browser", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                        // A status, as System Settings shows one: quiet text, with colour only on the mark.
+                        Label {
+                            Text("Default browser").foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        }
                     } else {
                         Button("Make Default…") { model.makeDefaultBrowser() }
                     }
@@ -27,7 +31,7 @@ struct GeneralPane: View {
                         RowLabel(
                             title: Identity.appName,
                             caption: model.isDefaultBrowser
-                                ? "Opens the links you click, then sends them where your rules say."
+                                ? "Sends each link you click where your rules say."
                                 : "Isn’t your default web browser, so links you click skip it.")
                     }
                 }
