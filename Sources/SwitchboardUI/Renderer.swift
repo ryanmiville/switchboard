@@ -20,7 +20,11 @@ public enum Renderer {
         window.animationBehavior = .none
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         defer { window.close() }
-        let host = NSHostingView(rootView: view.environment(\.colorScheme, dark ? .dark : .light))
+        // A window draws its background behind its content, and a sheet its own; cacheDisplay
+        // captures only the content, so the window background is painted under every scene.
+        let host = NSHostingView(
+            rootView: view.background(Color(nsColor: .windowBackgroundColor))
+                .environment(\.colorScheme, dark ? .dark : .light))
         window.contentView = host
         // SwiftUI and the AppKit views it hosts settle over a few run loop turns.
         for _ in 0..<6 {

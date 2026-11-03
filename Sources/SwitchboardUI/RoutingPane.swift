@@ -255,7 +255,6 @@ struct RuleSheet: View {
             }
             .frame(width: 500)
             .fixedSize(horizontal: false, vertical: true)
-            .background(Color(nsColor: .windowBackgroundColor))
         }
     }
 
