@@ -18,6 +18,9 @@ var targets: [Target] = [
     .target(
         name: "SwitchboardCLI", dependencies: ["SwitchboardCore", argumentParser], swiftSettings: strict),
     .executableTarget(name: "switchboard-next", dependencies: ["SwitchboardCLI"], swiftSettings: strict),
+    // The settings model, link routing for the app's lifetime and the Quick Switch model, without
+    // SwiftUI, so they are tested on Linux too.
+    .target(name: "SwitchboardEditor", dependencies: ["SwitchboardCore"], swiftSettings: strict),
 
     .testTarget(
         name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore", "SwitchboardFixtures"],
@@ -26,12 +29,45 @@ var targets: [Target] = [
     .testTarget(
         name: "CLITests", dependencies: ["switchboard-next", "SwitchboardCore", "SwitchboardFixtures"],
         swiftSettings: strict),
+    .testTarget(
+        name: "EditorTests", dependencies: ["SwitchboardEditor", "SwitchboardCore", "SwitchboardFixtures"],
+        swiftSettings: strict),
 ]
+
+#if os(macOS)
+    targets += [
+        // AppKit glue: the menu-bar item, launch at login, reading the current tab, the global
+        // shortcut, and whether this app is the default browser.
+        .target(
+            name: "SwitchboardMac", dependencies: ["SwitchboardCore", "SwitchboardEditor"],
+            swiftSettings: strict),
+        // The SwiftUI settings window and Quick Switch panel, and the named scenes renders start from.
+        .target(
+            name: "SwitchboardUI",
+            dependencies: ["SwitchboardCore", "SwitchboardEditor", "SwitchboardFixtures"],
+            swiftSettings: strict),
+        // The app binary: wiring, link delivery, the app's lifetime, and headless scene renders.
+        .executableTarget(
+            name: "Switchboard",
+            dependencies: ["SwitchboardCore", "SwitchboardEditor", "SwitchboardMac", "SwitchboardUI"],
+            swiftSettings: strict),
+        // Every scene rendered in light and dark and compared with its golden.
+        .testTarget(
+            name: "UITests", dependencies: ["SwitchboardUI", "SwitchboardEditor", "SwitchboardFixtures"],
+            exclude: ["Goldens"], swiftSettings: strict),
+    ]
+#endif
+
+#if os(macOS)
+    let appProducts: [Product] = [.executable(name: "Switchboard", targets: ["Switchboard"])]
+#else
+    let appProducts: [Product] = []
+#endif
 
 let package = Package(
     name: "Switchboard",
     platforms: [.macOS(.v13)],
-    products: [.executable(name: "switchboard-next", targets: ["switchboard-next"])],
+    products: [.executable(name: "switchboard-next", targets: ["switchboard-next"])] + appProducts,
     dependencies: [.package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0")],
     targets: targets,
     swiftLanguageModes: [.v6]
