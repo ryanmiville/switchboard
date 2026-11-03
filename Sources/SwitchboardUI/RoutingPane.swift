@@ -2,12 +2,10 @@ import SwiftUI
 import SwitchboardCore
 import SwitchboardEditor
 
-/// The ordered rules, as a list inside a grouped section with its controls along the bottom edge
+/// The ordered rules, as a table inside a grouped section with its controls along the bottom edge
 /// (as System Settings shows Login Items), and a link tester.
 struct RoutingPane: View {
     @ObservedObject var model: SettingsModel
-
-    static let rowHeight: CGFloat = 48
 
     var body: some View {
         let e = model.editor
@@ -33,37 +31,13 @@ struct RoutingPane: View {
                     .padding(.vertical, 22)
                     .accessibilityIdentifier("routing-empty")
                 } else {
-                    List(selection: $model.selected) {
-                        ForEach(Array(rules.enumerated()), id: \.element.id) { index, rule in
-                            RuleRow(index: index, rule: rule, hiddenBy: hidden[index], editor: e)
-                                .frame(height: Self.rowHeight - 8)
-                                .tag(rule.id)
-                                .contentShape(Rectangle())
-                                .onTapGesture(count: 2) {
-                                    model.selected = rule.id
-                                    model.editSelected()
-                                }
-                                .contextMenu {
-                                    Button("Edit Rule…") {
-                                        model.selected = rule.id
-                                        model.editSelected()
-                                    }
-                                    Button("Delete Rule", role: .destructive) {
-                                        model.selected = rule.id
-                                        model.deleteSelected()
-                                    }
-                                }
-                        }
-                        .onMove { from, to in
-                            guard let first = from.first else { return }
-                            let id = rules[first].id
-                            model.edit { $0.moveRule(id, to: to > first ? to - 1 : to) }
-                        }
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .scrollDisabled(true)
-                    .frame(height: CGFloat(rules.count) * Self.rowHeight)
+                    RulesTable(
+                        rules: rules, hiddenBy: hidden, editor: e, selection: $model.selected,
+                        onEdit: { model.editSelected() }, onDelete: { model.deleteSelected() },
+                        onMove: { id, to in model.edit { $0.moveRule(id, to: to) } }
+                    )
+                    // Up to eight rows show at once; the table scrolls the rest.
+                    .frame(height: CGFloat(min(max(rules.count, 3), 8)) * RulesTable.rowHeight + 10)
                     .accessibilityIdentifier("rules")
                 }
                 controls
@@ -178,7 +152,7 @@ struct RuleRow: View {
             HStack(spacing: 8) {
                 VStack(alignment: .trailing, spacing: 1) {
                     Text(editor.profileName(browser: browser, profile: rule.profile))
-                        .foregroundStyle(resolves ? Color.primary : Color.red)
+                        .foregroundStyle(resolves ? AnyShapeStyle(.primary) : AnyShapeStyle(.red))
                         .lineLimit(1)
                     Text(
                         rule.browser == nil
