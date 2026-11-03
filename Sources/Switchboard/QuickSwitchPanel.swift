@@ -83,6 +83,8 @@ final class QuickSwitchPanel {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
+        // Summoned from the keyboard many times a day, so it appears and goes at once.
+        panel.animationBehavior = .none
         panel.isMovableByWindowBackground = true
         let host = NSHostingView(rootView: PickerView(model: model))
         host.wantsLayer = true

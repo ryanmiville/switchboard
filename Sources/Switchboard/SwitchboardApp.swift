@@ -16,7 +16,6 @@ struct SwitchboardApp: App {
             SettingsWindow(delegate: delegate)
         }
         .windowResizability(.contentSize)
-        .windowToolbarStyle(.unified)
         .defaultPosition(.center)
         .commands {
             CommandGroup(replacing: .appSettings) {

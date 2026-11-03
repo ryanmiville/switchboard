@@ -44,6 +44,10 @@ public struct SettingsView: View {
         } detail: {
             pane.navigationTitle(model.pane.title)
         }
+        // Keeps the window's toolbar with the sidebar toggle removed: without one macOS gives the
+        // window a plain title bar (a centred title and a hard line) instead of the toolbar
+        // System Settings has, with the pane's title on the left and content scrolling under it.
+        .toolbar(.visible, for: .windowToolbar)
         .frame(width: Self.size.width, height: Self.size.height)
         .sheet(item: draftBinding) { _ in RuleSheet(model: model) }
     }
