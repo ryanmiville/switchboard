@@ -2,14 +2,15 @@ import SwiftUI
 import SwitchboardCore
 import SwitchboardEditor
 
-/// The settings window, laid out as System Settings on macOS 26: a floating glass sidebar of panes
-/// with coloured icons (the traffic lights sit in its top corner), and the selected pane as grouped
-/// sections under its header card. Notices that need the person sit above the pane.
+/// The settings window, built from SwiftUI's own components so it matches System Settings: a
+/// NavigationSplitView (the system's glass sidebar, with the traffic lights inside it and a search
+/// field), the pane's title in the toolbar, and the pane as a grouped Form.
 ///
-/// The sidebar is drawn here rather than by NavigationSplitView: the system's glass sidebar is
-/// composited by the window server, so offscreen renders came out blank.
+/// Offscreen renders can't capture the system sidebar or Liquid Glass, which the window server
+/// composites, so scene renders show those areas blank. The app isn't changed to suit renders.
 public struct SettingsView: View {
     @ObservedObject var model: SettingsModel
+    @State private var search = ""
 
     public init(model: SettingsModel) {
         self.model = model
@@ -19,24 +20,55 @@ public struct SettingsView: View {
     public static let size = CGSize(width: 860, height: 640)
 
     public var body: some View {
-        HStack(spacing: 0) {
-            Sidebar(model: model)
-            VStack(spacing: 0) {
-                Notices(model: model)
-                Group {
-                    switch model.pane {
-                    case .general: GeneralPane(model: model)
-                    case .routing: RoutingPane(model: model)
-                    case .quickSwitch: QuickSwitchPane(model: model)
+        NavigationSplitView {
+            List(selection: paneBinding) {
+                ForEach(panes) { pane in
+                    Label {
+                        Text(pane.title)
+                    } icon: {
+                        PaneIcon(pane: pane, size: 20)
                     }
+                    .tag(pane)
+                    .accessibilityIdentifier("pane-\(pane.rawValue)")
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
+            .searchable(text: $search, placement: .sidebar)
+            .safeAreaInset(edge: .bottom) {
+                SaveStatus(model: model)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 260)
+            .modifier(NoSidebarToggle())
+        } detail: {
+            pane.navigationTitle(model.pane.title)
         }
         .frame(width: Self.size.width, height: Self.size.height)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .ignoresSafeArea(.container, edges: .top)
         .sheet(item: draftBinding) { _ in RuleSheet(model: model) }
+    }
+
+    @ViewBuilder
+    private var pane: some View {
+        switch model.pane {
+        case .general: GeneralPane(model: model)
+        case .routing: RoutingPane(model: model)
+        case .quickSwitch: QuickSwitchPane(model: model)
+        }
+    }
+
+    /// The panes the sidebar search matches, by title or description.
+    private var panes: [Pane] {
+        let query = search.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return Pane.allCases }
+        return Pane.allCases.filter {
+            $0.title.localizedCaseInsensitiveContains(query)
+                || $0.summary.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private var paneBinding: Binding<Pane?> {
+        Binding(get: { model.pane }, set: { if let pane = $0 { model.pane = pane } })
     }
 
     private var draftBinding: Binding<DraftID?> {
@@ -46,43 +78,14 @@ public struct SettingsView: View {
     }
 }
 
-/// The panes, as a floating glass panel inset from the window's edges.
-struct Sidebar: View {
-    @ObservedObject var model: SettingsModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // Room for the traffic lights, which sit inside the sidebar's top corner.
-            Spacer().frame(height: 40)
-            ForEach(Pane.allCases) { pane in
-                let selected = model.pane == pane
-                Button {
-                    model.pane = pane
-                } label: {
-                    HStack(spacing: 9) {
-                        PaneIcon(pane: pane, size: 22)
-                        Text(pane.title)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .contentShape(Rectangle())
-                    .background(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(selected ? Color.accentColor.opacity(0.2) : Color.clear))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("pane-\(pane.rawValue)")
-                .accessibilityAddTraits(selected ? .isSelected : [])
-            }
-            Spacer()
-            SaveStatus(model: model).padding(.horizontal, 8)
+/// System Settings' sidebar can't be collapsed; neither can this one.
+struct NoSidebarToggle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.toolbar(removing: .sidebarToggle)
+        } else {
+            content
         }
-        .padding(10)
-        .frame(width: 212)
-        .frame(maxHeight: .infinity)
-        .glass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .padding(8)
     }
 }
 
@@ -107,48 +110,51 @@ struct SaveStatus: View {
     }
 }
 
-/// Problems that need the person: a link that didn't open, a file that can't be read or saved.
-struct Notices: View {
+/// Problems that need the person, as the first section of every pane: a link that didn't open,
+/// a file that can't be read or saved.
+struct NoticesSection: View {
     @ObservedObject var model: SettingsModel
 
     var body: some View {
-        let shown = model.failure != nil || model.editor.loadError != nil || model.editor.saveError != nil
-        VStack(spacing: 10) {
-            if let failure = model.failure {
-                Banner(
-                    symbol: "link.badge.plus", title: "The link couldn’t be opened",
-                    message: "\(failure.reason) Fix the issue here, or copy the link to open it yourself.",
-                    detail: failure.url
-                ) {
-                    Button("Copy Link") { model.copyFailedLink() }
-                    Button("Dismiss") { model.failure = nil }
+        if model.failure != nil || model.editor.loadError != nil || model.editor.saveError != nil {
+            Section {
+                if let failure = model.failure {
+                    Banner(
+                        symbol: "link", title: "The link couldn’t be opened",
+                        message:
+                            "\(failure.reason) Fix the issue here, or copy the link to open it yourself.",
+                        detail: failure.url
+                    ) {
+                        Button("Copy Link") { model.copyFailedLink() }
+                        Button("Dismiss") { model.failure = nil }
+                    }
                 }
-            }
-            if let error = model.editor.loadError {
-                Banner(symbol: "doc.badge.ellipsis", title: "Settings couldn’t be read", message: error) {
-                    Button("Reload") { model.edit { $0.reload() } }
-                    Button("Reveal in Finder") { model.revealConfigFile() }
-                }
-            } else if model.editor.conflict {
-                Banner(
-                    symbol: "arrow.triangle.2.circlepath", title: "Settings changed elsewhere",
-                    message: model.editor.saveError ?? ""
-                ) {
-                    Button("Keep My Changes") { model.edit { $0.keepMine() } }
-                    Button("Use Saved Settings") { model.edit { $0.reload() } }
-                }
-            } else if let error = model.editor.saveError {
-                Banner(symbol: "exclamationmark.icloud", title: "Changes couldn’t be saved", message: error) {
-                    Button("Retry") { model.flush() }
+                if let error = model.editor.loadError {
+                    Banner(symbol: "doc.badge.ellipsis", title: "Settings couldn’t be read", message: error) {
+                        Button("Reload") { model.edit { $0.reload() } }
+                        Button("Show in Finder") { model.revealConfigFile() }
+                    }
+                } else if model.editor.conflict {
+                    Banner(
+                        symbol: "arrow.triangle.2.circlepath", title: "Settings changed elsewhere",
+                        message: model.editor.saveError ?? ""
+                    ) {
+                        Button("Keep My Changes") { model.edit { $0.keepMine() } }
+                        Button("Use Saved Settings") { model.edit { $0.reload() } }
+                    }
+                } else if let error = model.editor.saveError {
+                    Banner(
+                        symbol: "exclamationmark.triangle", title: "Changes couldn’t be saved", message: error
+                    ) {
+                        Button("Retry") { model.flush() }
+                    }
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, shown ? 14 : 0)
     }
 }
 
-/// A notice as a tinted glass card, with its recovery actions.
+/// A notice as a form row, with its recovery actions.
 struct Banner<Actions: View>: View {
     var symbol = "exclamationmark.triangle.fill"
     let title: String

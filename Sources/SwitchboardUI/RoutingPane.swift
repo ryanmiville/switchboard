@@ -15,7 +15,7 @@ struct RoutingPane: View {
         let hidden = Dictionary(
             Shadowing.unreachable(rules).map { ($0.rule, $0.by) }, uniquingKeysWith: { first, _ in first })
         Form {
-            Section { PaneHeader(pane: .routing) }
+            NoticesSection(model: model)
 
             Section {
                 if rules.isEmpty {
@@ -70,15 +70,12 @@ struct RoutingPane: View {
             } header: {
                 Text("Rules")
             } footer: {
-                Text("The first rule that matches a link wins. Drag rules to change their order.")
-                    .foregroundStyle(.secondary)
+                Footer("The first rule that matches a link wins. Drag rules to change their order.")
             }
 
             Section {
-                TextField(text: $model.testURL, prompt: Text("https://example.com/page")) {
-                    RowLabel(title: "Link") { SymbolTile(symbol: "link", color: .blue) }
-                }
-                .accessibilityIdentifier("test-url")
+                TextField("Link", text: $model.testURL, prompt: Text("https://example.com/page"))
+                    .accessibilityIdentifier("test-url")
                 let link = model.testURL.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !link.isEmpty {
                     let result = Routing.describe(link, editor: model.editor)
@@ -92,8 +89,7 @@ struct RoutingPane: View {
             } header: {
                 Text("Test a link")
             } footer: {
-                Text("Shows the rule and destination a link would get, without opening it.")
-                    .foregroundStyle(.secondary)
+                Footer("Shows the rule and destination a link would get, without opening it.")
             }
         }
         .formStyle(.grouped)
@@ -221,7 +217,7 @@ struct RuleSheet: View {
                     } header: {
                         Text(draft.isNew ? "New Rule" : "Edit Rule").font(.headline)
                     } footer: {
-                        Text(hint(draft.condition)).foregroundStyle(.secondary)
+                        Footer(hint(draft.condition))
                     }
                     Section("Open in") {
                         BrowserPicker(

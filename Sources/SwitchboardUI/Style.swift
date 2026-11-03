@@ -98,8 +98,8 @@ struct PaneHeader: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            PaneIcon(pane: pane, size: 52)
-            Text(pane.title).font(.title2.weight(.semibold))
+            PaneIcon(pane: pane, size: 40)
+            Text(pane.title).font(.title3.weight(.semibold))
             Text(pane.summary)
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -107,8 +107,22 @@ struct PaneHeader: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .padding(.vertical, 6)
         .padding(.horizontal, 24)
+    }
+}
+
+/// A section footer, left-aligned as System Settings writes them (SwiftUI trails them on macOS).
+struct Footer: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -138,31 +152,12 @@ extension RowLabel where Icon == EmptyView {
     }
 }
 
-/// Whether glass is drawn as a flat fill: offscreen renders (`Renderer`) can't capture Liquid
-/// Glass, which the window server composites, so they show its layout and colour instead.
-struct FlatGlassKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    var flatGlass: Bool {
-        get { self[FlatGlassKey.self] }
-        set { self[FlatGlassKey.self] = newValue }
-    }
-}
-
 struct GlassSurface<S: Shape>: ViewModifier {
     let shape: S
     let tint: Color?
-    @Environment(\.flatGlass) private var flat
 
     func body(content: Content) -> some View {
-        if flat {
-            content
-                .background(Color(nsColor: .windowBackgroundColor), in: shape)
-                .background((tint ?? .clear), in: shape)
-                .overlay(shape.stroke(Color(nsColor: .separatorColor), lineWidth: 0.5))
-        } else if #available(macOS 26.0, *) {
+        if #available(macOS 26.0, *) {
             content.glassEffect(Glass.regular.tint(tint), in: shape)
         } else {
             content
@@ -173,7 +168,7 @@ struct GlassSurface<S: Shape>: ViewModifier {
 }
 
 extension View {
-    /// Liquid Glass in `shape` on macOS 26, a regular material before it, and a flat fill in renders.
+    /// Liquid Glass in `shape` on macOS 26, and a regular material before it.
     func glass(in shape: some Shape, tint: Color? = nil) -> some View {
         modifier(GlassSurface(shape: shape, tint: tint))
     }
@@ -185,7 +180,6 @@ extension View {
 }
 
 extension Color {
-    /// Secondary text and symbols that keep their colour on glass, where SwiftUI's hierarchical
-    /// `.secondary` turns vibrant (and offscreen renders lose it).
+    /// Secondary text and symbols in a fixed label colour.
     static let secondaryLabel = Color(nsColor: .secondaryLabelColor)
 }

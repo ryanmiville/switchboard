@@ -141,18 +141,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         session.stayResident()
         startResident()
         if window == nil {
-            // As System Settings: content under a transparent title bar, so the glass sidebar
-            // runs the full height with the traffic lights inside its top corner.
+            // The split view lays the glass sidebar under the title bar, with the traffic lights
+            // inside it, and SwiftUI owns the toolbar and title, as in System Settings.
             let window = NSWindow(
                 contentRect: NSRect(origin: .zero, size: SettingsView.size),
                 styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                 backing: .buffered, defer: false)
             window.title = Identity.appName
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
+            window.toolbarStyle = .unified
             window.isReleasedWhenClosed = false
             window.delegate = self
             let controller = NSHostingController(rootView: SettingsView(model: settings))
+            controller.sizingOptions = .preferredContentSize
+            if #available(macOS 14.0, *) {
+                controller.sceneBridgingOptions = [.toolbars, .title]
+            }
             window.contentViewController = controller
             window.setContentSize(SettingsView.size)
             window.center()

@@ -14,7 +14,7 @@ struct QuickSwitchPane: View {
         let choices = QuickSwitch.choices(e.installed, settings)
         let all = choices.filter { $0.error == nil }.map(\.destination)
         Form {
-            Section { PaneHeader(pane: .quickSwitch) }
+            NoticesSection(model: model)
 
             Section {
                 LabeledContent {
@@ -24,16 +24,13 @@ struct QuickSwitchPane: View {
                 } label: {
                     RowLabel(
                         title: "Keyboard shortcut",
-                        caption: "Press it over a browser to open the page in front."
-                    ) {
-                        SymbolTile(symbol: "command", color: .orange)
-                    }
+                        caption: "Press it over a browser to open the page in front.")
                 }
                 if let error = model.shortcutError { ErrorText(error) }
                 LabeledContent {
                     Button("Open Quick Switch") { model.services.openQuickSwitch() }
                 } label: {
-                    RowLabel(title: "Try it now") { SymbolTile(symbol: "bolt.fill", color: .yellow) }
+                    Text("Try it now")
                 }
             } header: {
                 Text("Shortcut")
@@ -75,7 +72,7 @@ struct QuickSwitchPane: View {
             } header: {
                 Text("Destinations")
             } footer: {
-                Text("Favorites come first in the panel, and ⌘1–⌘9 open them.").foregroundStyle(.secondary)
+                Footer("Favorites come first in the panel, and ⌘1–⌘9 open them.")
             }
         }
         .formStyle(.grouped)
