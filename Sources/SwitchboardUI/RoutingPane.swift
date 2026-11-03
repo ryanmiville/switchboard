@@ -198,6 +198,7 @@ struct RuleSheet: View {
             }
             .padding(20)
             .frame(width: 480)
+            .background(Color(nsColor: .windowBackgroundColor))
         }
     }
 

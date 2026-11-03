@@ -30,6 +30,7 @@ public struct SettingsView: View {
             }
         }
         .frame(width: Self.size.width, height: Self.size.height)
+        .background(Color(nsColor: .windowBackgroundColor))
         .sheet(item: draftBinding) { _ in RuleSheet(model: model) }
     }
 

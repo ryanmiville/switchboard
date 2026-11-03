@@ -155,6 +155,7 @@ public struct PickerView: View {
         }
         .padding(16)
         .frame(width: PickerModel.width)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private func number(of index: Int) -> Int? {
