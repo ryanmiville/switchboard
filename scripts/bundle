@@ -22,10 +22,7 @@ version=$(sed -n 's/^public let cliVersion = "\(.*\)"$/\1/p' Sources/Switchboard
 exe=Switchboard
 [[ -n "$name" && -n "$id" && -n "$cli" && -n "$version" ]] || { echo "bundle: couldn't read the identity" >&2; exit 1; }
 
-# SwiftPM's native build system, as CI uses. Newer Xcodes default to the Swift Build backend,
-# which has marked the executable as built with the deployment target's SDK (13.0); macOS then
-# treats the app as an old one and draws its windows in the pre-macOS 26 design.
-build=(swift build -c "$configuration" --build-system native)
+build=(swift build -c "$configuration")
 "${build[@]}" --product "$exe"
 "${build[@]}" --product "$cli"
 products=$("${build[@]}" --show-bin-path)
@@ -35,18 +32,8 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Helpers" "$app/Contents/Resources"
 cp "$products/$exe" "$app/Contents/MacOS/$exe"
 
-# macOS gives the current design only to apps marked as built with its SDK, so the executable
-# must record the SDK it was built with, not the deployment target. If a toolchain gets this
-# wrong, correct the mark and say so.
-sdk=$(xcrun --sdk macosx --show-sdk-version)
-minos=$(vtool -show-build "$app/Contents/MacOS/$exe" | awk '$1 == "minos" { print $2; exit }')
-recorded=$(vtool -show-build "$app/Contents/MacOS/$exe" | awk '$1 == "sdk" { print $2; exit }')
-if [[ "$recorded" != "$sdk" ]]; then
-  echo "bundle: the build marked $exe as built with SDK ${recorded:-none}, not $sdk; correcting it" >&2
-  vtool -set-build-version macos "$minos" "$sdk" -replace -output "$app/Contents/MacOS/$exe.fixed" \
-    "$app/Contents/MacOS/$exe"
-  mv "$app/Contents/MacOS/$exe.fixed" "$app/Contents/MacOS/$exe"
-fi
+# macOS gives the current design only to apps marked as built with its SDK.
+scripts/mark-sdk "$app/Contents/MacOS/$exe"
 cp "$products/$cli" "$app/Contents/Helpers/$cli"
 cp assets/MenuBarIcon.pdf "$app/Contents/Resources/MenuBarIcon.pdf"
 sed -e "s/@NAME@/$name/g" -e "s/@ID@/$id/g" -e "s/@EXE@/$exe/g" -e "s/@VERSION@/$version/g" \

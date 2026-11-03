@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Makes a built executable record the SDK it was built with. macOS gives the current design
+# (macOS 26's windows, sidebar and toolbar) only to apps marked as built with its SDK. SwiftPM's
+# default build system (Swift Build) has been marking executables with the deployment target
+# (13.0) instead, which makes macOS draw the app as an old one. scripts/bundle and scripts/snap
+# run this after building; it changes nothing when the mark is already right.
+#
+#   scripts/mark-sdk <executable>
+#
+# macOS only. Sign the executable afterwards; rewriting it invalidates a signature.
+set -euo pipefail
+[[ $# -eq 1 && -f "$1" ]] || { echo "usage: scripts/mark-sdk <executable>" >&2; exit 2; }
+exe=$1
+
+sdk=$(xcrun --sdk macosx --show-sdk-version)
+build=$(vtool -show-build "$exe")
+minos=$(awk '$1 == "minos" { print $2; exit }' <<<"$build")
+recorded=$(awk '$1 == "sdk" { print $2; exit }' <<<"$build")
+[[ "$recorded" == "$sdk" ]] && exit 0
+
+echo "mark-sdk: $(basename "$exe") was marked as built with SDK ${recorded:-none}; marking it $sdk" >&2
+vtool -set-build-version macos "$minos" "$sdk" -replace -output "$exe.marked" "$exe"
+mv "$exe.marked" "$exe"
