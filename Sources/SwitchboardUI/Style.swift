@@ -133,11 +133,10 @@ extension RowLabel where Icon == EmptyView {
 
 struct GlassSurface<S: Shape>: ViewModifier {
     let shape: S
-    let tint: Color?
 
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.glassEffect(Glass.regular.tint(tint), in: shape)
+            content.glassEffect(.regular, in: shape)
         } else {
             content
                 .background(.regularMaterial, in: shape)
@@ -148,17 +147,7 @@ struct GlassSurface<S: Shape>: ViewModifier {
 
 extension View {
     /// Liquid Glass in `shape` on macOS 26, and a regular material before it.
-    func glass(in shape: some Shape, tint: Color? = nil) -> some View {
-        modifier(GlassSurface(shape: shape, tint: tint))
+    func glass(in shape: some Shape) -> some View {
+        modifier(GlassSurface(shape: shape))
     }
-
-    /// The prominent button style. On macOS 26 the system draws it as Liquid Glass itself.
-    func prominentButton() -> some View {
-        buttonStyle(.borderedProminent)
-    }
-}
-
-extension Color {
-    /// Secondary text and symbols in a fixed label colour.
-    static let secondaryLabel = Color(nsColor: .secondaryLabelColor)
 }

@@ -102,7 +102,7 @@ struct GeneralPane: View {
                 }
                 if e.canImportCurrentApp {
                     LabeledContent {
-                        Button("Import") { model.importCurrentApp() }.prominentButton()
+                        Button("Import") { model.importCurrentApp() }.buttonStyle(.borderedProminent)
                     } label: {
                         RowLabel(
                             title: "Import from Switchboard",

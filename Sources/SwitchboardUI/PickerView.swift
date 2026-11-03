@@ -118,7 +118,7 @@ public struct PickerView: View {
             HStack(spacing: 12) {
                 Image(systemName: "link")
                     .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(Color.secondaryLabel)
+                    .foregroundStyle(.secondary)
                 TextField("Paste an HTTP or HTTPS link", text: $model.state.link)
                     .textFieldStyle(.plain)
                     .font(.system(size: 20))
@@ -130,7 +130,7 @@ public struct PickerView: View {
                     Image(systemName: "gearshape")
                 }
                 .buttonStyle(.borderless)
-                .foregroundStyle(Color.secondaryLabel)
+                .foregroundStyle(.secondary)
                 .help("Quick Switch settings")
             }
             .padding(.horizontal, 20)
@@ -138,7 +138,7 @@ public struct PickerView: View {
             Divider().opacity(0.5)
             if model.reading {
                 Label("Reading the current tab…", systemImage: "hourglass")
-                    .font(.callout).foregroundStyle(Color.secondaryLabel)
+                    .font(.callout).foregroundStyle(.secondary)
                     .padding(.horizontal, 20).padding(.top, 8)
             }
             if let error = model.state.error {
@@ -165,8 +165,7 @@ public struct PickerView: View {
                     Image(systemName: "rectangle.stack.badge.minus").font(.system(size: 24)).foregroundStyle(
                         .tertiary)
                     Text("No destinations are shown.").font(.headline)
-                    Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(
-                        Color.secondaryLabel)
+                    Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -234,7 +233,7 @@ struct KeyHint: View {
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
             Text(label).font(.caption)
         }
-        .foregroundStyle(Color.secondaryLabel)
+        .foregroundStyle(.secondary)
     }
 }
 
@@ -253,16 +252,16 @@ struct ChoiceRow: View {
                 Text(choice.profileName).font(.body.weight(.medium))
                 Text(choice.error ?? choice.browserName)
                     .font(.caption)
-                    .foregroundStyle(choice.error == nil ? Color.secondaryLabel : Color.red)
+                    .foregroundStyle(choice.error == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
                     .lineLimit(2)
             }
             Spacer()
             if let number {
-                Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(Color.secondaryLabel)
+                Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
             }
             Button(action: star) {
                 Image(systemName: choice.favorite ? "star.fill" : "star")
-                    .foregroundStyle(choice.favorite ? Color.yellow : Color.secondaryLabel)
+                    .foregroundStyle(choice.favorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.secondary))
             }
             .buttonStyle(.borderless)
         }

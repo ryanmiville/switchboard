@@ -247,7 +247,7 @@ struct RuleSheet: View {
                         .keyboardShortcut(.cancelAction)
                     Button(draft.isNew ? "Add Rule" : "Done") { model.commitDraft() }
                         .keyboardShortcut(.defaultAction)
-                        .prominentButton()
+                        .buttonStyle(.borderedProminent)
                 }
                 .controlSize(.large)
                 .padding(.horizontal, 20)

@@ -96,7 +96,7 @@ struct SaveStatus: View {
             systemImage: saving ? "checkmark.circle" : "exclamationmark.circle"
         )
         .font(.caption)
-        .foregroundStyle(Color.secondaryLabel)
+        .foregroundStyle(.secondary)
         .accessibilityIdentifier("save-status")
     }
 }
