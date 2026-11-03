@@ -18,8 +18,10 @@ public struct PickerServices {
     public var now: @MainActor () -> Timestamp
 
     public init(
-        flushSettings: @escaping @MainActor () -> Void, savePicker: @escaping @MainActor (PickerSettings) -> Void,
-        activate: @escaping @MainActor (BrowserInfo) -> Void, openAutomationSettings: @escaping @MainActor () -> Void,
+        flushSettings: @escaping @MainActor () -> Void,
+        savePicker: @escaping @MainActor (PickerSettings) -> Void,
+        activate: @escaping @MainActor (BrowserInfo) -> Void,
+        openAutomationSettings: @escaping @MainActor () -> Void,
         openSettings: @escaping @MainActor () -> Void, close: @escaping @MainActor () -> Void,
         now: @escaping @MainActor () -> Timestamp
     ) {
@@ -75,7 +77,8 @@ public final class PickerModel: ObservableObject {
 
     public func open(_ index: Int) {
         services.flushSettings()
-        guard let destination = state.open(index, browsers: browsers, history: history, now: services.now()) else {
+        guard let destination = state.open(index, browsers: browsers, history: history, now: services.now())
+        else {
             return
         }
         opened = destination
@@ -133,7 +136,8 @@ public struct PickerView: View {
                     VStack(spacing: 2) {
                         ForEach(Array(shown.enumerated()), id: \.element.destination) { index, choice in
                             ChoiceRow(
-                                choice: choice, number: number(of: index), selected: index == model.state.selected,
+                                choice: choice, number: number(of: index),
+                                selected: index == model.state.selected,
                                 open: { model.open(index) }, star: { model.toggleFavorite(index) })
                         }
                     }
@@ -191,7 +195,8 @@ struct ChoiceRow: View {
                 Text(choice.profileName).font(.body.weight(.medium))
                 Text(choice.browserName).font(.caption).foregroundStyle(.secondary)
                 if let error = choice.error {
-                    Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                    Text(error).font(.caption).foregroundStyle(.red).fixedSize(
+                        horizontal: false, vertical: true)
                 }
             }
             Spacer()
@@ -201,7 +206,9 @@ struct ChoiceRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 6).fill(selected ? Color.accentColor.opacity(0.2) : Color.clear))
+        .background(
+            RoundedRectangle(cornerRadius: 6).fill(selected ? Color.accentColor.opacity(0.2) : Color.clear)
+        )
         .contentShape(Rectangle())
         .onTapGesture(perform: open)
     }

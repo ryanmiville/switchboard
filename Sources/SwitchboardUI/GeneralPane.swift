@@ -17,7 +17,9 @@ struct GeneralPane: View {
                     model.edit { $0.selectDefaultBrowser(browser ?? "") }
                 }
                 .accessibilityIdentifier("default-browser")
-                ProfilePicker(title: "Profile", browser: e.config.browser, selection: e.config.defaultProfile, editor: e) {
+                ProfilePicker(
+                    title: "Profile", browser: e.config.browser, selection: e.config.defaultProfile, editor: e
+                ) {
                     profile in model.edit { $0.selectDefaultProfile(profile) }
                 }
                 .accessibilityIdentifier("default-profile")
@@ -29,7 +31,10 @@ struct GeneralPane: View {
             }
 
             Section("Default browser") {
-                LabeledContent(model.isDefaultBrowser ? "\(Identity.appName) opens your links" : "Another browser opens your links") {
+                LabeledContent(
+                    model.isDefaultBrowser
+                        ? "\(Identity.appName) opens your links" : "Another browser opens your links"
+                ) {
                     if !model.isDefaultBrowser {
                         Button("Make Default…") { model.makeDefaultBrowser() }
                     }
@@ -55,8 +60,11 @@ struct GeneralPane: View {
             }
 
             Section("History") {
-                Toggle(isOn: Binding(get: { e.config.historyEnabled }, set: { on in model.edit { $0.setHistoryEnabled(on) } }))
-                {
+                Toggle(
+                    isOn: Binding(
+                        get: { e.config.historyEnabled },
+                        set: { on in model.edit { $0.setHistoryEnabled(on) } })
+                ) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Keep a history of opened links")
                         Text("So you and your agents can ask why a link opened where it did")
@@ -77,13 +85,16 @@ struct GeneralPane: View {
                         Button("Reveal") { model.revealConfigFile() }
                     }
                 }
-                Text("\(Identity.cliName) reads and changes the same file.").font(.caption).foregroundStyle(.secondary)
+                Text("\(Identity.cliName) reads and changes the same file.").font(.caption).foregroundStyle(
+                    .secondary)
                 if e.canImportCurrentApp {
                     LabeledContent("Switchboard’s settings") {
                         Button("Import") { model.importCurrentApp() }
                     }
-                    Text("Copies the rules and destinations from the current Switchboard app. Its own file isn’t changed.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(
+                        "Copies the rules and destinations from the current Switchboard app. Its own file isn’t changed."
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
                 }
                 if let error = model.importError { ErrorText(error) }
             }
@@ -122,7 +133,8 @@ struct BrowserPicker: View {
     }
 
     var body: some View {
-        Picker(title, selection: Binding(get: { selection ?? "" }, set: { onSelect($0.isEmpty ? nil : $0) })) {
+        Picker(title, selection: Binding(get: { selection ?? "" }, set: { onSelect($0.isEmpty ? nil : $0) }))
+        {
             if allowsDefault {
                 Text("Default browser (\(editor.browserName(editor.config.browser)))").tag("")
             } else if selection?.isEmpty ?? true {
@@ -147,7 +159,10 @@ struct ProfilePicker: View {
     let editor: Editor
     let onSelect: (String) -> Void
 
-    init(title: String, browser: String, selection: String, editor: Editor, onSelect: @escaping (String) -> Void) {
+    init(
+        title: String, browser: String, selection: String, editor: Editor,
+        onSelect: @escaping (String) -> Void
+    ) {
         self.title = title
         self.browser = browser
         self.selection = selection
@@ -163,8 +178,11 @@ struct ProfilePicker: View {
                 Text(browser.isEmpty ? "Choose a browser first" : "Choose a profile").tag("")
             }
             ForEach(profiles, id: \.directory) { profile in
-                Text(profile.name == profile.directory ? profile.name : "\(profile.name)  (\(profile.directory))")
-                    .tag(profile.directory)
+                Text(
+                    profile.name == profile.directory
+                        ? profile.name : "\(profile.name)  (\(profile.directory))"
+                )
+                .tag(profile.directory)
             }
             if !resolved.isEmpty, !profiles.contains(where: { $0.directory == resolved }) {
                 Text("\(selection) (unavailable)").tag(resolved)

@@ -21,7 +21,8 @@ public struct SettingsServices {
     public init(
         loginStatus: @escaping @Sendable () -> LoginStatus,
         setLoginEnabled: @escaping @Sendable (Bool) throws -> LoginStatus,
-        openLoginSettings: @escaping @MainActor () -> Void, registerShortcut: @escaping @MainActor (KeyChord) -> String?,
+        openLoginSettings: @escaping @MainActor () -> Void,
+        registerShortcut: @escaping @MainActor (KeyChord) -> String?,
         isDefaultBrowser: @escaping @MainActor () -> Bool,
         makeDefaultBrowser: @escaping @MainActor (@escaping @MainActor @Sendable (String?) -> Void) -> Void,
         openQuickSwitch: @escaping @MainActor () -> Void

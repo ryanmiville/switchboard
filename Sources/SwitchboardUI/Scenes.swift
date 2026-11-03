@@ -28,7 +28,7 @@ public enum Scenes {
         public func remove() { home.remove() }
     }
 
-    public static let all: [Scene] = [
+    public nonisolated static let all: [Scene] = [
         Scene(name: "general", kind: .settings) { _, _, _ in },
         Scene(name: "login-approval", kind: .settings) { _, _, _ in },
         Scene(name: "not-default-browser", kind: .settings) { _, _, _ in },
@@ -64,7 +64,8 @@ public enum Scenes {
             s.editor.refreshProfiles()
         },
         Scene(name: "rule-new", kind: .ruleSheet) { s, _, _ in s.draft = .newRule() },
-        Scene(name: "rule-edit", kind: .ruleSheet) { s, _, _ in s.draft = .editing(s.editor.config.rules[1]) },
+        Scene(name: "rule-edit", kind: .ruleSheet) { s, _, _ in s.draft = .editing(s.editor.config.rules[1])
+        },
         Scene(name: "rule-error", kind: .ruleSheet) { s, _, _ in
             var draft = Draft.newRule()
             draft.value = "github.com/acme"
@@ -74,7 +75,8 @@ public enum Scenes {
         },
         Scene(name: "conflict", kind: .settings) { s, _, home in
             s.editor.selectDefaultProfile("Profile 1")
-            try Data(#"{"browser":"\#(home.helium)","defaultProfile":"Default"}"#.utf8).write(to: home.home.configFile)
+            try Data(#"{"browser":"\#(home.helium)","defaultProfile":"Default"}"#.utf8).write(
+                to: home.home.configFile)
             s.editor.checkExternal()
         },
         Scene(name: "load-error", kind: .settings) { s, _, home in
@@ -94,13 +96,14 @@ public enum Scenes {
             p.tabRead(.failure(.automationDenied))
         },
         Scene(name: "picker-unavailable-favorite", kind: .picker) { _, p, home in
-            p.state.settings.favorites.append(Favorite(browser: home.helium, profile: "Profile 9", name: "Old work"))
+            p.state.settings.favorites.append(
+                Favorite(browser: home.helium, profile: "Profile 9", name: "Old work"))
             p.state.all = QuickSwitch.choices(home.browsers.installed(), p.state.settings)
         },
         Scene(name: "picker-empty", kind: .picker) { _, p, _ in p.state.settings.destinations = [] },
     ]
 
-    public static var names: [String] { all.map(\.name) }
+    public nonisolated static var names: [String] { all.map(\.name) }
 
     /// Builds the scene named `name` over a fresh fixture home.
     public static func make(_ name: String) throws -> Instance {

@@ -12,7 +12,8 @@ struct RoutingPane: View {
         let hidden = Dictionary(
             Shadowing.unreachable(rules).map { ($0.rule, $0.by) }, uniquingKeysWith: { first, _ in first })
         VStack(alignment: .leading, spacing: 0) {
-            PaneHeader(title: "Routing rules", subtitle: "First match wins. Drag rules to change their priority.")
+            PaneHeader(
+                title: "Routing rules", subtitle: "First match wins. Drag rules to change their priority.")
             if rules.isEmpty {
                 Text("No rules yet. Every link opens in the default destination.")
                     .foregroundStyle(.secondary)
@@ -121,18 +122,22 @@ struct RuleRow: View {
         let browser = editor.config.browser(of: rule)
         HStack(spacing: 12) {
             Text("\(index + 1)").font(.callout.monospacedDigit()).foregroundStyle(.secondary).frame(width: 22)
-            Text(rule.condition.label).font(.callout).foregroundStyle(.secondary).frame(width: 64, alignment: .leading)
+            Text(rule.condition.label).font(.callout).foregroundStyle(.secondary).frame(
+                width: 64, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(rule.value).lineLimit(1).truncationMode(.middle)
                 if let by = hiddenBy {
-                    Text("never matches: rule \(by + 1) always matches first").font(.caption).foregroundStyle(.orange)
+                    Text("never matches: rule \(by + 1) always matches first").font(.caption).foregroundStyle(
+                        .orange)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(editor.browserName(browser)) · \(editor.profileName(browser: browser, profile: rule.profile))")
-                    .lineLimit(1)
-                    .foregroundStyle(profileResolves(browser) ? Color.primary : Color.red)
+                Text(
+                    "\(editor.browserName(browser)) · \(editor.profileName(browser: browser, profile: rule.profile))"
+                )
+                .lineLimit(1)
+                .foregroundStyle(profileResolves(browser) ? Color.primary : Color.red)
                 if rule.browser == nil {
                     Text("default browser").font(.caption).foregroundStyle(.secondary)
                 }
@@ -163,12 +168,16 @@ struct RuleSheet: View {
                     }
                     .pickerStyle(.segmented)
                     VStack(alignment: .leading, spacing: 4) {
-                        TextField("Pattern", text: binding(\.value), prompt: Text(placeholder(draft.condition)))
-                            .accessibilityIdentifier("draft-value")
+                        TextField(
+                            "Pattern", text: binding(\.value), prompt: Text(placeholder(draft.condition))
+                        )
+                        .accessibilityIdentifier("draft-value")
                         Text(hint(draft.condition)).font(.caption).foregroundStyle(.secondary)
                     }
-                    BrowserPicker(title: "Browser", selection: draft.browser, browsers: e.installed, editor: e, allowsDefault: true)
-                    { chosen in
+                    BrowserPicker(
+                        title: "Browser", selection: draft.browser, browsers: e.installed, editor: e,
+                        allowsDefault: true
+                    ) { chosen in
                         model.draft?.selectBrowser(chosen, defaultBrowser: e.config.browser)
                     }
                     ProfilePicker(title: "Profile", browser: browser, selection: draft.profile, editor: e) {

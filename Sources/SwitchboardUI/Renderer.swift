@@ -13,7 +13,8 @@ public enum Renderer {
     public static func render<V: View>(_ view: V, size: CGSize, dark: Bool) async throws -> Pixels {
         _ = NSApplication.shared
         let window = NSWindow(
-            contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable], backing: .buffered,
+            contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable],
+            backing: .buffered,
             defer: false)
         window.isReleasedWhenClosed = false
         window.animationBehavior = .none
@@ -32,8 +33,10 @@ public enum Renderer {
         let bounds = host.bounds
         guard
             let rep = NSBitmapImageRep(
-                bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * scale), pixelsHigh: Int(bounds.height * scale),
-                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * scale),
+                pixelsHigh: Int(bounds.height * scale),
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB,
                 bytesPerRow: 0, bitsPerPixel: 0)
         else { throw RenderError("Couldn’t allocate a \(bounds.width)×\(bounds.height) bitmap.") }
         rep.size = bounds.size
@@ -49,7 +52,8 @@ public enum Renderer {
         let scene = try Scenes.make(name)
         defer { scene.remove() }
         let pixels = try await render(scene.view, size: scene.size, dark: dark)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try pixels.png().write(to: url)
     }
 }
@@ -110,7 +114,8 @@ public struct Pixels: Sendable {
         var changed = 0
         for pixel in stride(from: 0, to: bytes.count, by: 4) {
             var moved = false
-            for channel in 0..<4 where abs(Int(bytes[pixel + channel]) - Int(other.bytes[pixel + channel])) > tolerance {
+            for channel in 0..<4
+            where abs(Int(bytes[pixel + channel]) - Int(other.bytes[pixel + channel])) > tolerance {
                 moved = true
             }
             if moved {
@@ -130,10 +135,12 @@ public struct Pixels: Sendable {
         var bytes = bytes
         let image = bytes.withUnsafeMutableBytes { buffer -> CGImage? in
             CGContext(
-                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4,
                 space: Self.colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.makeImage()
         }
-        guard let image, let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        guard let image,
+            let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
         else { throw RenderError("Couldn’t encode a \(width)×\(height) PNG.") }
         return data
     }

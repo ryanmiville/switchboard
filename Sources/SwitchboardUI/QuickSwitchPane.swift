@@ -27,8 +27,10 @@ struct QuickSwitchPane: View {
             } header: {
                 Text("Shortcut")
             } footer: {
-                Text("Over a browser, the shortcut opens its current page in another profile, ignoring the rules.")
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Over a browser, the shortcut opens its current page in another profile, ignoring the rules."
+                )
+                .foregroundStyle(.secondary)
             }
             Section("Destinations") {
                 if choices.isEmpty {
@@ -57,7 +59,9 @@ struct QuickSwitchPane: View {
                                 .foregroundStyle(choice.favorite ? Color.yellow : Color.secondary)
                         }
                         .buttonStyle(.borderless)
-                        .help(choice.favorite ? "Remove from favorites" : "Add to favorites (⌘1–⌘9 in the panel)")
+                        .help(
+                            choice.favorite
+                                ? "Remove from favorites" : "Add to favorites (⌘1–⌘9 in the panel)")
                     }
                 }
             }

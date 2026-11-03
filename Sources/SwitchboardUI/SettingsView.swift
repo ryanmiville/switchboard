@@ -119,7 +119,9 @@ struct Notices: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, model.failure != nil || model.editor.loadError != nil || model.editor.saveError != nil ? 16 : 0)
+        .padding(
+            .top,
+            model.failure != nil || model.editor.loadError != nil || model.editor.saveError != nil ? 16 : 0)
     }
 }
 
