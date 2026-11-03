@@ -45,7 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 registerShortcut: { [weak self] chord in self?.register(chord) },
                 isDefaultBrowser: { DefaultBrowser.isDefault },
                 makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
-                openQuickSwitch: { [weak self] in self?.picker.summon() }))
+                openQuickSwitch: { [weak self] in self?.picker.summon() },
+                openDefaultBrowserSettings: { DefaultBrowser.openSettings() }))
         picker = QuickSwitchPanel(
             store: ConfigStore(url: self.home.configFile), history: HistoryStore(url: self.home.historyFile),
             browsers: browsers, settings: settings, openSettings: { [weak self] in self?.showSettings() })

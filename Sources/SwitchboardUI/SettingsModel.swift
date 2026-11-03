@@ -15,6 +15,8 @@ public struct SettingsServices {
     public var registerShortcut: @MainActor (KeyChord) -> String?
     public var isDefaultBrowser: @MainActor () -> Bool
     public var makeDefaultBrowser: @MainActor (@escaping @MainActor @Sendable (String?) -> Void) -> Void
+    /// Opens System Settings → Desktop & Dock, where the default browser is chosen by hand.
+    public var openDefaultBrowserSettings: @MainActor () -> Void
     /// Shows the Quick Switch panel.
     public var openQuickSwitch: @MainActor () -> Void
 
@@ -25,8 +27,10 @@ public struct SettingsServices {
         registerShortcut: @escaping @MainActor (KeyChord) -> String?,
         isDefaultBrowser: @escaping @MainActor () -> Bool,
         makeDefaultBrowser: @escaping @MainActor (@escaping @MainActor @Sendable (String?) -> Void) -> Void,
-        openQuickSwitch: @escaping @MainActor () -> Void
+        openQuickSwitch: @escaping @MainActor () -> Void,
+        openDefaultBrowserSettings: @escaping @MainActor () -> Void = {}
     ) {
+        self.openDefaultBrowserSettings = openDefaultBrowserSettings
         self.loginStatus = loginStatus
         self.setLoginEnabled = setLoginEnabled
         self.openLoginSettings = openLoginSettings
@@ -36,12 +40,15 @@ public struct SettingsServices {
         self.openQuickSwitch = openQuickSwitch
     }
 
-    /// No system calls: launch at login is shown as `login`, and this is the default browser.
-    public static func shown(login: LoginStatus = .disabled, isDefault: Bool = true) -> SettingsServices {
+    /// No system calls: launch at login is shown as `login`, this is the default browser when
+    /// `isDefault`, and asking to make it the default fails with `makeDefaultError` when given.
+    public static func shown(
+        login: LoginStatus = .disabled, isDefault: Bool = true, makeDefaultError: String? = nil
+    ) -> SettingsServices {
         SettingsServices(
             loginStatus: { login }, setLoginEnabled: { $0 ? .enabled : .disabled }, openLoginSettings: {},
-            registerShortcut: { _ in nil }, isDefaultBrowser: { isDefault }, makeDefaultBrowser: { $0(nil) },
-            openQuickSwitch: {})
+            registerShortcut: { _ in nil }, isDefaultBrowser: { isDefault },
+            makeDefaultBrowser: { $0(makeDefaultError) }, openQuickSwitch: {})
     }
 }
 

@@ -32,6 +32,7 @@ public enum Scenes {
         Scene(name: "general", kind: .settings) { _, _, _ in },
         Scene(name: "login-approval", kind: .settings) { _, _, _ in },
         Scene(name: "not-default-browser", kind: .settings) { _, _, _ in },
+        Scene(name: "default-browser-error", kind: .settings) { s, _, _ in s.makeDefaultBrowser() },
         Scene(name: "no-default-browser", kind: .settings) { s, _, _ in
             s.editor.edit { $0.browser = "" }
             s.editor.refreshProfiles()
@@ -116,7 +117,12 @@ public enum Scenes {
             browsers: home.browsers)
         let login: LoginStatus = name == "login-approval" ? .requiresApproval : .disabled
         let settings = SettingsModel(
-            editor: editor, services: .shown(login: login, isDefault: name != "not-default-browser"))
+            editor: editor,
+            services: .shown(
+                login: login, isDefault: !["not-default-browser", "default-browser-error"].contains(name),
+                makeDefaultError: name == "default-browser-error"
+                    ? "macOS didn’t make \(Identity.appName) open https links (The file couldn’t be opened.). Choose it in System Settings → Desktop & Dock → Default web browser."
+                    : nil))
         settings.refresh()
         settings.showLogin(login)
         let picker = PickerModel(

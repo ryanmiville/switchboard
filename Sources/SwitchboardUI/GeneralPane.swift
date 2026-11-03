@@ -39,7 +39,10 @@ struct GeneralPane: View {
                         Button("Make Default…") { model.makeDefaultBrowser() }
                     }
                 }
-                if let error = model.defaultBrowserError { ErrorText(error) }
+                if let error = model.defaultBrowserError {
+                    ErrorText(error)
+                    Button("Open System Settings") { model.services.openDefaultBrowserSettings() }
+                }
             }
 
             Section("Startup") {
