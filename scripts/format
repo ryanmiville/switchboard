@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Applies the checked-in formatting (.swift-format) to every Swift file.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+if [[ "$(uname -s)" == Darwin ]]; then fmt=(xcrun swift-format); else fmt=(swift format); fi
+"${fmt[@]}" format --in-place --recursive Sources Tests Package.swift

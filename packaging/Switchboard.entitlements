@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- No App Sandbox: launching browsers needs subprocess control. Apple Events read the current
+     tab for Quick Switch. -->
 <plist version="1.0">
 <dict>
 	<key>com.apple.security.app-sandbox</key>

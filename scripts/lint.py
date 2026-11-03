@@ -2,7 +2,7 @@
 """Bans the calls that let code reach past its parameters: the real home folder, the environment,
 the clock, starting processes, and handing links to the system.
 
-    scripts/lint.py        check Switchboard/, CLI/ and Tests/
+    scripts/lint.py        check Sources/ and Tests/
 
 Each rule names its owner: the one place that may make the call and pass the result in, so tests
 can use a temporary home, fixed times and fake browsers. Other uses are listed in
@@ -17,8 +17,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 EXCEPTIONS = ROOT / "scripts" / "lint-exceptions.txt"
-SOURCES = ("Switchboard/", "CLI/")
+SOURCES = ("Sources/",)
 EVERYWHERE = SOURCES + ("Tests/",)
+# The Foundation-only targets, where links are routed and launched.
+LINK_TARGETS = ("Sources/SwitchboardCore/", "Sources/SwitchboardCLI/", "Sources/SwitchboardEditor/")
 
 # name: (pattern, directories, what to do instead)
 RULES = {
@@ -30,7 +32,7 @@ RULES = {
     "environment": (
         r"ProcessInfo\.processInfo\.environment|\bgetenv\(",
         EVERYWHERE,
-        "read the environment once in an entry point (CommandContext.current) and pass values in",
+        "read the environment once, through Env.fromProcess() in a binary's entry point, and pass values in",
     ),
     "clock": (
         r"\bDate\(\)|\bDate\.now\b",
@@ -40,13 +42,18 @@ RULES = {
     "process": (
         r"\bProcess\(\)",
         SOURCES,
-        "start browsers only through BrowserLauncher, with an injectable runner",
+        "start browsers only through Launch.launch",
     ),
     "system-open": (
         r"NSWorkspace\.shared\.open\b|/usr/bin/open\b",
         SOURCES,
-        "launch the browser executable through BrowserLauncher; the system's handler for a link "
+        "launch the browser executable through Launch.launch; the system's handler for a link "
         "may be Switchboard itself, and `open -a` drops profiles when the browser is running",
+    ),
+    "link-url": (
+        r"\bURL\(string:|\.absoluteString\b",
+        LINK_TARGETS,
+        "keep a link as the String it arrived as and read it with Link; URL re-encodes characters",
     ),
 }
 

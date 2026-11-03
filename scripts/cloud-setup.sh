@@ -3,18 +3,27 @@
 # environment's settings (cloud environment menu → Edit → Setup script). It runs as root at the
 # start of each session, one directory above the repository.
 #
-# A session gets Swift on PATH, matching the Swift that Xcode 26.4 ships, so `scripts/check` runs
-# the Linux subset: formatting, lint, file sizes, the Foundation-only tests and whitespace. The app
-# sources, snapshots and Xcode builds still need a Mac (CI's macOS job).
+# A session gets:
+#   - Swift on PATH, matching the Swift that Xcode 26.4 ships, so `scripts/check` runs the Linux
+#     subset (the Foundation-only targets). The macOS targets still need a Mac (CI's macOS job).
+#   - ~/reference/switchboard-rs: the paused Rust rewrite at RUST_REF, the reference architecture
+#     the swift-next branch ports.
+#   - ~/reference/switchboard-current: the current Swift app at CURRENT_REF, for SwiftUI and AppKit
+#     code to copy from.
+# It works for every branch of the repository: main ignores the references.
 #
-# Overrides, for trying it outside an environment: SWIFT_PREFIX (default /opt/swift-$SWIFT_VERSION)
-# and PROFILE_SCRIPT (default /etc/profile.d/switchboard-dev.sh).
+# Overrides, for trying it outside an environment: SWIFT_PREFIX (default /opt/swift-$SWIFT_VERSION),
+# PROFILE_SCRIPT (default /etc/profile.d/switchboard-dev.sh) and REFERENCE (default ~/reference).
 
 set -uo pipefail
 
 SWIFT_VERSION=6.3.3   # Xcode 26.4's Swift is 6.3; keep swift-format's output the same as CI's
+RUST_REF=3b565e276e1bff623ad8b8e07ebb8628f536ba96      # rune-rewrite when it was paused
+CURRENT_REF=43338ec784a52ff60ffe4a06aa1844ca026e5781   # main when swift-next started
+REPOSITORY=https://github.com/ryanmiville/switchboard
 SWIFT_PREFIX="${SWIFT_PREFIX:-/opt/swift-$SWIFT_VERSION}"
 PROFILE_SCRIPT="${PROFILE_SCRIPT:-/etc/profile.d/switchboard-dev.sh}"
+REFERENCE="${REFERENCE:-$HOME/reference}"
 
 log()  { printf '\n==> %s\n' "$*"; }
 warn() { printf 'setup: WARNING: %s\n' "$*" >&2; WARNINGS+=("$*"); }
@@ -77,6 +86,18 @@ if [ -f switchboard/Package.swift ]; then
   log "swift package resolve"
   (cd switchboard && swift package resolve >/dev/null 2>&1) || warn "swift package resolve failed"
 fi
+
+# A checkout of one commit, without history. Skipped when it is already there.
+reference() {
+  local name=$1 ref=$2 dir="$REFERENCE/$1"
+  log "reference: $name at ${ref:0:7}"
+  [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" = "$ref" ] && { echo "already there"; return; }
+  mkdir -p "$dir"
+  { git -C "$dir" init -q && git -C "$dir" fetch -q --depth 1 "$REPOSITORY" "$ref" \
+      && git -C "$dir" checkout -q --detach FETCH_HEAD; } || warn "could not fetch $name into $dir"
+}
+reference switchboard-rs "$RUST_REF"
+reference switchboard-current "$CURRENT_REF"
 
 log "check"
 printf '%-14s %s\n' swift "$(swift --version 2>/dev/null | head -1 || echo missing)" \

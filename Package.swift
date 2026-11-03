@@ -1,45 +1,38 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// Linux has no AppKit, SwiftUI, Carbon, Combine or ServiceManagement, so `make verify-linux` builds the
-// Foundation-only core and the tests that run without them. macOS always builds and tests everything.
-#if os(Linux)
-    let appleOnlySources = [
-        "BrowserDiscovery.swift", "ConfigViewModel.swift", "ContentView.swift", "CurrentTabReader.swift",
-        "GlobalShortcut.swift", "LoginItem.swift", "PickerSettings.swift", "ShortcutRecorder.swift",
-        "SwitchboardApp.swift", "TabPicker.swift",
-    ]
-    // InstallTests needs codesign. LauncherTests needs Bundle.executableURL, which Linux Foundation
-    // doesn't resolve for macOS app bundles. The snapshot tests render SwiftUI.
-    let appleOnlyTests = [
-        "ConfigViewModelTests.swift", "CurrentTabTests.swift", "InstallTests.swift", "LauncherTests.swift",
-        "LoginItemTests.swift", "PickerTests.swift", "ReopenTests.swift", "Snapshot.swift",
-        "SnapshotTests.swift",
-    ]
-#else
-    let appleOnlySources: [String] = []
-    let appleOnlyTests: [String] = []
-#endif
+// The module graph is the architecture (docs/architecture.md): dependencies point down only, and
+// SwiftPM refuses an import a target doesn't declare. Foundation-only targets build and test on
+// Linux too; the AppKit and SwiftUI targets are added on macOS only.
+
+let strict: [SwiftSetting] = [.unsafeFlags(["-warnings-as-errors"])]
+let argumentParser = Target.Dependency.product(name: "ArgumentParser", package: "swift-argument-parser")
+
+var targets: [Target] = [
+    // Every rule and file format, browser discovery and launching. Foundation only.
+    .target(name: "SwitchboardCore", swiftSettings: strict),
+    // Fixture homes and browsers for tests and scenes: real app bundles whose program records its
+    // arguments instead of opening anything.
+    .target(name: "SwitchboardFixtures", dependencies: ["SwitchboardCore"], swiftSettings: strict),
+    // The CLI's commands, as a library the binary (and later the app) runs.
+    .target(
+        name: "SwitchboardCLI", dependencies: ["SwitchboardCore", argumentParser], swiftSettings: strict),
+    .executableTarget(name: "switchboard-next", dependencies: ["SwitchboardCLI"], swiftSettings: strict),
+
+    .testTarget(
+        name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore", "SwitchboardFixtures"],
+        swiftSettings: strict),
+    // Runs the built switchboard-next binary against temporary homes.
+    .testTarget(
+        name: "CLITests", dependencies: ["switchboard-next", "SwitchboardCore", "SwitchboardFixtures"],
+        swiftSettings: strict),
+]
 
 let package = Package(
     name: "Switchboard",
     platforms: [.macOS(.v13)],
-    products: [.executable(name: "switchboard", targets: ["switchboard"])],
+    products: [.executable(name: "switchboard-next", targets: ["switchboard-next"])],
     dependencies: [.package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0")],
-    targets: [
-        // Xcode compiles the shipped `switchboard` tool as one module from the Foundation-only core files
-        // plus Switchboard/CLI, so the package keeps the command definitions in the same module too.
-        .target(
-            name: "SwitchboardCore",
-            dependencies: [.product(name: "ArgumentParser", package: "swift-argument-parser")],
-            path: "Switchboard",
-            exclude: ["Assets.xcassets", "Info.plist", "Switchboard.entitlements"] + appleOnlySources
-        ),
-        .executableTarget(name: "switchboard", dependencies: ["SwitchboardCore"], path: "CLI"),
-        // Snapshots holds golden PNGs, which the snapshot tests read from the source tree.
-        .testTarget(
-            name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore"],
-            exclude: ["Snapshots"] + appleOnlyTests),
-    ],
+    targets: targets,
     swiftLanguageModes: [.v6]
 )

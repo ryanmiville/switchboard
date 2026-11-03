@@ -5,11 +5,11 @@
 #   scripts/check <filter>   format, lint and file sizes, then only the tests matching <filter>
 #                            (a `swift test --filter` pattern, such as `RouterTests` or `shadowing`)
 #
-# On macOS: format, lint, file sizes, every test (including snapshots), Debug and Release Xcode
-# builds, bundle checks and whitespace. On Linux: the same minus the app sources, snapshots, Xcode
-# builds and bundle checks; it says so at the end, and a Linux pass means "make verify not run".
+# On macOS: format, lint, file sizes, every test, a release build of every product, and whitespace.
+# On Linux: the same for the Foundation-only targets (core, CLI, editor). It says what it skipped,
+# and a Linux pass means "the macOS checks were not run".
 #
-# Exit codes: 10 format, 11 lint, 12 tests, 13 file sizes, 14 Xcode build, 15 bundle, 16 whitespace.
+# Exit codes: 10 format, 11 lint, 12 tests, 13 file sizes, 14 build, 16 whitespace.
 # Test failures are repeated at the end of the output. The full log is in .build/check.log.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -35,8 +35,8 @@ else
 fi
 
 stage "format"
-"${swift_format[@]}" lint --strict --recursive Switchboard CLI Tests Package.swift \
-  || fail 10 "formatting differs; run \`make format\`"
+"${swift_format[@]}" lint --strict --recursive Sources Tests Package.swift \
+  || fail 10 "formatting differs; run \`scripts/format\`"
 
 stage "lint"
 python3 scripts/lint.py || fail 11 "banned calls; use the suggested owner or add a reasoned exception"
@@ -54,7 +54,8 @@ fi
 
 stage "test${filter:+ (filter: $filter)}"
 if [[ -z "$filter" ]]; then
-  swift test list > .build/test-list.txt 2>>"$log" || fail 12 "the tests didn't build; see $log"
+  swift build --build-tests >>"$log" 2>&1 || { grep -E 'error' "$log" | head -40; fail 12 "the tests didn't build; see $log"; }
+  swift test list > .build/test-list.txt 2>>"$log" || fail 12 "the tests couldn't be listed; see $log"
   [[ -s .build/test-list.txt ]] || fail 12 "no tests were discovered"
 fi
 ${timeout_cmd[@]+"${timeout_cmd[@]}"} swift test --disable-xctest ${filter:+--filter "$filter"} 2>&1 | tee -a "$log"
@@ -63,7 +64,7 @@ if (( status == 124 )); then
   # timeout stops `swift test`, not the test binary it started.
   pkill -f 'SwitchboardPackageTests' 2>/dev/null
   fail 12 "tests were still running after ${limit}s and were stopped; find the hung one with
-scripts/check <SuiteName> (the suites are the files in Tests/SwitchboardCoreTests)"
+scripts/check <SuiteName> (the suites are the structs in Tests/)"
 elif (( status != 0 )); then
   echo
   echo "Failures:"
@@ -74,12 +75,9 @@ if [[ -n "$filter" ]] && grep -qE 'with 0 tests' "$log"; then
   fail 12 "no tests match '$filter', so nothing was checked"
 fi
 
-if (( mac )) && [[ -z "$filter" ]]; then
-  stage "Xcode builds"
-  make debug release || fail 14 "an Xcode build failed"
-  stage "bundles"
-  python3 scripts/check-bundle.py .build/xcode/Build/Products/Debug/Switchboard.app \
-    .build/xcode/Build/Products/Release/Switchboard.app || fail 15 "a built bundle is wrong"
+if [[ -z "$filter" ]]; then
+  stage "release build"
+  swift build -c release >>"$log" 2>&1 || { grep -E 'error' "$log" | head -40; fail 14 "the release build failed; see $log"; }
 fi
 
 stage "whitespace"
@@ -89,8 +87,8 @@ stage "done"
 if [[ -n "$filter" ]]; then
   echo "Filtered checks passed. Run scripts/check with no filter before handing off."
 elif (( mac )); then
-  echo "All checks passed (make verify)."
+  echo "All checks passed on macOS."
 else
-  echo "Linux checks passed. Not run here: the app sources, snapshot tests, Xcode builds and"
-  echo "bundle checks. Report this as \"checks passed on Linux; make verify not run\"."
+  echo "Linux checks passed. Not run here: the macOS-only targets (Mac glue, UI, app) and their"
+  echo "tests. Report this as \"checks passed on Linux; macOS checks not run\"."
 fi

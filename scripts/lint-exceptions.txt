@@ -1,27 +1,5 @@
 # Uses of calls that scripts/lint.py bans, each with the reason it is allowed here.
 # Format: <path> <rule> # <reason>
 
-# The CLI's entry point: the one place it reads the real home, environment and clock.
-Switchboard/CLI/CommandLineTool.swift home # CommandContext.current resolves $HOME for the real CLI; tests build their own context
-Switchboard/CLI/CommandLineTool.swift environment # CommandContext.current is the CLI's only environment read
-Switchboard/CLI/CommandLineTool.swift clock # CommandContext.now defaults to the real time; tests pass a fixed one
-
-# The app's real file locations. Tests pass fixture URLs instead of these.
-Switchboard/Config.swift home # Config.configPath is the shipped location; tests save and load fixture URLs
-Switchboard/History.swift home # HistoryStore.defaultURL is the shipped location; tests use fixture files
-Switchboard/History.swift clock # the recorder's `now` closure defaults to the real time and is injectable
-
-# Defaults that read the real home when a caller leaves them out. Tests always pass fixture homes;
-# removing the defaults would make that a compile error rather than a convention.
-Switchboard/BrowserCatalog.swift home # default homeDirectory argument for the app; tests pass a fixture home
-Switchboard/BrowserProfiles.swift home # default homeDirectory for the app; tests pass a fixture home
-
-# The owner of starting browser processes.
-Switchboard/BrowserLauncher.swift process # the one place browsers are started, behind an injectable runner
-
-# Opening things that are not links to route.
-Switchboard/ContentView.swift system-open # "Open Configuration File" opens config.json in the user's editor
-Switchboard/TabPicker.swift system-open # opens System Settings' Automation pane, a settings URL rather than a web link
-
-# Test harness switches, not personal data.
-Tests/SwitchboardCoreTests/Snapshot.swift environment # SNAPSHOT_RECORD and CI choose whether goldens are recorded or compared
+Sources/SwitchboardCore/Home.swift environment # Env.fromProcess is the one read of the environment and $HOME
+Sources/SwitchboardCore/Launch.swift process # the one place browsers are started
