@@ -166,3 +166,23 @@ struct PickerTests {
         #expect(p.needsPermission)
     }
 }
+
+struct ShortcutKeyTests {
+    @Test func shortcutTextBecomesAKeyCodeAndCarbonModifiersAndBack() throws {
+        let chord = try #require(KeyChord(Shortcut("ctrl+alt+space")))
+        #expect(chord == KeyChord(keyCode: 49, modifiers: KeyChord.control | KeyChord.option))
+        #expect(chord.shortcut == Shortcut("ctrl+alt+space"))
+        #expect(chord.display == "⌃⌥Space")
+        #expect(KeyChord(Shortcut("Cmd+Shift+L"))?.shortcut == Shortcut("shift+cmd+l"))
+        #expect(KeyChord(Shortcut("hyper+x")) == nil)
+        #expect(KeyChord(Shortcut("ctrl+nope")) == nil)
+        #expect(KeyChord(Shortcut("shift+a"))?.isValid == false, "shift alone would take a typed key")
+    }
+
+    @Test func theCurrentAppsCarbonShortcutRoundTrips() throws {
+        let picker = try JSONDecoder().decode(
+            PickerSettings.self,
+            from: Data(#"{"shortcut":{"key":"Space","keyCode":49,"modifiers":6144}}"#.utf8))
+        #expect(KeyChord(picker.shortcut) == KeyChord(keyCode: 49, modifiers: 6144))
+    }
+}

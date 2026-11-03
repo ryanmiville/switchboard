@@ -1,0 +1,100 @@
+import AppKit
+import SwitchboardCore
+import SwitchboardEditor
+
+/// The app in front when the picker was summoned.
+public struct Frontmost: Equatable, Sendable {
+    /// Its bundle identifier.
+    public var id: String
+    public var pid: pid_t
+}
+
+/// The focused browser's current tab, for Quick Switch, read over Apple Events. macOS asks the
+/// person to allow Automation for each browser the first time.
+public enum CurrentTab {
+    /// The app in front now. Call it before showing any window.
+    @MainActor
+    public static func frontmost() -> Frontmost? {
+        guard let app = NSWorkspace.shared.frontmostApplication, let id = app.bundleIdentifier,
+            app.processIdentifier != ProcessInfo.processInfo.processIdentifier
+        else { return nil }
+        return Frontmost(id: id, pid: app.processIdentifier)
+    }
+
+    /// The link in `app`'s frontmost window's active tab, exactly as the browser reports it. Can
+    /// block for a few seconds, so call it off the main thread.
+    public static func read(_ app: Frontmost) -> Result<String, TabError> {
+        guard app.pid > 0, Browsers.bundles.contains(where: { $0.id == app.id }) else {
+            return .failure(.unsupportedBrowser)
+        }
+        let reply: NSAppleEventDescriptor
+        do {
+            reply = try readEvent(app).sendEvent(options: [.waitForReply, .canInteract], timeout: 3)
+        } catch {
+            return .failure(failure((error as NSError).code))
+        }
+        if let code = reply.paramDescriptor(forKeyword: keyErrorNumber)?.int32Value, code != 0 {
+            return .failure(failure(Int(code)))
+        }
+        let value = reply.paramDescriptor(forKeyword: keyDirectObject)?.stringValue ?? ""
+        guard !value.isEmpty else { return .failure(.noTab) }
+        guard Link.isWeb(value) else { return .failure(.notWeb) }
+        return .success(value)
+    }
+
+    /// Brings `browser` forward after opening a link in it.
+    @MainActor
+    public static func activate(_ browser: BrowserInfo) {
+        NSRunningApplication.runningApplications(withBundleIdentifier: browser.id).first?.activate(options: [])
+    }
+
+    /// Opens System Settings → Privacy & Security → Automation.
+    @MainActor
+    public static func openAutomationSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private static func failure(_ code: Int) -> TabError {
+        switch code {
+        case -1743, -1744: .automationDenied
+        case -1728, -1719: .noTab
+        default: .unreadable
+        }
+    }
+
+    private static func readEvent(_ app: Frontmost) -> NSAppleEventDescriptor {
+        // Arc uses WiND for its window class; Chromium browsers use cwin.
+        let isArc = ["company.thebrowser.Browser", "com.keksbay.Arc"].contains(app.id)
+        // Windows are ordered front to back. An integer index avoids encoding an absolute ordinal as
+        // an enum, which Chrome rejects with errAECoercionFail.
+        let window = object(
+            isArc ? 0x5769_4E44 : DescType(cWindow), form: OSType(formAbsolutePosition),
+            key: NSAppleEventDescriptor(int32: 1))
+        let tab = object(
+            typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x6163_5461),
+            container: window)  // acTa
+        let url = object(
+            typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x5552_4C20),
+            container: tab)  // URL[space]
+        let event = NSAppleEventDescriptor(
+            eventClass: kAECoreSuite, eventID: kAEGetData,
+            // Automation browsers can share the bundle identifier of the person's own browser.
+            targetDescriptor: NSAppleEventDescriptor(processIdentifier: app.pid),
+            returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
+        event.setParam(url, forKeyword: keyDirectObject)
+        return event
+    }
+
+    private static func object(
+        _ desiredClass: DescType, form: OSType, key: NSAppleEventDescriptor, container: NSAppleEventDescriptor = .null()
+    ) -> NSAppleEventDescriptor {
+        let record = NSAppleEventDescriptor.record()
+        record.setDescriptor(NSAppleEventDescriptor(typeCode: desiredClass), forKeyword: AEKeyword(keyAEDesiredClass))
+        record.setDescriptor(NSAppleEventDescriptor(enumCode: form), forKeyword: AEKeyword(keyAEKeyForm))
+        record.setDescriptor(key, forKeyword: AEKeyword(keyAEKeyData))
+        record.setDescriptor(container, forKeyword: AEKeyword(keyAEContainer))
+        return record.coerce(toDescriptorType: typeObjectSpecifier) ?? record
+    }
+}
