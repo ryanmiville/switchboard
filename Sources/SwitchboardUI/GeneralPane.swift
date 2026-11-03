@@ -3,7 +3,7 @@ import SwiftUI
 import SwitchboardCore
 import SwitchboardEditor
 
-/// The default destination, the default browser, startup, history and the settings file.
+/// The default browser, the default destination, startup and history.
 struct GeneralPane: View {
     @ObservedObject var model: SettingsModel
 
@@ -98,28 +98,22 @@ struct GeneralPane: View {
                 Text("History")
             }
 
-            Section {
-                LabeledContent {
-                    Button("Show in Finder") { model.revealConfigFile() }
-                } label: {
-                    RowLabel(title: "Settings file", caption: model.configPath)
-                }
-                if e.canImportCurrentApp {
-                    LabeledContent {
-                        Button("Import") { model.importCurrentApp() }.buttonStyle(.borderedProminent)
-                    } label: {
-                        RowLabel(
-                            title: "Import from Switchboard",
-                            caption:
-                                "Copies the current app’s rules and destinations. Its own file isn’t changed."
-                        )
+            // Only while the current app has settings this one hasn't taken yet.
+            if e.canImportCurrentApp || model.importError != nil {
+                Section {
+                    if e.canImportCurrentApp {
+                        LabeledContent {
+                            Button("Import") { model.importCurrentApp() }.buttonStyle(.borderedProminent)
+                        } label: {
+                            RowLabel(
+                                title: "Import from Switchboard",
+                                caption:
+                                    "Copies the current app’s rules and destinations. Its own file isn’t changed."
+                            )
+                        }
                     }
+                    if let error = model.importError { ErrorText(error) }
                 }
-                if let error = model.importError { ErrorText(error) }
-            } header: {
-                Text("Configuration")
-            } footer: {
-                Footer("\(Identity.cliName) reads and changes the same file.")
             }
         }
         .formStyle(.grouped)

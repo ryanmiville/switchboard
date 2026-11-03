@@ -267,13 +267,6 @@ public final class SettingsModel: ObservableObject {
         importError = editor.importCurrentApp()
     }
 
-    /// Where the file is, with the home folder written as `~`.
-    public var configPath: String {
-        let path = editor.store.url.path
-        let home = editor.home.path
-        return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
-    }
-
     public func revealConfigFile() {
         NSWorkspace.shared.activateFileViewerSelecting([editor.store.url])
     }

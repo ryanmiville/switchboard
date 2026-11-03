@@ -34,12 +34,6 @@ public struct SettingsView: View {
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 260)
             .searchable(text: $search, placement: .sidebar)
-            .safeAreaInset(edge: .bottom) {
-                SaveStatus(model: model)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
-            }
         } detail: {
             // The sidebar toggle stays: it is the window's only toolbar item, and without a toolbar
             // macOS gives the window a plain title bar (a centred title over a hard line) instead
@@ -82,23 +76,6 @@ public struct SettingsView: View {
 
 struct DraftID: Identifiable, Hashable {
     let id: RuleID
-}
-
-/// "All changes saved", or why not.
-struct SaveStatus: View {
-    @ObservedObject var model: SettingsModel
-
-    var body: some View {
-        let saving = model.editor.loadError == nil && !model.editor.hasUnsavedChanges
-        Label(
-            model.editor.loadError != nil
-                ? "Not saving" : model.editor.hasUnsavedChanges ? "Unsaved changes" : "All changes saved",
-            systemImage: saving ? "checkmark.circle" : "exclamationmark.circle"
-        )
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .accessibilityIdentifier("save-status")
-    }
 }
 
 /// Problems that need the person, as the first section of every pane: a link that didn't open,
