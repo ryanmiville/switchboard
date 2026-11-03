@@ -13,7 +13,7 @@ use std::time::SystemTime;
 
 use switchboard_app::editor::Editor;
 use switchboard_app::picker::Picker;
-use switchboard_app::ui::{Failure, Ui};
+use switchboard_app::ui::{self, Failure, Ui};
 use switchboard_app::{picker_spec, platform, routing, spec, watch};
 use switchboard_core::history::HistoryStore;
 use switchboard_core::platform::{CurrentTab, MenuAction, MenuBar};
@@ -32,7 +32,7 @@ fn main() {
         // Fixture state only: `--window picker` renders the Quick Switch panel's scenes.
         rune::run_windows(|_| -> Vec<rune::AnyWindowSpec> {
             vec![
-                rune::WindowSpec::new("settings", spec()).into(),
+                rune::WindowSpec::new("settings", spec()).chrome(ui::CHROME).into(),
                 rune::WindowSpec::new("picker", picker_spec()).into(),
             ]
         });
@@ -183,7 +183,7 @@ fn main() {
     let options = rune::RunOptions { accessory: cfg!(target_os = "macos") };
     rune::run_windows_with(options, move |_| -> Vec<rune::AnyWindowSpec> {
         vec![
-            rune::WindowSpec::from_app("settings", settings).into(),
+            rune::WindowSpec::from_app("settings", settings).chrome(ui::CHROME).into(),
             rune::WindowSpec::from_app("picker", picker)
                 .configured_options(rune::WindowOptions::launcher_panel())
                 .into(),

@@ -359,8 +359,35 @@ pub fn view(ui: &Ui, cx: &mut Cx<Ui>) -> El {
     })
 }
 
+/// The window's frame on macOS: content under a transparent title bar, the traffic lights inside
+/// the sidebar's top-left corner, and only `.window_drag()` areas moving the window.
+pub const CHROME: rune::Chrome = rune::Chrome {
+    full_size_content: true,
+    traffic_lights: Some((SIDEBAR_INSET + 14.0, SIDEBAR_INSET + 14.0)),
+    drag_regions: true,
+};
+
+/// How far the sidebar panel sits in from the window's edges.
+const SIDEBAR_INSET: f32 = 8.0;
+const SIDEBAR_W: f32 = 200.0;
+
+/// The sidebar: a rounded panel inset from the window, as macOS's own settings windows draw it.
+/// Its empty space drags the window.
 fn sidebar(ui: &Ui, p: Paint) -> El {
-    let mut list = col().key("sidebar").w(190.0).h_full().pt(48.0).px(10.0).gap(2.0).fill(p.k.c.layer_01);
+    let mut list = col()
+        .key("sidebar")
+        .w(SIDEBAR_W)
+        .h_full()
+        .pt(52.0)
+        .px(8.0)
+        .gap(2.0)
+        .radius(p.k.radius.xl)
+        .fill(p.k.c.bg_base)
+        .border(p.hair, p.k.c.border_muted)
+        .window_drag();
+    for shadow in &p.k.elevation.raised {
+        list = list.box_shadow(*shadow);
+    }
     for pane in Pane::ALL {
         let selected = ui.pane == pane;
         let item = row()
@@ -384,7 +411,7 @@ fn sidebar(ui: &Ui, p: Paint) -> El {
             );
         list = list.child(item);
     }
-    list
+    col().key("sidebar-inset").h_full().padding(SIDEBAR_INSET).pr(0.0).child(list)
 }
 
 fn header(ui: &Ui, p: Paint) -> El {
@@ -397,6 +424,7 @@ fn header(ui: &Ui, p: Paint) -> El {
         };
     row()
         .key("pane-header")
+        .window_drag()
         .w_full()
         .h(52.0)
         .px(METRICS.gutter)
