@@ -3,3 +3,4 @@
 
 Sources/SwitchboardCore/Home.swift environment # Env.fromProcess is the one read of the environment and $HOME
 Sources/SwitchboardCore/Launch.swift process # the one place browsers are started
+Sources/switchboard-next/main.swift clock # the CLI binary reads the clock once and passes it in
