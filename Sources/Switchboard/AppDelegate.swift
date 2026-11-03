@@ -11,8 +11,12 @@ import SwitchboardUI
 final class MenuBarState: ObservableObject {
     static let shared = MenuBarState()
     /// Whether the item is shown: only while the app is resident, never for a launch that only
-    /// delivers links.
-    @Published var shown = false
+    /// delivers links. Only a change publishes: `MenuBarExtra` writes the binding back each time it
+    /// sees the item's visibility, and publishing that write re-evaluates the App's body, which
+    /// makes it write again, forever.
+    var shown = false {
+        willSet { if newValue != shown { objectWillChange.send() } }
+    }
     /// The registered shortcut, shown next to Quick Switch in the menu.
     @Published var shortcutHint: String?
 }
