@@ -3,8 +3,8 @@ import SwiftUI
 import SwitchboardCore
 
 // The pieces that make the window read like System Settings on macOS 26: coloured pane icons,
-// real browser icons, a header card at the top of each pane, and Liquid Glass where macOS has it
-// (macOS 26), with the nearest material before that.
+// real browser icons, and Liquid Glass for the Quick Switch panel (macOS 26), with the nearest
+// material before that.
 
 extension Pane {
     /// The pane icon's fill, as System Settings colours its sidebar icons.
@@ -16,7 +16,7 @@ extension Pane {
         }
     }
 
-    /// The line under the pane's title in its header card.
+    /// What the pane is for, which the sidebar search also matches.
     var summary: String {
         switch self {
         case .general: "Where unmatched links open, starting at login, link history, and the settings file."
@@ -88,27 +88,6 @@ struct BrowserIcon: View {
         let info = bundle.infoDictionary ?? [:]
         guard info["CFBundleIconFile"] != nil || info["CFBundleIconName"] != nil else { return nil }
         return NSWorkspace.shared.icon(forFile: locator)
-    }
-}
-
-/// The card at the top of a pane: its icon, title and what it is for, centred, as each System
-/// Settings pane opens.
-struct PaneHeader: View {
-    let pane: Pane
-
-    var body: some View {
-        VStack(spacing: 8) {
-            PaneIcon(pane: pane, size: 40)
-            Text(pane.title).font(.title3.weight(.semibold))
-            Text(pane.summary)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 6)
-        .padding(.horizontal, 24)
     }
 }
 
