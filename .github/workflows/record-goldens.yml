@@ -55,7 +55,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "ui: record scene goldens on CI (${SCENES:-every scene})"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          # Someone may have pushed while this ran. Replay on top of it; where both changed a
+          # golden, keep the one just recorded here (-X theirs is the commit being replayed).
+          for attempt in 1 2 3; do
+            git pull --rebase -X theirs origin "$GITHUB_REF_NAME" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((attempt * 5))
+          done
+          echo "Couldn't push the recorded goldens; they are in the recorded-goldens artifact." >&2
+          exit 1
       - name: Upload the recorded goldens
         if: always()
         uses: actions/upload-artifact@v7
