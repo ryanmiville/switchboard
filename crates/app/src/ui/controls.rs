@@ -2,7 +2,7 @@
 //! compose these and nothing else. Colours, type, radii and shadows come from the kit.
 
 use rune::{Color, El, ScrollSpec, TextStyle, Tx, col, el, row, text};
-use rune_kit::{Button, ButtonVariant, Kit, Menu, MenuItem, Placement, Select, SelectAppearance, Switch};
+use rune_kit::{Button, ButtonVariant, Kit, Menu, MenuItem, Placement, Switch};
 
 use super::{Open, Ui};
 
@@ -152,13 +152,9 @@ pub fn select(
 ) -> El {
     let key = which.key();
     let is_open = open == Some(which);
-    let trigger = Select::new::<&str>(format!("{key}-field"), &[])
-        .appearance(SelectAppearance::Field)
-        .width(METRICS.select_w)
-        .current(Some(current))
-        .open(is_open)
-        .on_toggle(move |ui: &mut Ui| ui.open = if ui.open == Some(which) { None } else { Some(which) })
-        .trigger(p.k);
+    let trigger = menu_trigger(p, &format!("{key}-field-trigger"), current, is_open, move |ui: &mut Ui| {
+        ui.open = if ui.open == Some(which) { None } else { Some(which) }
+    });
     let mut menu = Menu::new(key)
         .trigger(trigger)
         .placement(Placement::BottomEnd)
@@ -175,6 +171,44 @@ pub fn select(
             }));
     }
     menu.build(p.k, layer)
+}
+
+/// A SwiftUI-style menu picker's trigger: the current value and a small ↕ badge, with no border.
+/// A pill fills behind both on hover, and stays while the menu is open.
+pub fn menu_trigger(
+    p: Paint,
+    key: &str,
+    current: &str,
+    open: bool,
+    toggle: impl Fn(&mut Ui) + 'static,
+) -> El {
+    let k = p.k;
+    let chevrons = col()
+        .key("chevrons")
+        .size(18.0, 20.0)
+        .center()
+        .gap(-3.0)
+        .radius(5.0)
+        .fill(k.c.hover)
+        .child(rune::icon(k.glyph.chevron_up, 11.0).key("up").color(p.text()))
+        .child(rune::icon(k.glyph.chevron_down, 11.0).key("down").color(p.text()));
+    row()
+        .key(key.to_owned())
+        .role("combobox")
+        .label(current)
+        .h(28.0)
+        .pl(10.0)
+        .pr(5.0)
+        .gap(8.0)
+        .center_y()
+        .radius(8.0)
+        .fill(if open { k.c.hover } else { Color::TRANSPARENT })
+        .hover(k.c.hover)
+        .focusable(true)
+        .focus_ring(2.0, 1.0, k.c.border_focus)
+        .on_press(toggle)
+        .child(text(current).key("value").font(k.ty.ui).color(p.text()).truncate().shrink())
+        .child(chevrons)
 }
 
 #[derive(Clone, Copy)]
