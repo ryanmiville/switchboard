@@ -1,0 +1,3 @@
+# Files over the 1000-line limit, as "<lines> <path>". A listed file may not grow; lower the number
+# when it shrinks, and delete the line once it is under the limit.
+1081 Switchboard/ContentView.swift

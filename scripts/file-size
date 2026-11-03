@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Keeps source files small enough for several agents to work without colliding.
+#
+#   scripts/file-size            fail on any Swift file over 1000 lines, warn over 600
+#
+# Files already over the limit are listed in scripts/file-size-exceptions.txt as "<lines> <path>".
+# A listed file may not grow past its recorded size; lower the number when it shrinks. Raise it
+# only with a reason in the commit message.
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+WARN=600
+LIMIT=1000
+exceptions=scripts/file-size-exceptions.txt
+status=0
+while IFS= read -r file; do
+  lines=$(wc -l < "$file")
+  allowed=$(awk -v f="$file" '$2 == f { print $1 }' "$exceptions" 2>/dev/null)
+  if [[ -n "$allowed" ]]; then
+    if (( lines > allowed )); then
+      echo "file-size: $file has $lines lines; its exception allows $allowed. Split it." >&2
+      status=1
+    fi
+  elif (( lines > LIMIT )); then
+    echo "file-size: $file has $lines lines (limit $LIMIT). Split it into files (and add them to the Xcode project)." >&2
+    status=1
+  elif (( lines > WARN )); then
+    echo "file-size: warning: $file has $lines lines (soft limit $WARN)." >&2
+  fi
+done < <(git ls-files --cached --others --exclude-standard -- '*.swift')
+exit $status
