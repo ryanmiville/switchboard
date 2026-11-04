@@ -56,6 +56,11 @@ Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
   goldens. Never re-record a scene you haven't looked at, or to hide a change you didn't mean.
 - Build the app: `scripts/bundle [--debug]` (into `.build/bundle/`; CI's macOS job runs it).
   Install it: `scripts/install [--cli]`, only when the owner asks.
+- Releases: every push to `main` that passes Verify is released by `.github/workflows/release.yml`
+  (`scripts/package`: `Switchboard.zip` and `release.json`, tag `v<cliVersion>-<run>`). The cask in
+  `ryanmiville/homebrew-tap` follows the newest release; the owner installs with
+  `brew install --cask ryanmiville/tap/switchboard`. Bump `cliVersion` in
+  `Sources/SwitchboardCLI/Arguments.swift` for a change worth a new version number.
 - Check the bundled app launches and settles (no hang): `scripts/launch-check`, against a scratch
   home; CI runs it after every bundle. It is the only check that starts the app.
 

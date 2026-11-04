@@ -10,19 +10,23 @@ to work on it.
 
 ## Install
 
-Requires macOS 13 or newer and Xcode 26.4 or newer (Swift 6.3).
+Requires macOS 13 or newer on Apple silicon.
 
 ```sh
-scripts/install --cli
+brew install --cask ryanmiville/tap/switchboard
 ```
 
-That builds `Switchboard.app`, puts it in `~/Applications`, registers it with Launch Services, links
-`~/.local/bin/switchboard`, and opens it. It appears in the menu bar. To route links through it,
-choose Set Default… in Settings → General, or System Settings → Desktop & Dock → Default web
-browser.
+That puts `Switchboard.app` in `/Applications` and links the `switchboard` command. Every change on
+`main` that passes CI is released, and the cask follows the newest release:
+`brew update && brew upgrade --cask ryanmiville/tap/switchboard`. To route links through it, choose
+Set Default… in Settings → General, or System Settings → Desktop & Dock → Default web browser.
 
-Upgrading from the previous Swift app: delete its copy in `/Applications` so macOS finds only this
-one. Settings and history carry over as they are.
+From source (Xcode 26.4 or newer, Swift 6.3), `scripts/install --cli` builds the app into
+`~/Applications` and links `~/.local/bin/switchboard`. Keep one copy: both have the same bundle
+identifier, and macOS opens links with whichever it picks.
+
+Upgrading from the previous Swift app: delete its copy in `/Applications` first. Settings and
+history carry over as they are.
 
 ## Development
 

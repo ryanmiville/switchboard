@@ -1,0 +1,100 @@
+# Publishes a GitHub release for every change on main that passes Verify: Switchboard.zip and
+# release.json, from scripts/package. The cask in ryanmiville/homebrew-tap points at the newest
+# release (its "Update Switchboard" workflow checks release.json and the zip's hash first).
+#
+# Signing: with the SWITCHBOARD_SIGNING_P12_BASE64 and SWITCHBOARD_SIGNING_P12_PASSWORD secrets (a
+# code-signing certificate and its key, as a base64 .p12), every release has the same signature, so
+# macOS keeps the Automation permission across updates. Without them it signs ad hoc and warns.
+# With a TAP_DISPATCH_TOKEN secret (a token that can run workflows in the tap), the tap updates
+# right away instead of on its daily schedule.
+name: Release
+
+on:
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # A Verify run that passed for a push to main, or a manual run from main.
+    if: >-
+      github.repository == 'ryanmiville/switchboard' && (
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+          && github.event.workflow_run.event == 'push') ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+      GH_TOKEN: ${{ github.token }}
+      SOURCE: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE }}
+          persist-credentials: false
+
+      - name: Import the signing identity
+        env:
+          SIGNING_P12_BASE64: ${{ secrets.SWITCHBOARD_SIGNING_P12_BASE64 }}
+          SIGNING_P12_PASSWORD: ${{ secrets.SWITCHBOARD_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_P12_BASE64" ]; then
+            echo "::warning::No SWITCHBOARD_SIGNING_P12_BASE64 secret, so this release is signed ad hoc and macOS asks for Automation again after updating."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/switchboard-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "$SIGNING_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/signing.p12" -k "$KEYCHAIN" \
+            -P "$SIGNING_P12_PASSWORD" -A -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+          rm "$RUNNER_TEMP/signing.p12"
+          # A self-signed certificate isn't trusted, so it is found without -v; sign by its hash.
+          IDENTITY="$(security find-identity -p codesigning "$KEYCHAIN" | awk '/\)/ { print $2; exit }')"
+          test -n "$IDENTITY"
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Package
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/package
+
+      - name: Check the packaged app launches and settles
+        run: scripts/launch-check
+
+      - name: Publish the release
+        run: |
+          TAG="$(python3 -c 'import json; print(json.load(open("dist/release.json"))["tag"])')"
+          VERSION="$(python3 -c 'import json; print(json.load(open("dist/release.json"))["version"])')"
+          gh release create "$TAG" dist/Switchboard.zip dist/release.json \
+            --repo "$GITHUB_REPOSITORY" --target "$SOURCE" \
+            --title "Switchboard ${VERSION/,/ build }" --notes-file dist/release-notes.md --latest
+
+      - name: Update the tap now
+        env:
+          TAP_DISPATCH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$TAP_DISPATCH_TOKEN" ]; then
+            echo "No TAP_DISPATCH_TOKEN secret; the tap picks this release up on its daily schedule."
+            exit 0
+          fi
+          GH_TOKEN="$TAP_DISPATCH_TOKEN" gh workflow run switchboard.yml --repo ryanmiville/homebrew-tap
+
+      - name: Remove the signing keychain
+        if: always() && env.SIGNING_KEYCHAIN != ''
+        run: security delete-keychain "$SIGNING_KEYCHAIN"

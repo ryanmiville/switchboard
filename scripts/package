@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Packages a release for the Homebrew cask in ryanmiville/homebrew-tap: builds Switchboard.app with
+# scripts/bundle, zips it, and writes dist/release.json, which the tap checks before pointing the
+# cask at a release. CI's Release workflow runs it; it runs on any Mac too.
+#
+#   BUILD_NUMBER=12 scripts/package
+#
+# The release is version <cliVersion>,<BUILD_NUMBER> and tag v<cliVersion>-<BUILD_NUMBER>. Set
+# CODESIGN_IDENTITY to sign with a stable identity: with the default ad hoc signature, macOS asks
+# for Automation again after every update. macOS only.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+[[ "$(uname -s)" == Darwin ]] || { echo "package: macOS only" >&2; exit 2; }
+: "${BUILD_NUMBER:?package: set BUILD_NUMBER to the build number of the release}"
+[[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo "package: BUILD_NUMBER must be a number" >&2; exit 2; }
+
+identity() { sed -n "s/^ *public static let $1 = \"\(.*\)\"$/\1/p" Sources/SwitchboardCore/Identity.swift; }
+name=$(identity appName)
+version=$(sed -n 's/^public let cliVersion = "\(.*\)"$/\1/p' Sources/SwitchboardCLI/Arguments.swift)
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "package: couldn't read the version" >&2; exit 1; }
+tag="v$version-$BUILD_NUMBER"
+source=$(git rev-parse HEAD)
+
+BUILD_NUMBER="$BUILD_NUMBER" scripts/bundle
+app=".build/bundle/$name.app"
+[[ "$(lipo -archs "$app/Contents/MacOS/Switchboard")" == arm64 ]] \
+  || { echo "package: the cask is for Apple silicon; $app isn't arm64" >&2; exit 1; }
+
+rm -rf dist
+mkdir -p dist
+ditto -c -k --keepParent --sequesterRsrc "$app" "dist/$name.zip"
+sha256=$(shasum -a 256 "dist/$name.zip" | cut -d ' ' -f1)
+
+cat >dist/release.json <<JSON
+{
+  "version": "$version,$BUILD_NUMBER",
+  "tag": "$tag",
+  "sha256": "$sha256",
+  "source": "$source"
+}
+JSON
+
+cat >dist/release-notes.md <<NOTES
+Switchboard $version, build $BUILD_NUMBER, from $source.
+
+Install with \`brew install --cask ryanmiville/tap/switchboard\`; update with
+\`brew update && brew upgrade --cask ryanmiville/tap/switchboard\`.
+NOTES
+
+echo "Packaged $tag: dist/$name.zip ($sha256)"
