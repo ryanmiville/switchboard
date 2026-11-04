@@ -210,6 +210,48 @@ struct PickerTests {
         #expect(current == Destination(browser: scene.helium, profile: "Profile 1"))
     }
 
+    func summonOverHelium(_ p: inout PickerState, _ scene: SceneHome, open: [String]?, lastUsed: String?)
+        throws
+    {
+        let helium = try #require(scene.browsers.installed().first { $0.locator == scene.helium })
+        try scene.temporary.writeLocalState(
+            of: helium, [("Default", "Ryan"), ("Profile 1", "Work")], open: open, lastUsed: lastUsed)
+        // As Chrome and Helium report it on the Mac: the page's title, with no profile in it.
+        p.tabRead(
+            .success(BrowserTab(link: "https://x.com/post", windowTitle: "Rach on X: “introducing…” / X")),
+            browserID: helium.id, installed: scene.browsers.installed())
+    }
+
+    @Test func theOnlyProfileWithWindowsOpenIsLeftOut() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        try summonOverHelium(&p, scene, open: ["Default"], lastUsed: "Profile 1")
+        #expect(p.current == Destination(browser: scene.helium, profile: "Default"))
+        #expect(!p.shown.map(\.label).contains("Helium · Ryan"))
+        #expect(p.shown.map(\.label).contains("Helium · Work"))
+    }
+
+    @Test func withSeveralProfilesOpenTheOneUsedLastIsLeftOut() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        try summonOverHelium(&p, scene, open: ["Default", "Profile 1"], lastUsed: "Profile 1")
+        #expect(p.current == Destination(browser: scene.helium, profile: "Profile 1"))
+        #expect(p.shown.map(\.label).contains("Helium · Ryan"))
+    }
+
+    @Test func whenTheBrowserRecordsNothingNothingIsLeftOut() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        try summonOverHelium(&p, scene, open: nil, lastUsed: nil)
+        #expect(p.current == nil)
+        try summonOverHelium(&p, scene, open: ["Default", "Profile 1"], lastUsed: "Profile 9")
+        #expect(p.current == nil)
+        #expect(p.shown.count == 5)
+    }
+
     @Test func typingNarrowsTheDestinationsByProfileOrBrowserName() throws {
         let scene = try SceneHome()
         defer { scene.remove() }

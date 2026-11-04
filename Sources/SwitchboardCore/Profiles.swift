@@ -40,6 +40,19 @@ public enum ProfileError: Error, Equatable, CustomStringConvertible {
     }
 }
 
+/// What a Chromium browser last recorded about which of its profiles are in use.
+public struct ProfileActivity: Equatable, Sendable {
+    /// Directory identifiers of the profiles with windows open.
+    public var open: [String]
+    /// The directory identifier of the profile used last.
+    public var lastUsed: String?
+
+    public init(open: [String] = [], lastUsed: String? = nil) {
+        self.open = open
+        self.lastUsed = lastUsed
+    }
+}
+
 public enum Profiles {
     /// The profiles in `browser`'s Local State, `Default` first, then by name. A browser that
     /// hasn't written Local State yet has just `Default`.
@@ -74,6 +87,21 @@ public enum Profiles {
             if x != y { return x.lexicographicallyPrecedes(y) }
             return Array(a.directory.utf8).lexicographicallyPrecedes(Array(b.directory.utf8))
         }
+    }
+
+    /// Which of `browser`'s profiles have windows open and which was used last, as Chromium records
+    /// them in Local State (`profile.last_active_profiles`, `profile.last_used`). Chromium saves the
+    /// file a few seconds after a change, so this can lag a profile switch. Best effort: anything
+    /// unreadable is just unknown.
+    public static func activity(_ browser: BrowserInfo) -> ProfileActivity {
+        let url = browser.userData.appendingPathComponent("Local State")
+        guard let data = try? Files.contents(of: url),
+            let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let profile = state["profile"] as? [String: Any]
+        else { return ProfileActivity() }
+        return ProfileActivity(
+            open: profile["last_active_profiles"] as? [String] ?? [],
+            lastUsed: profile["last_used"] as? String)
     }
 
     /// The profiles of the browser at `locator`.

@@ -63,13 +63,34 @@ public struct TemporaryHome: Sendable {
         return app.path
     }
 
-    /// Writes the browser's Local State with `profiles` (directory, display name).
-    public func writeLocalState(_ dataFolder: String, _ profiles: [(String, String)]) throws {
-        let folder = home.appending("Library/Application Support/\(dataFolder)")
+    /// Writes the browser's Local State with `profiles` (directory, display name), and, as
+    /// Chromium records them, the profiles with windows open and the one used last.
+    public func writeLocalState(
+        _ dataFolder: String, _ profiles: [(String, String)], open: [String]? = nil, lastUsed: String? = nil
+    ) throws {
+        try writeLocalState(
+            in: home.appending("Library/Application Support/\(dataFolder)"), profiles, open: open,
+            lastUsed: lastUsed)
+    }
+
+    /// Rewrites `browser`'s Local State, as `writeLocalState(_:_:open:lastUsed:)` does.
+    public func writeLocalState(
+        of browser: BrowserInfo, _ profiles: [(String, String)], open: [String]? = nil,
+        lastUsed: String? = nil
+    ) throws {
+        try writeLocalState(in: browser.userData, profiles, open: open, lastUsed: lastUsed)
+    }
+
+    private func writeLocalState(
+        in folder: URL, _ profiles: [(String, String)], open: [String]?, lastUsed: String?
+    ) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         var cache: [String: Any] = [:]
         for (directory, name) in profiles { cache[directory] = ["name": name] }
-        try JSONSerialization.data(withJSONObject: ["profile": ["info_cache": cache]])
+        var profile: [String: Any] = ["info_cache": cache]
+        if let open { profile["last_active_profiles"] = open }
+        if let lastUsed { profile["last_used"] = lastUsed }
+        try JSONSerialization.data(withJSONObject: ["profile": profile])
             .write(to: folder.appendingPathComponent("Local State"))
     }
 

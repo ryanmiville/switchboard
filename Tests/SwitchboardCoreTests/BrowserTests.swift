@@ -118,4 +118,21 @@ struct BrowserTests {
             .write(to: fixture.launchLog)
         #expect(fixture.recordedLaunches() == [["--profile-directory=Default", "https://a.com"]])
     }
+
+    @Test func theOpenAndLastUsedProfilesAreReadFromLocalState() throws {
+        let fixture = try TemporaryHome()
+        defer { fixture.remove() }
+        _ = try fixture.installBrowser(
+            .helium, name: "Helium", profiles: [("Default", "Ryan"), ("Profile 1", "Work")])
+        let helium = try #require(fixture.browsers.installed().first)
+        #expect(Profiles.activity(helium) == ProfileActivity())
+        try fixture.writeLocalState(
+            of: helium, [("Default", "Ryan"), ("Profile 1", "Work")], open: ["Default", "Profile 1"],
+            lastUsed: "Profile 1")
+        #expect(
+            Profiles.activity(helium)
+                == ProfileActivity(open: ["Default", "Profile 1"], lastUsed: "Profile 1"))
+        try Data("not json".utf8).write(to: helium.userData.appendingPathComponent("Local State"))
+        #expect(Profiles.activity(helium) == ProfileActivity())
+    }
 }

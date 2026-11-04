@@ -21,8 +21,8 @@ public struct Choice: Equatable, Sendable {
 public struct BrowserTab: Equatable, Sendable {
     /// The active tab's link, exactly as the browser reported it.
     public var link: String
-    /// The window's title. Chromium browsers end it with the profile's name when there are several,
-    /// as in "Pull request - Google Chrome - Work".
+    /// The window's title. On the Mac, Chrome and Helium give only the page's title; a browser that
+    /// ends it with the profile's name ("… - Work") lets the panel tell which profile it is.
     public var windowTitle: String?
 
     public init(link: String, windowTitle: String? = nil) {
@@ -109,23 +109,39 @@ public enum QuickSwitch {
         return pinned + found
     }
 
-    /// The destination the browser window is showing, so the panel can leave it out: the profile
-    /// whose name ends the window's title, among that browser's profiles only (the same name in
-    /// another browser is someone else), or the browser's only profile. `nil` when it can't tell.
+    /// The destination the browser window is showing, so the panel can leave it out. Only that
+    /// browser's profiles are considered (the same name in another browser is someone else), and the
+    /// first of these that answers wins:
+    ///
+    /// 1. the browser's only profile;
+    /// 2. the profile whose name ends the window's title, in browsers that add it;
+    /// 3. the only profile with windows open, from `activity`;
+    /// 4. with several open, the one used last.
+    ///
+    /// `nil` when it can't tell, so nothing is left out.
     public static func current(
-        windowTitle: String?, browserID: String, installed: [BrowserInfo], choices: [Choice]
+        windowTitle: String?, browserID: String, installed: [BrowserInfo], choices: [Choice],
+        activity: ProfileActivity = ProfileActivity()
     ) -> Destination? {
         guard let browser = installed.first(where: { $0.id == browserID }) else { return nil }
         let profiles = choices.filter { $0.destination.browser == browser.locator && $0.error == nil }
+        func profile(_ directory: String?) -> Destination? {
+            profiles.first { $0.destination.profile == directory }?.destination
+        }
         if profiles.count == 1 { return profiles[0].destination }
-        guard let title = windowTitle?.trimmingCharacters(in: .whitespaces), !title.isEmpty else {
-            return nil
+        if let title = windowTitle?.trimmingCharacters(in: .whitespaces), !title.isEmpty {
+            let named = profiles.filter { choice in
+                [" - ", " – ", " — "].contains { title.hasSuffix($0 + choice.profileName) }
+            }
+            // "Work" and "Side Work" both end "… - Side Work"; the longer name is the one shown.
+            if let found = named.max(by: { $0.profileName.count < $1.profileName.count }) {
+                return found.destination
+            }
         }
-        let named = profiles.filter { choice in
-            [" - ", " – ", " — "].contains { title.hasSuffix($0 + choice.profileName) }
-        }
-        // "Work" and "Side Work" both end "… - Side Work"; the longer name is the one shown.
-        return named.max { $0.profileName.count < $1.profileName.count }?.destination
+        let open = activity.open.filter { profile($0) != nil }
+        if open.count == 1 { return profile(open[0]) }
+        if open.count > 1, let last = activity.lastUsed, open.contains(last) { return profile(last) }
+        return nil
     }
 }
 
@@ -199,9 +215,10 @@ public struct PickerState: Sendable {
         switch result {
         case .success(let tab):
             link = tab.link
-            current = browserID.flatMap {
+            current = browserID.flatMap { id in
                 QuickSwitch.current(
-                    windowTitle: tab.windowTitle, browserID: $0, installed: installed, choices: all)
+                    windowTitle: tab.windowTitle, browserID: id, installed: installed, choices: all,
+                    activity: installed.first { $0.id == id }.map(Profiles.activity) ?? ProfileActivity())
             }
             selected = 0
         case .failure(let e):
