@@ -19,7 +19,7 @@ final class QuickSwitchPanel {
     private var numbersSoon: Task<Void, Never>?
 
     /// How long ⌘ is held before the destinations show their numbers, so a quick ⌘1 doesn't flash them.
-    static let numbersDelay = Duration.milliseconds(400)
+    static let numbersDelay = Duration.milliseconds(700)
 
     init(
         store: ConfigStore, history: HistoryStore, browsers: Browsers, settings: SettingsModel,
