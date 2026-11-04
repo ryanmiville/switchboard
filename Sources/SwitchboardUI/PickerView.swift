@@ -46,6 +46,10 @@ public struct PickerServices {
 public final class PickerModel: ObservableObject {
     @Published public var state = PickerState()
     @Published public var reading = false
+    /// ⌘ has been held for a moment, so each destination shows the number that opens it.
+    @Published public var showsNumbers = false
+    /// Counts summons, so the panel puts the cursor back in its search field each time.
+    @Published public private(set) var summons = 0
     public let store: ConfigStore
     public let history: HistoryStore
     public let browsers: Browsers
@@ -63,16 +67,24 @@ public final class PickerModel: ObservableObject {
 
     public func refresh() { state.refresh(store: store, browsers: browsers) }
 
-    /// A new summon: lists the destinations again and clears the last link.
+    /// A new summon: lists the destinations again and clears the last link and search.
     public func reset() {
         state.reset()
         opened = nil
+        showsNumbers = false
+        summons += 1
         refresh()
     }
 
-    public func tabRead(_ result: Result<String, TabError>) {
+    /// What was read from the browser with bundle identifier `browserID`.
+    public func tabRead(_ result: Result<Tab, TabError>, browserID: String?) {
         reading = false
-        state.tabRead(result)
+        state.tabRead(result, browserID: browserID, installed: browsers.installed())
+    }
+
+    public var query: String {
+        get { state.query }
+        set { state.setQuery(newValue) }
     }
 
     public func open(_ index: Int) {
@@ -86,25 +98,30 @@ public final class PickerModel: ObservableObject {
         services.close()
     }
 
-    public func toggleFavorite(_ index: Int) {
-        if let settings = state.toggleFavorite(index, browsers: browsers) { services.savePicker(settings) }
+    /// Escape clears the search first, as Spotlight does, then closes.
+    public func escape() {
+        if state.query.isEmpty { services.close() } else { query = "" }
     }
+
+    /// Whether the line under the search field shows: the link, or that it's being read.
+    var showsLink: Bool { reading || !state.link.isEmpty }
 
     /// The panel's height for what it shows now.
     public var height: CGFloat {
-        let shown = state.shown
-        let rows = CGFloat(min(max(shown.count, 2), 7))
-        return 118 + rows * PickerView.rowHeight + (state.error == nil ? 0 : 86) + (reading ? 24 : 0)
+        let rows = CGFloat(min(max(state.shown.count, 2), 7))
+        return 74 + (showsLink ? 24 : 0) + rows * PickerView.rowHeight + (state.error == nil ? 0 : 86)
     }
 
     public static let width: CGFloat = 560
 }
 
-/// The Quick Switch panel's content, Spotlight-style: the link at the top, then the destinations,
-/// favorites first, and the keys at the bottom. The panel puts it in AppKit's glass, with the
-/// corner below, so the window's shape and shadow are the glass's.
+/// The Quick Switch panel's content, Spotlight-style: a search field that narrows the
+/// destinations, the link being switched under it, then the destinations, favorites first. Hold ⌘
+/// to see the number that opens each. The panel puts it in AppKit's glass, with the corner below,
+/// so the window's shape and shadow are the glass's.
 public struct PickerView: View {
     @ObservedObject var model: PickerModel
+    @FocusState private var searching: Bool
 
     public init(model: PickerModel) {
         self.model = model
@@ -116,32 +133,45 @@ public struct PickerView: View {
     public var body: some View {
         let shown = model.state.shown
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "link")
-                    .font(.system(size: 20, weight: .medium))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    TextField("Switch to…", text: $model.query)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 20))
+                        .focused($searching)
+                        .onSubmit { model.open(model.state.selected) }
+                        .accessibilityIdentifier("picker-search")
+                    Button {
+                        model.services.openSettings()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
-                TextField("Paste an HTTP or HTTPS link", text: $model.state.link)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 20))
-                    .onSubmit { model.open(model.state.selected) }
-                    .accessibilityIdentifier("picker-link")
-                Button {
-                    model.services.openSettings()
-                } label: {
-                    Image(systemName: "gearshape")
+                    .help("Quick Switch settings")
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
-                .help("Quick Switch settings")
+                .frame(height: 34)
+                if model.showsLink {
+                    Label {
+                        Text(model.reading ? "Reading the current tab…" : Self.display(model.state.link))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    } icon: {
+                        Image(systemName: model.reading ? "hourglass" : "link")
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 2)
+                    .frame(height: 22)
+                    .accessibilityIdentifier("picker-link")
+                }
             }
             .padding(.horizontal, 20)
-            .frame(height: 58)
+            .padding(.vertical, 12)
             Divider().opacity(0.5)
-            if model.reading {
-                Label("Reading the current tab…", systemImage: "hourglass")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .padding(.horizontal, 20).padding(.top, 8)
-            }
             if let error = model.state.error {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
@@ -163,10 +193,18 @@ public struct PickerView: View {
             }
             if shown.isEmpty {
                 VStack(spacing: 6) {
-                    Image(systemName: "rectangle.stack.badge.minus").font(.system(size: 24)).foregroundStyle(
-                        .tertiary)
-                    Text("No destinations are shown.").font(.headline)
-                    Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(.secondary)
+                    Image(
+                        systemName: model.state.query.isEmpty
+                            ? "rectangle.stack.badge.minus" : "magnifyingglass"
+                    )
+                    .font(.system(size: 24)).foregroundStyle(.tertiary)
+                    if model.state.query.isEmpty {
+                        Text("No destinations are shown.").font(.headline)
+                        Text("Choose some in Settings → Quick Switch.").font(.callout).foregroundStyle(
+                            .secondary)
+                    } else {
+                        Text("No profile matches “\(model.state.query)”.").font(.headline)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -174,45 +212,41 @@ public struct PickerView: View {
                     VStack(spacing: 2) {
                         ForEach(Array(shown.enumerated()), id: \.element.destination) { index, choice in
                             ChoiceRow(
-                                choice: choice, number: number(of: index),
+                                choice: choice,
+                                number: model.showsNumbers && index < 9 ? index + 1 : nil,
                                 selected: index == model.state.selected,
-                                open: { model.open(index) }, star: { model.toggleFavorite(index) })
+                                open: { model.open(index) })
                         }
                     }
                     .padding(8)
                 }
             }
-            Divider().opacity(0.5)
-            HStack(spacing: 14) {
-                KeyHint(keys: "↑↓", label: "Choose")
-                KeyHint(keys: "↩", label: "Open")
-                KeyHint(keys: "⌘1–9", label: "Favorite")
-                Spacer()
-                KeyHint(keys: "esc", label: "Close")
-            }
-            .padding(.horizontal, 20)
-            .frame(height: 36)
-            // ⌘1–⌘9 open a favorite, arrows move the selection, Escape closes. Return opens through
-            // the link field's submit.
+            // ⌘1–⌘9 open a destination, arrows move the selection, Escape clears the search and
+            // then closes. Return opens through the search field's submit.
             keyboardButtons
         }
         .frame(width: PickerModel.width)
+        .onAppear { searching = true }
+        .onReceive(model.$summons) { _ in searching = true }
     }
 
-    private func number(of index: Int) -> Int? {
-        let favorites = model.state.shown.indices.filter { model.state.shown[$0].favorite }
-        return favorites.firstIndex(of: index).map { $0 + 1 }.flatMap { $0 <= 9 ? $0 : nil }
+    /// The link without its scheme, which says nothing here. It's only shown, never opened from.
+    static func display(_ link: String) -> String {
+        for scheme in ["https://", "http://"] where link.hasPrefix(scheme) {
+            return String(link.dropFirst(scheme.count))
+        }
+        return link
     }
 
     private var keyboardButtons: some View {
         ZStack {
             ForEach(1..<10) { n in
-                Button("") { if let i = model.state.favorite(n) { model.open(i) } }
+                Button("") { if let i = model.state.number(n) { model.open(i) } }
                     .keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: .command)
             }
             Button("") { model.state.moveSelection(by: 1) }.keyboardShortcut(.downArrow, modifiers: [])
             Button("") { model.state.moveSelection(by: -1) }.keyboardShortcut(.upArrow, modifiers: [])
-            Button("") { model.services.close() }.keyboardShortcut(.cancelAction)
+            Button("") { model.escape() }.keyboardShortcut(.cancelAction)
         }
         .frame(width: 0, height: 0)
         .opacity(0)
@@ -220,30 +254,13 @@ public struct PickerView: View {
     }
 }
 
-/// A key and what it does, in the panel's footer.
-struct KeyHint: View {
-    let keys: String
-    let label: String
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Text(keys)
-                .font(.caption.weight(.semibold).monospaced())
-                .padding(.horizontal, 5).padding(.vertical, 1)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-            Text(label).font(.caption)
-        }
-        .foregroundStyle(.secondary)
-    }
-}
-
-/// One destination: the browser's icon, the profile and browser, its favorite number, and a star.
+/// One destination: the browser's icon, the profile and browser, and, while ⌘ is held, the number
+/// that opens it.
 struct ChoiceRow: View {
     let choice: Choice
     let number: Int?
     let selected: Bool
     let open: () -> Void
-    let star: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -259,11 +276,6 @@ struct ChoiceRow: View {
             if let number {
                 Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
             }
-            Button(action: star) {
-                Image(systemName: choice.favorite ? "star.fill" : "star")
-                    .foregroundStyle(choice.favorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.secondary))
-            }
-            .buttonStyle(.borderless)
         }
         .padding(.horizontal, 12)
         .frame(minHeight: PickerView.rowHeight - 2)

@@ -17,20 +17,32 @@ public struct Choice: Equatable, Sendable {
     public var label: String { "\(browserName) · \(profileName)" }
 }
 
+/// What the focused browser window showed when the panel was summoned.
+public struct Tab: Equatable, Sendable {
+    /// The active tab's link, exactly as the browser reported it.
+    public var link: String
+    /// The window's title. Chromium browsers end it with the profile's name when there are several,
+    /// as in "Pull request - Google Chrome - Work".
+    public var windowTitle: String?
+
+    public init(link: String, windowTitle: String? = nil) {
+        self.link = link
+        self.windowTitle = windowTitle
+    }
+}
+
 /// Why the current tab's link couldn't be read.
 public enum TabError: Error, Equatable, Sendable, CustomStringConvertible {
     case unsupportedBrowser, automationDenied, noTab, notWeb, unreadable
 
     public var description: String {
         switch self {
-        case .unsupportedBrowser:
-            "Focus a supported browser and try the shortcut again, or paste a link above."
+        case .unsupportedBrowser: "Focus a supported browser and try the shortcut again."
         case .automationDenied:
-            "\(Identity.appName) isn’t allowed to read this browser. In System Settings → Privacy & Security → Automation, turn on the browser under \(Identity.appName). You can also paste the link above."
-        case .noTab: "The browser has no open tab. Open a web page and try again, or paste a link above."
-        case .notWeb: "This tab isn’t an HTTP or HTTPS page. Paste a complete web link above."
-        case .unreadable:
-            "The current tab couldn’t be read. Try again from the browser, or copy its address and paste it above."
+            "\(Identity.appName) isn’t allowed to read this browser. In System Settings → Privacy & Security → Automation, turn on the browser under \(Identity.appName), then try again."
+        case .noTab: "The browser has no open tab. Open a web page and try again."
+        case .notWeb: "This tab isn’t an HTTP or HTTPS page, so there’s nothing to open."
+        case .unreadable: "The current tab couldn’t be read. Try the shortcut again from the browser."
         }
     }
 }
@@ -96,6 +108,25 @@ public enum QuickSwitch {
         }
         return pinned + found
     }
+
+    /// The destination the browser window is showing, so the panel can leave it out: the profile
+    /// whose name ends the window's title, among that browser's profiles only (the same name in
+    /// another browser is someone else), or the browser's only profile. `nil` when it can't tell.
+    public static func current(
+        windowTitle: String?, browserID: String, installed: [BrowserInfo], choices: [Choice]
+    ) -> Destination? {
+        guard let browser = installed.first(where: { $0.id == browserID }) else { return nil }
+        let profiles = choices.filter { $0.destination.browser == browser.locator && $0.error == nil }
+        if profiles.count == 1 { return profiles[0].destination }
+        guard let title = windowTitle?.trimmingCharacters(in: .whitespaces), !title.isEmpty else {
+            return nil
+        }
+        let named = profiles.filter { choice in
+            [" - ", " – ", " — "].contains { title.hasSuffix($0 + choice.profileName) }
+        }
+        // "Work" and "Side Work" both end "… - Side Work"; the longer name is the one shown.
+        return named.max { $0.profileName.count < $1.profileName.count }?.destination
+    }
 }
 
 /// The panel's state: the link, the destinations, and what went wrong.
@@ -110,17 +141,37 @@ public struct PickerState: Sendable {
     /// Index into `shown`.
     public var selected = 0
     public var config = Config.defaults
+    /// What's typed in the panel, which narrows the destinations.
+    public var query = ""
+    /// The destination the link is being switched from, left out of the list.
+    public var current: Destination?
 
     public init() {}
 
-    /// The destinations the settings allow, favorites first.
-    public var shown: [Choice] { all.filter { settings.includes($0.destination) } }
+    /// The destinations the settings allow, favorites first, without the one being switched from,
+    /// narrowed by the query.
+    public var shown: [Choice] {
+        all.filter { settings.includes($0.destination) && $0.destination != current && matches($0) }
+    }
 
-    /// The index in `shown` of the favorite numbered `n` (1-based), for ⌘1–⌘9.
-    public func favorite(_ n: Int) -> Int? {
-        guard n >= 1 else { return nil }
-        let indices = shown.indices.filter { shown[$0].favorite }
-        return indices.count >= n ? indices[n - 1] : nil
+    /// Every word typed appears in the profile's or the browser's name, ignoring case and accents.
+    func matches(_ choice: Choice) -> Bool {
+        let words = query.split(whereSeparator: \.isWhitespace)
+        let name = "\(choice.profileName) \(choice.browserName)"
+        return words.allSatisfy {
+            name.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+    }
+
+    /// Narrows the list and selects its first destination.
+    public mutating func setQuery(_ query: String) {
+        self.query = query
+        selected = 0
+    }
+
+    /// The index in `shown` that ⌘`n` opens: the first nine destinations, in order.
+    public func number(_ n: Int) -> Int? {
+        (1...9).contains(n) && shown.indices.contains(n - 1) ? n - 1 : nil
     }
 
     /// Reads the saved config and lists the destinations again.
@@ -137,12 +188,22 @@ public struct PickerState: Sendable {
         error = nil
         needsPermission = false
         selected = 0
+        query = ""
+        current = nil
     }
 
-    /// What the tab reader found.
-    public mutating func tabRead(_ result: Result<String, TabError>) {
+    /// What the tab reader found in the browser with bundle identifier `browserID`.
+    public mutating func tabRead(
+        _ result: Result<Tab, TabError>, browserID: String?, installed: [BrowserInfo]
+    ) {
         switch result {
-        case .success(let link): self.link = link
+        case .success(let tab):
+            link = tab.link
+            current = browserID.flatMap {
+                QuickSwitch.current(
+                    windowTitle: tab.windowTitle, browserID: $0, installed: installed, choices: all)
+            }
+            selected = 0
         case .failure(let e):
             error = e.description
             needsPermission = e == .automationDenied
@@ -164,14 +225,17 @@ public struct PickerState: Sendable {
         let shown = self.shown
         guard shown.indices.contains(index) else { return nil }
         let choice = shown[index]
-        let link = link.trimmingCharacters(in: .whitespacesAndNewlines)
-        if link.isEmpty && needsPermission { return nil }
+        guard !link.isEmpty else {
+            // Nothing was read; the reason is already shown, or the browser wasn't one we read.
+            if error == nil { error = TabError.unsupportedBrowser.description }
+            return nil
+        }
         if let error = choice.error {
             self.error = error
             return nil
         }
         guard Link.isWeb(link) else {
-            error = "Enter a complete HTTP or HTTPS link, such as https://example.com."
+            error = TabError.notWeb.description
             return nil
         }
         var failure: String?
@@ -188,25 +252,5 @@ public struct PickerState: Sendable {
             return nil
         }
         return choice.destination
-    }
-
-    /// The picker settings with the shown destination at `index` starred or unstarred. The caller
-    /// saves them through the editor, so the two never write over each other.
-    public mutating func toggleFavorite(_ index: Int, browsers: Browsers) -> PickerSettings? {
-        let shown = self.shown
-        guard shown.indices.contains(index) else { return nil }
-        let choice = shown[index]
-        var settings = self.settings
-        if settings.favorites.contains(where: { $0.destination == choice.destination }) {
-            settings.favorites.removeAll { $0.destination == choice.destination }
-        } else if choice.error == nil {
-            settings.favorites.append(
-                Favorite(
-                    browser: choice.destination.browser, profile: choice.destination.profile,
-                    name: choice.profileName))
-        }
-        self.settings = settings
-        all = QuickSwitch.choices(browsers.installed(), settings)
-        return settings
     }
 }

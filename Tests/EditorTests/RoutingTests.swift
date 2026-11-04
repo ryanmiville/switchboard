@@ -105,8 +105,6 @@ struct PickerTests {
                 "Helium · Work",
             ])
         #expect(p.shown[0].favorite)
-        #expect(p.favorite(1) == 0)
-        #expect(p.favorite(2) == nil)
     }
 
     @Test func hiddenDestinationsAreLeftOut() throws {
@@ -145,25 +143,111 @@ struct PickerTests {
         p.link = "github.com"
         let r2 = p.open(0, browsers: scene.browsers, history: scene.temporary.historyStore, now: Timestamp(0))
         #expect(r2 == nil)
-        #expect(p.error == "Enter a complete HTTP or HTTPS link, such as https://example.com.")
+        #expect(p.error == TabError.notWeb.description)
         Thread.sleep(forTimeInterval: 0.2)
         #expect(scene.temporary.recordedLaunches().isEmpty)
     }
 
-    @Test func starringADestinationAddsItAsAFavoriteAndArrowsWrap() throws {
+    @Test func arrowsWrapAndAMissingPermissionOffersItsSettings() throws {
         let scene = try SceneHome()
         defer { scene.remove() }
         var p = picker(scene)
-        let r3 = p.toggleFavorite(3, browsers: scene.browsers)
-        let settings = try #require(r3)
-        #expect(settings.favorites.map(\.name) == ["Ryan", "Work"])
-        #expect(p.shown[1].favorite)
         p.moveSelection(by: -1)
         #expect(p.selected == p.shown.count - 1)
         p.moveSelection(by: 1)
         #expect(p.selected == 0)
-        p.tabRead(.failure(.automationDenied))
+        p.tabRead(.failure(.automationDenied), browserID: nil, installed: scene.browsers.installed())
         #expect(p.needsPermission)
+    }
+
+    func id(_ locator: String, _ scene: SceneHome) throws -> String {
+        try #require(scene.browsers.installed().first { $0.locator == locator }).id
+    }
+
+    @Test func theProfileTheWindowTitleNamesIsLeftOut() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        p.tabRead(
+            .success(Tab(link: "https://example.com/a", windowTitle: "Example - Helium - Ryan")),
+            browserID: try id(scene.helium, scene), installed: scene.browsers.installed())
+        #expect(p.current == Destination(browser: scene.helium, profile: "Default"))
+        #expect(!p.shown.map(\.label).contains("Helium · Ryan"))
+        #expect(p.shown.count == 4)
+        #expect(p.link == "https://example.com/a")
+    }
+
+    @Test func theSameProfileNameInAnotherBrowserStays() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        p.tabRead(
+            .success(Tab(link: "https://example.com", windowTitle: "Docs - Google Chrome - Work")),
+            browserID: try id(scene.chrome, scene), installed: scene.browsers.installed())
+        #expect(p.shown.map(\.label).contains("Helium · Work"))
+        #expect(!p.shown.map(\.label).contains("Google Chrome · Work"))
+    }
+
+    @Test func aTitleNamingNoProfileLeavesEveryDestination() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        p.tabRead(
+            .success(Tab(link: "https://example.com", windowTitle: "Home - Helium")),
+            browserID: try id(scene.helium, scene), installed: scene.browsers.installed())
+        #expect(p.current == nil)
+        #expect(p.shown.count == 5)
+    }
+
+    @Test func aBrowserWithOneProfileIsThatProfile() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        let p = picker(scene)
+        let only = p.all.filter { $0.label == "Helium · Work" }
+        let current = QuickSwitch.current(
+            windowTitle: nil, browserID: try id(scene.helium, scene), installed: scene.browsers.installed(),
+            choices: only)
+        #expect(current == Destination(browser: scene.helium, profile: "Profile 1"))
+    }
+
+    @Test func typingNarrowsTheDestinationsByProfileOrBrowserName() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        p.moveSelection(by: 2)
+        p.setQuery("chrome")
+        #expect(p.selected == 0)
+        #expect(p.shown.map(\.browserName) == ["Google Chrome", "Google Chrome", "Google Chrome"])
+        p.setQuery("WORK hel")
+        #expect(p.shown.map(\.label) == ["Helium · Work"])
+        p.setQuery("nothing like this")
+        #expect(p.shown.isEmpty)
+    }
+
+    @Test func commandNumbersOpenTheShownDestinationsInOrder() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        #expect(p.number(1) == 0)
+        #expect(p.number(5) == 4)
+        #expect(p.number(6) == nil)
+        #expect(p.number(0) == nil)
+        p.setQuery("work")
+        #expect(p.number(2) == 1)
+        #expect(p.number(3) == nil)
+    }
+
+    @Test func withNoLinkReadOpeningOpensNothing() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var p = picker(scene)
+        p.link = ""
+        let opened = p.open(
+            0, browsers: scene.browsers, history: scene.temporary.historyStore, now: Timestamp(0))
+        #expect(opened == nil)
+        #expect(p.error == TabError.unsupportedBrowser.description)
+        Thread.sleep(forTimeInterval: 0.2)
+        #expect(scene.temporary.recordedLaunches().isEmpty)
     }
 }
 

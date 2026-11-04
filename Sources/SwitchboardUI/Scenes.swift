@@ -91,10 +91,19 @@ public enum Scenes {
                 reason: "The profile “Profile 9” is unavailable. Choose an existing profile.")
         },
         Scene(name: "quick-switch", kind: .settings) { s, _, _ in s.pane = .quickSwitch },
-        Scene(name: "picker", kind: .picker) { _, _, _ in },
+        // Summoned over Helium's Ryan profile, which the list leaves out.
+        Scene(name: "picker", kind: .picker) { _, p, home in Scenes.fromRyan(p, home) },
+        Scene(name: "picker-search", kind: .picker) { _, p, home in
+            Scenes.fromRyan(p, home)
+            p.query = "work"
+        },
+        Scene(name: "picker-numbers", kind: .picker) { _, p, home in
+            Scenes.fromRyan(p, home)
+            p.showsNumbers = true
+        },
         Scene(name: "picker-permission", kind: .picker) { _, p, _ in
             p.state.link = ""
-            p.tabRead(.failure(.automationDenied))
+            p.tabRead(.failure(.automationDenied), browserID: nil)
         },
         Scene(name: "picker-unavailable-favorite", kind: .picker) { _, p, home in
             p.state.settings.favorites.append(
@@ -105,6 +114,18 @@ public enum Scenes {
     ]
 
     public nonisolated static var names: [String] { all.map(\.name) }
+
+    /// The panel as summoned over a Helium window of the Ryan profile.
+    @MainActor
+    static func fromRyan(_ picker: PickerModel, _ home: SceneHome) {
+        let helium = home.browsers.installed().first { $0.locator == home.helium }?.id
+        picker.tabRead(
+            .success(
+                Tab(
+                    link: "https://github.com/acme/api/pull/12",
+                    windowTitle: "Pull request #12 - Helium - Ryan")),
+            browserID: helium)
+    }
 
     /// Builds the scene named `name` over a fresh fixture home.
     public static func make(_ name: String) throws -> Instance {

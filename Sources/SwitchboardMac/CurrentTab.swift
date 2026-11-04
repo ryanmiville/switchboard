@@ -21,25 +21,45 @@ public enum CurrentTab {
         return Frontmost(id: id, pid: app.processIdentifier)
     }
 
-    /// The link in `app`'s frontmost window's active tab, exactly as the browser reports it. Can
-    /// block for a few seconds, so call it off the main thread.
-    public static func read(_ app: Frontmost) -> Result<String, TabError> {
+    /// The link in `app`'s frontmost window's active tab, exactly as the browser reports it, and
+    /// the window's title, which names the profile. Can block for a few seconds, so call it off the
+    /// main thread.
+    public static func read(_ app: Frontmost) -> Result<Tab, TabError> {
         guard app.pid > 0, Browsers.bundles.contains(where: { $0.id == app.id }) else {
             return .failure(.unsupportedBrowser)
         }
+        let link: String
+        switch get(tabURL(app), from: app) {
+        case .failure(let error): return .failure(error)
+        case .success(let value): link = value
+        }
+        guard !link.isEmpty else { return .failure(.noTab) }
+        guard Link.isWeb(link) else { return .failure(.notWeb) }
+        // The title only lets the panel leave out the profile being switched from, so it's best effort.
+        let title = try? get(windowName(app), from: app).get()
+        return .success(Tab(link: link, windowTitle: title))
+    }
+
+    /// Asks `app` for the string at `specifier`.
+    private static func get(_ specifier: NSAppleEventDescriptor, from app: Frontmost) -> Result<
+        String, TabError
+    > {
+        let event = NSAppleEventDescriptor(
+            eventClass: kAECoreSuite, eventID: kAEGetData,
+            // Automation browsers can share the bundle identifier of the person's own browser.
+            targetDescriptor: NSAppleEventDescriptor(processIdentifier: app.pid),
+            returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
+        event.setParam(specifier, forKeyword: keyDirectObject)
         let reply: NSAppleEventDescriptor
         do {
-            reply = try readEvent(app).sendEvent(options: [.waitForReply, .canInteract], timeout: 3)
+            reply = try event.sendEvent(options: [.waitForReply, .canInteract], timeout: 3)
         } catch {
             return .failure(failure((error as NSError).code))
         }
         if let code = reply.paramDescriptor(forKeyword: keyErrorNumber)?.int32Value, code != 0 {
             return .failure(failure(Int(code)))
         }
-        let value = reply.paramDescriptor(forKeyword: keyDirectObject)?.stringValue ?? ""
-        guard !value.isEmpty else { return .failure(.noTab) }
-        guard Link.isWeb(value) else { return .failure(.notWeb) }
-        return .success(value)
+        return .success(reply.paramDescriptor(forKeyword: keyDirectObject)?.stringValue ?? "")
     }
 
     /// Brings `browser` forward after opening a link in it.
@@ -66,27 +86,31 @@ public enum CurrentTab {
         }
     }
 
-    private static func readEvent(_ app: Frontmost) -> NSAppleEventDescriptor {
+    /// The frontmost window. Windows are ordered front to back. An integer index avoids encoding an
+    /// absolute ordinal as an enum, which Chrome rejects with errAECoercionFail.
+    private static func frontWindow(_ app: Frontmost) -> NSAppleEventDescriptor {
         // Arc uses WiND for its window class; Chromium browsers use cwin.
         let isArc = ["company.thebrowser.Browser", "com.keksbay.Arc"].contains(app.id)
-        // Windows are ordered front to back. An integer index avoids encoding an absolute ordinal as
-        // an enum, which Chrome rejects with errAECoercionFail.
-        let window = object(
+        return object(
             isArc ? 0x5769_4E44 : DescType(cWindow), form: OSType(formAbsolutePosition),
             key: NSAppleEventDescriptor(int32: 1))
+    }
+
+    /// The URL of the front window's active tab.
+    private static func tabURL(_ app: Frontmost) -> NSAppleEventDescriptor {
         let tab = object(
             typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x6163_5461),
-            container: window)  // acTa
-        let url = object(
+            container: frontWindow(app))  // acTa
+        return object(
             typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x5552_4C20),
             container: tab)  // URL[space]
-        let event = NSAppleEventDescriptor(
-            eventClass: kAECoreSuite, eventID: kAEGetData,
-            // Automation browsers can share the bundle identifier of the person's own browser.
-            targetDescriptor: NSAppleEventDescriptor(processIdentifier: app.pid),
-            returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
-        event.setParam(url, forKeyword: keyDirectObject)
-        return event
+    }
+
+    /// The front window's title.
+    private static func windowName(_ app: Frontmost) -> NSAppleEventDescriptor {
+        object(
+            typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x706E_616D),
+            container: frontWindow(app))  // pnam
     }
 
     private static func object(

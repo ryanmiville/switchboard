@@ -14,6 +14,11 @@ final class QuickSwitchPanel {
     private let holder: PanelHolder
     private var panel: Panel? { holder.panel }
     private var resize: AnyCancellable?
+    private var commandMonitor: Any?
+    private var numbersSoon: Task<Void, Never>?
+
+    /// How long ⌘ is held before the destinations show their numbers, so a quick ⌘1 doesn't flash them.
+    static let numbersDelay = Duration.milliseconds(400)
 
     init(
         store: ConfigStore, history: HistoryStore, browsers: Browsers, settings: SettingsModel,
@@ -51,10 +56,10 @@ final class QuickSwitchPanel {
             let model = self.model
             DispatchQueue.global(qos: .userInitiated).async {
                 let result = CurrentTab.read(front)
-                Task { @MainActor in model.tabRead(result) }
+                Task { @MainActor in model.tabRead(result, browserID: front.id) }
             }
         } else {
-            model.tabRead(.failure(.unsupportedBrowser))
+            model.tabRead(.failure(.unsupportedBrowser), browserID: nil)
         }
         let panel = self.panel ?? makePanel()
         panel.setContentSize(NSSize(width: PickerModel.width, height: model.height))
@@ -72,6 +77,21 @@ final class QuickSwitchPanel {
         // The shadow is taken from what the window has drawn, so take it again once it has.
         panel.invalidateShadow()
         Task { @MainActor in panel.invalidateShadow() }
+    }
+
+    /// Shows the destinations' numbers once ⌘ alone has been held a moment, and hides them as soon
+    /// as it's let go.
+    private func commandChanged(held: Bool) {
+        numbersSoon?.cancel()
+        guard held else {
+            model.showsNumbers = false
+            return
+        }
+        numbersSoon = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.numbersDelay)
+            guard !Task.isCancelled else { return }
+            self?.model.showsNumbers = true
+        }
     }
 
     /// Clips the panel's content to its rounded corners. A borderless window's shadow and edge
@@ -134,7 +154,18 @@ final class QuickSwitchPanel {
         panel.isMovableByWindowBackground = true
         let host = NSHostingView(rootView: PickerView(model: model))
         panel.contentView = Self.rounded(Self.glass(around: host))
-        panel.onResignKey = { [weak panel] in panel?.orderOut(nil) }
+        panel.onResignKey = { [weak self, weak panel] in
+            self?.commandChanged(held: false)
+            panel?.orderOut(nil)
+        }
+        commandMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            let held = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+            // Local monitors run on the main thread.
+            MainActor.assumeIsolated {
+                if let self, self.panel?.isKeyWindow == true { self.commandChanged(held: held) }
+            }
+            return event
+        }
         resize = model.objectWillChange.sink { [weak self] in
             Task { @MainActor in
                 guard let self, let panel = self.panel, panel.isVisible else { return }

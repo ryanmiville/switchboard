@@ -72,7 +72,7 @@ struct QuickSwitchPane: View {
             } header: {
                 Text("Destinations")
             } footer: {
-                Footer("Favorites come first in the panel, and ⌘1–⌘9 open them.")
+                Footer("Favorites come first in the panel.")
             }
         }
         .formStyle(.grouped)
