@@ -275,13 +275,8 @@ struct ChoiceRow: View {
             }
             Spacer()
             if let number {
-                HStack(spacing: 3) {
-                    Keycap(key: "⌘")
-                    Keycap(key: "\(number)")
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("⌘\(number)")
-                .modifier(NumberHint(shown: showsNumber))
+                Keycap(key: "⌘\(number)")
+                    .modifier(NumberHint(shown: showsNumber))
             }
         }
         .padding(.horizontal, 12)
@@ -317,14 +312,14 @@ struct NumberHint: ViewModifier {
     }
 }
 
-/// One key of a shortcut, outlined as Rex outlines the keys of its tab shortcuts: 18 pt tall and at
-/// least as wide, 5 pt either side of the key, with a faint 1 pt rounded outline and no fill.
+/// A shortcut, outlined as Rex outlines its tab shortcuts: 18 pt tall and at least as wide, 5 pt
+/// either side of the keys, with a faint 1 pt rounded outline and no fill.
 struct Keycap: View {
     let key: String
 
     var body: some View {
         Text(key)
-            .font(.system(size: 10, weight: .medium))
+            .font(.system(size: 10, weight: .medium).monospacedDigit())
             .foregroundStyle(.secondary)
             .padding(.horizontal, 5)
             .frame(minWidth: 18, minHeight: 18, maxHeight: 18)
