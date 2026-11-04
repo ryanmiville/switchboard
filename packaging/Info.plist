@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- scripts/bundle fills in @NAME@, @ID@, @EXE@ and @VERSION@. The URL and document types make
+<!-- scripts/bundle fills in @NAME@, @ID@, @EXE@, @VERSION@ and @BUILD@. The URL and document types make
      macOS list the app as a browser; LSUIElement keeps it out of the Dock until Settings opens. -->
 <plist version="1.0">
 <dict>
@@ -23,7 +23,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>@VERSION@</string>
 	<key>CFBundleVersion</key>
-	<string>@VERSION@</string>
+	<string>@BUILD@</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>

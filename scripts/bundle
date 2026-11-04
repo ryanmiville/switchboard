@@ -6,8 +6,9 @@
 #   scripts/bundle            release build
 #   scripts/bundle --debug    debug build (faster to build)
 #
-# CODESIGN_IDENTITY picks a signing identity; the default is an ad hoc signature, with which
-# macOS may ask for Automation permission again after each rebuild. macOS only.
+# BUILD_NUMBER sets the bundle's build number (CFBundleVersion), which releases count up; without it,
+# it is the version. CODESIGN_IDENTITY picks a signing identity; the default is an ad hoc signature,
+# with which macOS may ask for Automation permission again after each rebuild. macOS only.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 [[ "$(uname -s)" == Darwin ]] || { echo "bundle: macOS only" >&2; exit 2; }
@@ -21,6 +22,7 @@ cli=$(identity cliName)
 cliProduct=$(identity cliProduct)
 version=$(sed -n 's/^public let cliVersion = "\(.*\)"$/\1/p' Sources/SwitchboardCLI/Arguments.swift)
 exe=Switchboard
+build_number=${BUILD_NUMBER:-$version}
 [[ -n "$name" && -n "$id" && -n "$cli" && -n "$cliProduct" && -n "$version" ]] || { echo "bundle: couldn't read the identity" >&2; exit 1; }
 
 build=(swift build -c "$configuration")
@@ -37,7 +39,7 @@ cp "$products/$exe" "$app/Contents/MacOS/$exe"
 scripts/mark-sdk "$app/Contents/MacOS/$exe"
 cp "$products/$cliProduct" "$app/Contents/Helpers/$cli"
 cp assets/MenuBarIcon.pdf "$app/Contents/Resources/MenuBarIcon.pdf"
-sed -e "s/@NAME@/$name/g" -e "s/@ID@/$id/g" -e "s/@EXE@/$exe/g" -e "s/@VERSION@/$version/g" \
+sed -e "s/@NAME@/$name/g" -e "s/@ID@/$id/g" -e "s/@EXE@/$exe/g" -e "s/@VERSION@/$version/g" -e "s/@BUILD@/$build_number/g" \
   packaging/Info.plist > "$app/Contents/Info.plist"
 printf 'APPL????' > "$app/Contents/PkgInfo"
 plutil -lint "$app/Contents/Info.plist" >/dev/null
@@ -52,8 +54,11 @@ done
 iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
 
 sign=${CODESIGN_IDENTITY:--}
-codesign --force --options runtime --sign "$sign" "$app/Contents/Helpers/$cli"
-codesign --force --options runtime --entitlements packaging/Switchboard.entitlements --sign "$sign" "$app"
+# A certificate of one's own can't be timestamped by Apple's server, so don't ask it.
+signing=(--force --options runtime --sign "$sign")
+[[ "$sign" == - ]] || signing+=(--timestamp=none)
+codesign "${signing[@]}" "$app/Contents/Helpers/$cli"
+codesign "${signing[@]}" --entitlements packaging/Switchboard.entitlements "$app"
 codesign --verify --deep --strict "$app"
 
 # The bundle a browser needs: macOS lists the app as a browser only with these declarations.
