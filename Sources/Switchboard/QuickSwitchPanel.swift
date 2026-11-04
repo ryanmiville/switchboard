@@ -15,6 +15,7 @@ final class QuickSwitchPanel {
     private var panel: Panel? { holder.panel }
     private var resize: AnyCancellable?
     private var commandMonitor: Any?
+    private var keyMonitor: Any?
     private var numbersSoon: Task<Void, Never>?
 
     /// How long ⌘ is held before the destinations show their numbers, so a quick ⌘1 doesn't flash them.
@@ -157,6 +158,23 @@ final class QuickSwitchPanel {
         panel.onResignKey = { [weak self, weak panel] in
             self?.commandChanged(held: false)
             panel?.orderOut(nil)
+        }
+        // ↑, ↓ and Esc act on the list even while the search field has the cursor, which would
+        // otherwise take the arrows for itself and leave the first row chosen.
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let code = event.keyCode
+            let plain = event.modifierFlags.intersection([.command, .option, .control]).isEmpty
+            let handled = MainActor.assumeIsolated { () -> Bool in
+                guard plain, let self, self.panel?.isKeyWindow == true else { return false }
+                switch code {
+                case 125: self.model.state.moveSelection(by: 1)  // ↓
+                case 126: self.model.state.moveSelection(by: -1)  // ↑
+                case 53: self.model.escape()  // Esc
+                default: return false
+                }
+                return true
+            }
+            return handled ? nil : event
         }
         commandMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             let held = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command

@@ -221,8 +221,8 @@ public struct PickerView: View {
                     .padding(8)
                 }
             }
-            // ⌘1–⌘9 open a destination, arrows move the selection, Escape clears the search and
-            // then closes. Return opens through the search field's submit.
+            // ⌘1–⌘9 open a destination. Return opens through the search field's submit; the panel
+            // handles ↑, ↓ and Escape, which the field would otherwise keep.
             keyboardButtons
         }
         .frame(width: PickerModel.width)
@@ -244,9 +244,6 @@ public struct PickerView: View {
                 Button("") { if let i = model.state.number(n) { model.open(i) } }
                     .keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: .command)
             }
-            Button("") { model.state.moveSelection(by: 1) }.keyboardShortcut(.downArrow, modifiers: [])
-            Button("") { model.state.moveSelection(by: -1) }.keyboardShortcut(.upArrow, modifiers: [])
-            Button("") { model.escape() }.keyboardShortcut(.cancelAction)
         }
         .frame(width: 0, height: 0)
         .opacity(0)
