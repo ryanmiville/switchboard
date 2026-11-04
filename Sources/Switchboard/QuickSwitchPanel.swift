@@ -69,7 +69,24 @@ final class QuickSwitchPanel {
         }
         bringToFront()
         panel.makeKeyAndOrderFront(nil)
+        // The shadow is taken from what the window has drawn, so take it again once it has.
         panel.invalidateShadow()
+        Task { @MainActor in panel.invalidateShadow() }
+    }
+
+    /// Clips the panel's content to its rounded corners. A borderless window's shadow and edge
+    /// follow what it draws, and the glass draws its whole rectangle faintly, which gave the panel
+    /// square corners behind the rounded glass.
+    private static func rounded(_ content: NSView) -> NSView {
+        let clip = NSView()
+        clip.wantsLayer = true
+        clip.layer?.cornerRadius = PickerView.corner
+        clip.layer?.cornerCurve = .continuous
+        clip.layer?.masksToBounds = true
+        content.frame = clip.bounds
+        content.autoresizingMask = [.width, .height]
+        clip.addSubview(content)
+        return clip
     }
 
     /// AppKit's glass with the panel's corner radius, holding the SwiftUI content. The glass gives
@@ -116,7 +133,7 @@ final class QuickSwitchPanel {
         panel.animationBehavior = .none
         panel.isMovableByWindowBackground = true
         let host = NSHostingView(rootView: PickerView(model: model))
-        panel.contentView = Self.glass(around: host)
+        panel.contentView = Self.rounded(Self.glass(around: host))
         panel.onResignKey = { [weak panel] in panel?.orderOut(nil) }
         resize = model.objectWillChange.sink { [weak self] in
             Task { @MainActor in
