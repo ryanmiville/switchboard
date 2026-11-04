@@ -11,33 +11,16 @@ struct GeneralPane: View {
         let e = model.editor
         Form {
             NoticesSection(model: model)
-            Section {
-                LabeledContent {
-                    if model.isDefaultBrowser {
-                        // A status, as System Settings shows one: quiet text, with colour only on the mark.
-                        Label {
-                            Text("Default browser").foregroundStyle(.secondary)
-                        } icon: {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                        }
-                    } else {
-                        Button("Make Default…") { model.makeDefaultBrowser() }
+            // Only while it isn't the default browser, as Safari asks: once it is, there's nothing to do.
+            if !model.isDefaultBrowser {
+                Section {
+                    LabeledContent("\(Identity.appName) isn’t your default web browser.") {
+                        Button("Set Default…") { model.makeDefaultBrowser() }
                     }
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(nsImage: NSApplication.shared.applicationIconImage)
-                            .resizable()
-                            .frame(width: 32, height: 32)
-                        RowLabel(
-                            title: Identity.appName,
-                            caption: model.isDefaultBrowser
-                                ? "Sends each link you click where your rules say."
-                                : "Isn’t your default web browser, so links you click skip it.")
+                    if let error = model.defaultBrowserError {
+                        ErrorText(error)
+                        Button("Open System Settings") { model.services.openDefaultBrowserSettings() }
                     }
-                }
-                if let error = model.defaultBrowserError {
-                    ErrorText(error)
-                    Button("Open System Settings") { model.services.openDefaultBrowserSettings() }
                 }
             }
 
