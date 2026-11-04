@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         guard !resident else { return }
         resident = true
         menuBar.shown = true
-        shortcut.onPress = { [weak self] in self?.summonPicker() }
+        shortcut.onPress = { [weak self] in self?.picker.toggle() }
         if let chord = KeyChord(settings.shortcut) {
             if let error = register(chord) { settings.shortcutRefused(error) }
         } else {

@@ -163,7 +163,8 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
       starts at the next login.
 - [ ] `~/.local/bin/switchboard-next` from `scripts/install --cli` runs and reads the same config.
 - [ ] Quick Switch: the shortcut over a browser shows the panel without taking focus from it; the
-      first time, macOS asks to allow Automation; the panel shows the current tab's link.
+      first time, macOS asks to allow Automation; the panel shows the current tab's link. Pressing
+      the shortcut again closes it.
 - [ ] Choosing a destination opens the page in that profile, brings the browser forward, and
       records a `picker` entry.
 - [ ] The panel leaves out the profile of the window it was summoned over (from the

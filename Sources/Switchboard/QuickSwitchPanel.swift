@@ -47,7 +47,16 @@ final class QuickSwitchPanel {
 
     func refresh() { model.refresh() }
 
-    /// The shortcut: remember the app in front, read its tab, and show the panel.
+    /// The shortcut: closes the panel when it's open, as Spotlight's does, and summons it otherwise.
+    func toggle() {
+        if let panel, panel.isVisible {
+            model.services.close()
+        } else {
+            summon()
+        }
+    }
+
+    /// Remember the app in front, read its tab, and show the panel.
     func summon() {
         // Capture the app in front before this app activates or shows anything.
         let front = CurrentTab.frontmost()
