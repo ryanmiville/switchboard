@@ -213,7 +213,8 @@ public struct PickerView: View {
                         ForEach(Array(shown.enumerated()), id: \.element.destination) { index, choice in
                             ChoiceRow(
                                 choice: choice,
-                                number: model.showsNumbers && index < 9 ? index + 1 : nil,
+                                number: index < 9 ? index + 1 : nil,
+                                showsNumber: model.showsNumbers,
                                 selected: index == model.state.selected,
                                 open: { model.open(index) })
                         }
@@ -255,7 +256,10 @@ public struct PickerView: View {
 /// that opens it.
 struct ChoiceRow: View {
     let choice: Choice
+    /// The number that opens it with ⌘, for the first nine.
     let number: Int?
+    /// ⌘ has been held a moment, so the number shows.
+    let showsNumber: Bool
     let selected: Bool
     let open: () -> Void
 
@@ -272,6 +276,7 @@ struct ChoiceRow: View {
             Spacer()
             if let number {
                 Text("⌘\(number)").font(.callout.monospacedDigit()).foregroundStyle(.secondary)
+                    .modifier(NumberHint(shown: showsNumber))
             }
         }
         .padding(.horizontal, 12)
@@ -282,5 +287,27 @@ struct ChoiceRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture(perform: open)
+    }
+}
+
+/// How a destination's number comes and goes, as Rex's tab shortcuts do: it fades in over 0.13 s
+/// while growing from 90% at its right edge and sliding 6 pt left into place, on a sharp ease-out,
+/// and leaves the same way in 0.1 s, easing in. With Reduce Motion it only fades. Each change starts
+/// from where the number is on screen, so letting go of ⌘ midway turns it straight back.
+struct NumberHint: ViewModifier {
+    let shown: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    static let appear = Animation.timingCurve(0.15, 1, 0.3, 1, duration: 0.13)
+    static let disappear = Animation.easeIn(duration: 0.1)
+
+    func body(content: Content) -> some View {
+        let away = !shown && !reduceMotion
+        content
+            .scaleEffect(away ? 0.9 : 1, anchor: .trailing)
+            .offset(x: away ? 6 : 0)
+            .opacity(shown ? 1 : 0)
+            .animation(shown ? Self.appear : Self.disappear, value: shown)
+            .accessibilityHidden(!shown)
     }
 }
