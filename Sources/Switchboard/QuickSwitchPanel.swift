@@ -69,10 +69,39 @@ final class QuickSwitchPanel {
         }
         bringToFront()
         panel.makeKeyAndOrderFront(nil)
+        panel.invalidateShadow()
+    }
+
+    /// AppKit's glass with the panel's corner radius, holding the SwiftUI content. The glass gives
+    /// the borderless window its rounded shape, so its shadow and edge follow the corners. Before
+    /// macOS 26, a rounded material does the same.
+    private static func glass(around content: NSView) -> NSView {
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView()
+            glass.cornerRadius = PickerView.corner
+            glass.contentView = content
+            return glass
+        }
+        let effect = NSVisualEffectView()
+        effect.material = .popover
+        effect.blendingMode = .behindWindow
+        effect.state = .active
+        let r = PickerView.corner
+        let mask = NSImage(size: NSSize(width: r * 2 + 1, height: r * 2 + 1), flipped: false) { rect in
+            NSBezierPath(roundedRect: rect, xRadius: r, yRadius: r).fill()
+            return true
+        }
+        mask.capInsets = NSEdgeInsets(top: r, left: r, bottom: r, right: r)
+        mask.resizingMode = .stretch
+        effect.maskImage = mask
+        content.frame = effect.bounds
+        content.autoresizingMask = [.width, .height]
+        effect.addSubview(content)
+        return effect
     }
 
     private func makePanel() -> Panel {
-        // Borderless and clear, so the view's glass shape is the panel's shape, as Spotlight's.
+        // Borderless and clear, so the glass's rounded shape is the panel's shape, as Spotlight's.
         let panel = Panel(
             contentRect: NSRect(x: 0, y: 0, width: PickerModel.width, height: model.height),
             styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: false)
@@ -87,14 +116,13 @@ final class QuickSwitchPanel {
         panel.animationBehavior = .none
         panel.isMovableByWindowBackground = true
         let host = NSHostingView(rootView: PickerView(model: model))
-        host.wantsLayer = true
-        host.layer?.backgroundColor = .clear
-        panel.contentView = host
+        panel.contentView = Self.glass(around: host)
         panel.onResignKey = { [weak panel] in panel?.orderOut(nil) }
         resize = model.objectWillChange.sink { [weak self] in
             Task { @MainActor in
                 guard let self, let panel = self.panel, panel.isVisible else { return }
                 panel.setContentSize(NSSize(width: PickerModel.width, height: self.model.height))
+                panel.invalidateShadow()
             }
         }
         holder.panel = panel

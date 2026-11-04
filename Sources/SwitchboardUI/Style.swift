@@ -2,9 +2,8 @@ import AppKit
 import SwiftUI
 import SwitchboardCore
 
-// The pieces that make the window read like System Settings on macOS 26: coloured pane icons,
-// real browser icons, and Liquid Glass for the Quick Switch panel (macOS 26), with the nearest
-// material before that.
+// The pieces that make the window read like System Settings on macOS 26: coloured pane icons and
+// real browser icons.
 
 extension Pane {
     /// The pane icon's fill, as System Settings colours its sidebar icons.
@@ -128,26 +127,5 @@ struct RowLabel<Icon: View>: View {
 extension RowLabel where Icon == EmptyView {
     init(title: String, caption: String? = nil) {
         self.init(title: title, caption: caption) { EmptyView() }
-    }
-}
-
-struct GlassSurface<S: Shape>: ViewModifier {
-    let shape: S
-
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
-        } else {
-            content
-                .background(.regularMaterial, in: shape)
-                .overlay(shape.stroke(Color(nsColor: .separatorColor), lineWidth: 0.5))
-        }
-    }
-}
-
-extension View {
-    /// Liquid Glass in `shape` on macOS 26, and a regular material before it.
-    func glass(in shape: some Shape) -> some View {
-        modifier(GlassSurface(shape: shape))
     }
 }

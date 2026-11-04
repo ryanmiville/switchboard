@@ -100,8 +100,9 @@ public final class PickerModel: ObservableObject {
     public static let width: CGFloat = 560
 }
 
-/// The Quick Switch panel, drawn as a Spotlight-style floating glass panel: the link at the top,
-/// then the destinations, favorites first, and the keys at the bottom.
+/// The Quick Switch panel's content, Spotlight-style: the link at the top, then the destinations,
+/// favorites first, and the keys at the bottom. The panel puts it in AppKit's glass, with the
+/// corner below, so the window's shape and shadow are the glass's.
 public struct PickerView: View {
     @ObservedObject var model: PickerModel
 
@@ -110,7 +111,7 @@ public struct PickerView: View {
     }
 
     static let rowHeight: CGFloat = 50
-    static let corner: CGFloat = 26
+    public static let corner: CGFloat = 26
 
     public var body: some View {
         let shown = model.state.shown
@@ -196,7 +197,6 @@ public struct PickerView: View {
             keyboardButtons
         }
         .frame(width: PickerModel.width)
-        .glass(in: RoundedRectangle(cornerRadius: Self.corner, style: .continuous))
     }
 
     private func number(of index: Int) -> Int? {
