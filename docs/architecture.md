@@ -166,8 +166,9 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
       first time, macOS asks to allow Automation; the panel shows the current tab's link.
 - [ ] Choosing a destination opens the page in that profile, brings the browser forward, and
       records a `picker` entry.
-- [ ] The panel leaves out the profile of the window it was summoned over (named at the end of a
-      Chromium window's title when there are several profiles); typing narrows the list; holding
-      ⌘ shows ⌘1–⌘9 on the rows after a moment and letting go hides them.
+- [ ] The panel leaves out the profile of the window it was summoned over (from the
+      browser's record of open profiles); typing narrows the list; ↑↓ and ⌃N/⌃P move while typing,
+      and Return opens the chosen row; Esc clears the search, then closes; holding ⌘ shows ⌘1–⌘9 on
+      the rows after a moment and letting go hides them.
 - [ ] With Automation denied, the panel says so and Automation Settings… opens the right pane.
 - [ ] A change made with `switchboard-next` while Settings is open shows up within a second.

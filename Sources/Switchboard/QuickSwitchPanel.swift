@@ -159,18 +159,16 @@ final class QuickSwitchPanel {
             self?.commandChanged(held: false)
             panel?.orderOut(nil)
         }
-        // ↑, ↓ and Esc act on the list even while the search field has the cursor, which would
-        // otherwise take the arrows for itself and leave the first row chosen.
+        // ↑ and ↓ (or ⌃N and ⌃P) and Esc act on the list even while the search field has the
+        // cursor, which would otherwise take them for itself and leave the first row chosen.
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            let code = event.keyCode
-            let plain = event.modifierFlags.intersection([.command, .option, .control]).isEmpty
+            let key = PanelKey(event)
             let handled = MainActor.assumeIsolated { () -> Bool in
-                guard plain, let self, self.panel?.isKeyWindow == true else { return false }
-                switch code {
-                case 125: self.model.state.moveSelection(by: 1)  // ↓
-                case 126: self.model.state.moveSelection(by: -1)  // ↑
-                case 53: self.model.escape()  // Esc
-                default: return false
+                guard let key, let self, self.panel?.isKeyWindow == true else { return false }
+                switch key {
+                case .down: self.model.state.moveSelection(by: 1)
+                case .up: self.model.state.moveSelection(by: -1)
+                case .escape: self.model.escape()
                 }
                 return true
             }
@@ -193,6 +191,32 @@ final class QuickSwitchPanel {
         }
         holder.panel = panel
         return panel
+    }
+}
+
+/// The keys the panel handles itself, whatever has the cursor.
+enum PanelKey: Sendable {
+    case down, up, escape
+
+    init?(_ event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        if modifiers.isEmpty {
+            switch event.keyCode {
+            case 125: self = .down  // ↓
+            case 126: self = .up  // ↑
+            case 53: self = .escape  // Esc
+            default: return nil
+            }
+        } else if modifiers == .control {
+            // By letter, not key position, so it follows the keyboard layout.
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            case "n": self = .down
+            case "p": self = .up
+            default: return nil
+            }
+        } else {
+            return nil
+        }
     }
 }
 
