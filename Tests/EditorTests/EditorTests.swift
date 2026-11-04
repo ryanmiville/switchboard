@@ -162,27 +162,28 @@ struct EditorTests {
         #expect(draft.profile == "")
     }
 
-    @Test func theCurrentAppsSettingsCanBeImportedOnceWithoutChangingThem() throws {
+    @Test func theSwiftAppsSettingsFileOpensInPlaceAndSavesProfilesAsDirectories() throws {
         let fixture = try TemporaryHome()
         defer { fixture.remove() }
         let helium = try fixture.installBrowser(.helium, name: "Helium", profiles: [("Default", "Ryan")])
-        let current = fixture.home.currentAppConfigFile
+        // As the previous Swift app saved it: `routes`, and profiles by their display names.
         try FileManager.default.createDirectory(
-            at: current.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let original = Data(
+            at: fixture.home.configFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(
             #"{"browser":"\#(helium)","defaultProfile":"Ryan","routes":[{"condition":"domain","value":"a.com","profile":"Ryan"}]}"#
-                .utf8)
-        try original.write(to: current)
+                .utf8
+        ).write(to: fixture.home.configFile)
         var e = Editor(
             home: fixture.home, store: fixture.configStore, history: fixture.historyStore,
             browsers: fixture.browsers)
-        #expect(e.canImportCurrentApp)
-        let r11 = e.importCurrentApp()
-        #expect(r11 == nil)
-        #expect(try fixture.configStore.load().config.rules.map(\.value) == ["a.com"])
-        #expect(try fixture.configStore.load().config.defaultProfile == "Default", "saved as its directory")
-        #expect(try Data(contentsOf: current) == original, "the current app's file is only read")
-        #expect(!e.canImportCurrentApp)
+        #expect(e.loadError == nil)
+        #expect(e.config.rules.map(\.value) == ["a.com"])
+        e.setHistoryEnabled(false)
+        let flushed = e.flush()
+        #expect(flushed)
+        let saved = try fixture.configStore.load().config
+        #expect(saved.rules.map(\.value) == ["a.com"])
+        #expect(saved.defaultProfile == "Default", "saved as its directory")
     }
 
     @Test func theWatcherNoticesASaveMadeElsewhere() async throws {

@@ -80,24 +80,6 @@ struct GeneralPane: View {
             } header: {
                 Text("History")
             }
-
-            // Only while the current app has settings this one hasn't taken yet.
-            if e.canImportCurrentApp || model.importError != nil {
-                Section {
-                    if e.canImportCurrentApp {
-                        LabeledContent {
-                            Button("Import") { model.importCurrentApp() }.buttonStyle(.borderedProminent)
-                        } label: {
-                            RowLabel(
-                                title: "Import from Switchboard",
-                                caption:
-                                    "Copies the current app’s rules and destinations. Its own file isn’t changed."
-                            )
-                        }
-                    }
-                    if let error = model.importError { ErrorText(error) }
-                }
-            }
         }
         .formStyle(.grouped)
     }

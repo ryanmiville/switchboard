@@ -12,6 +12,4 @@ public enum Identity {
     public static let directoryName = "switchboard-next"
     /// The prefix of the environment variables Switchboard reads, such as `SWITCHBOARD_NEXT_CONFIG`.
     public static let environmentPrefix = "SWITCHBOARD_NEXT"
-    /// The current app's config, relative to the home folder; this app offers to import it.
-    public static let currentAppConfig = ".config/switchboard/config.json"
 }

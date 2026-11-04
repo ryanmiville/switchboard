@@ -105,7 +105,6 @@ public final class SettingsModel: ObservableObject {
     @Published public private(set) var isDefaultBrowser = true
     @Published public private(set) var defaultBrowserError: String?
     @Published public private(set) var shortcutError: String?
-    @Published public var importError: String?
 
     public let services: SettingsServices
     private var autosave: Task<Void, Never>?
@@ -261,10 +260,6 @@ public final class SettingsModel: ObservableObject {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(failure.url, forType: .string)
         self.failure = nil
-    }
-
-    public func importCurrentApp() {
-        importError = editor.importCurrentApp()
     }
 
     public func revealConfigFile() {

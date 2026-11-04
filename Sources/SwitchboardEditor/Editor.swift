@@ -270,26 +270,6 @@ public struct Editor: Sendable {
             historyError = "History couldn’t be cleared. \(error.message)"
         }
     }
-
-    // MARK: Importing the current app's settings
-
-    /// The current Switchboard's settings can be imported: this app has none of its own yet.
-    public var canImportCurrentApp: Bool {
-        !fileExists && loadError == nil
-            && FileManager.default.fileExists(atPath: home.currentAppConfigFile.path)
-    }
-
-    /// Copies the current Switchboard's settings into this app's own file. The current app's file
-    /// is only read. Returns why it couldn't be imported.
-    public mutating func importCurrentApp() -> String? {
-        do {
-            let imported = try ConfigStore(url: home.currentAppConfigFile).load()
-            edit { $0 = imported.config }
-            return flush() ? nil : error
-        } catch {
-            return "The current Switchboard’s settings couldn’t be imported. \(error)"
-        }
-    }
 }
 
 /// A rule being added or edited. Only Done changes the config.

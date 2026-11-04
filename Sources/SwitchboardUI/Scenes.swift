@@ -37,14 +37,6 @@ public enum Scenes {
             s.editor.edit { $0.browser = "" }
             s.editor.refreshProfiles()
         },
-        Scene(name: "import", kind: .settings) { s, _, home in
-            let current = home.home.currentAppConfigFile
-            try FileManager.default.createDirectory(
-                at: current.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try Data(#"{"browser":"\#(home.helium)","defaultProfile":"Default"}"#.utf8).write(to: current)
-            try FileManager.default.removeItem(at: home.home.configFile)
-            s.edit { $0.reload() }
-        },
         Scene(name: "routing", kind: .settings) { s, _, _ in s.pane = .routing },
         Scene(name: "routing-selected", kind: .settings) { s, _, _ in
             s.pane = .routing

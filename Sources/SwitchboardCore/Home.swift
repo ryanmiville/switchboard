@@ -25,9 +25,6 @@ public struct Home: Hashable, Sendable {
     /// `~/.local/state/switchboard-next/history.jsonl`.
     public var historyFile: URL { appending(".local/state/\(Identity.directoryName)/history.jsonl") }
 
-    /// The current app's config, for importing.
-    public var currentAppConfigFile: URL { appending(Identity.currentAppConfig) }
-
     /// `path` with a leading `~` or `~/` expanded.
     public func expand(_ path: String) -> URL {
         if path == "~" { return url }
