@@ -1,10 +1,11 @@
-# Switchboard Next
+# Switchboard
 
 A personal URL router for macOS: set as the default browser, it opens each link in a Chromium
 browser profile chosen by ordered rules. A Swift port of the Rust rewrite's design (`rune-rewrite`,
-paused), with a SwiftUI app and a CLI that can do everything the app can. Until it replaces the app
-on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboard.next`,
-`~/.config/switchboard-next/`); those names live only in `Sources/SwitchboardCore/Identity.swift`.
+paused), with a SwiftUI app and a CLI that can do everything the app can. It replaced the previous
+Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
+`~/.config/switchboard/`) and the same settings file; those names live only in
+`Sources/SwitchboardCore/Identity.swift`.
 
 ## Layout
 
@@ -15,7 +16,7 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
   bundles, Chromium profiles, history, launching. Foundation only. Reads no environment, clock or
   home folder on its own.
 - `Sources/SwitchboardFixtures`: temporary homes with fixture browsers for tests and scenes.
-- `Sources/SwitchboardCLI` and `Sources/switchboard-next`: the CLI's commands (one file per
+- `Sources/SwitchboardCLI` and `Sources/switchboard-cli`: the CLI's commands (one file per
   command group in `Commands/`), the agent guide (`Guide.swift`), and the binary.
 - `Sources/SwitchboardEditor`: the settings model with no SwiftUI (`Editor`: autosave, conflicts,
   import), link routing and the app's lifetime (`Routing`), the Quick Switch model (`Picker`), and
@@ -27,7 +28,7 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 - `Tests/<Target>Tests`: one test target per library target.
 - References, from `scripts/cloud-setup.sh` in cloud sessions: `~/reference/switchboard-rs` (the
   Rust rewrite: the behaviour and architecture to port, file for file) and
-  `~/reference/switchboard-current` (the current Swift app: SwiftUI and AppKit code to copy from).
+  `~/reference/switchboard-current` (the previous Swift app: SwiftUI and AppKit code to copy from).
   Elsewhere, read them with `git show 3b565e2:<path>` and `git show 43338ec:<path>`.
 
 ## Commands
@@ -40,7 +41,7 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 - On Linux, `scripts/check` covers the Foundation-only targets and says what it skipped.
 - Format: `scripts/format`. Swift 6.3 (Xcode 26.4 on macOS); `scripts/cloud-setup.sh` installs it
   in cloud sessions.
-- Run the CLI against a scratch home: `HOME=$(mktemp -d) swift run switchboard-next rules list`.
+- Run the CLI against a scratch home: `HOME=$(mktemp -d) swift run switchboard-cli rules list`.
 - See the app without a person (macOS): `scripts/snap [scene…]` renders every scene (or the
   named ones) in light and dark into `.build/snap/`; one scene:
   `swift run Switchboard --snap out.png --scene routing [--theme dark]`; list them with
@@ -96,7 +97,7 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 
 ## Changes
 
-- Work lands on `swift-next`, not `main`, until the owner merges it.
+- Work lands on `main`.
 - One change per commit, one line: `area: what changed`.
 - Files stay under 1000 lines (`scripts/file-size`; warning at 600). Move code to a new file in its
   own commit before changing it.
@@ -111,7 +112,7 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 ## Autonomy
 
 - Run the checks, fix failures, and rerun without asking.
-- Commit and push to `swift-next` once `scripts/check` passes. After pushing from Linux, watch CI's
+- Commit and push to `main` once `scripts/check` passes. After pushing from Linux, watch CI's
   macOS job: it is the only check of the macOS targets.
 - Ask first before: installing the app or CLI on a real machine, changing the default browser, or
   anything that touches the owner's real `~/.config` or browser data.
@@ -128,6 +129,7 @@ on `main` it is called **Switchboard Next** (`switchboard-next`, `com.switchboar
 
 ## Current constraints
 
-- 2026-11-03: every step of the architecture's order is written; the macOS targets have been
-  compiled and their tests run only by CI. Nothing has been seen working on a real Mac yet: the
-  Mac checklist in `docs/architecture.md` is all open. No goldens are recorded yet.
+- 2026-11-04: this is the shipped app; it replaced the previous Swift app on `main`. The owner uses
+  it daily on macOS 26 with Xcode 27.2, whose package builds record the wrong SDK (scripts/mark-sdk
+  corrects it). Items in the Mac checklist in `docs/architecture.md` that the owner hasn't
+  confirmed are still open.

@@ -8,7 +8,7 @@
 #     subset (the Foundation-only targets). The macOS targets still need a Mac (CI's macOS job).
 #   - ~/reference/switchboard-rs: the paused Rust rewrite at RUST_REF, the reference architecture
 #     the swift-next branch ports.
-#   - ~/reference/switchboard-current: the current Swift app at CURRENT_REF, for SwiftUI and AppKit
+#   - ~/reference/switchboard-current: the previous Swift app at CURRENT_REF, for SwiftUI and AppKit
 #     code to copy from.
 # It works for every branch of the repository: main ignores the references.
 #

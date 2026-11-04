@@ -1,13 +1,13 @@
-# Architecture of Switchboard Next
+# Architecture of Switchboard
 
 Reader: the next agent working on this branch, or the owner checking what was agreed.
-Status: agreed with the owner on 2026-11-03. Being built on `swift-next`.
+Status: agreed with the owner on 2026-11-03. Built on `swift-next`; merged to `main` on 2026-11-04.
 
 ## Framing
 
 A from-scratch Swift port of the Rust rewrite's design (`rune-rewrite` at `3b565e2`, paused). The
-Rust code is the reference architecture and behaviour; the Swift app on `main` is a source of
-SwiftUI and AppKit code to copy from. The priorities, in order:
+Rust code is the reference architecture and behaviour; the previous Swift app (`main` at `43338ec`)
+is a source of SwiftUI and AppKit code to copy from. The priorities, in order:
 
 1. The behaviours in `AGENTS.md` "Behaviour to preserve".
 2. Agent convenience: JSON output, stable exit codes, files an agent can read and edit safely,
@@ -23,28 +23,32 @@ and is tested on Linux (cloud sessions and CI) as well as on the Mac.
 
 | Question | Decision |
 |---|---|
-| Branch | `swift-next`, started from `main` with the old sources deleted. Merges to `main` when it replaces the app |
+| Branch | `swift-next`, started from `main` with the old sources deleted; merged to `main` when it replaced the app |
 | Rust rewrite | Paused. `rune-rewrite` at `3b565e2` is the reference; this port doesn't track later Rust changes |
 | Build | SwiftPM only, no Xcode project. `scripts/bundle` assembles and signs the `.app`; `Package.swift` opens in Xcode for editing and debugging |
-| Identity while both apps run | `Switchboard Next` (below). One constants file, so the final rename is one change |
-| Formats | `config.json` and `history.jsonl` as the Rust rewrite writes them (`rules`, unknown keys refused). The current app's files still load |
+| Identity | `Switchboard Next` while both apps ran, then the previous app's names (below). One constants file, so the rename was one change |
+| Formats | `config.json` and `history.jsonl` as the Rust rewrite writes them (`rules`, unknown keys refused). The previous app's files still load |
 | CLI | swift-argument-parser. The Rust CLI's commands, `--json` everywhere, its exit codes (usage errors exit 2) |
 | UI | SwiftUI, macOS 13+. Panes and states as named scenes with snapshot goldens |
 | Hard-coded picker favorites | Not ported. A new config has no favorites |
 
-## Identity while both apps coexist
+## Identity
 
-| | Current app (`main`) | Switchboard Next (until the merge) |
-|---|---|---|
-| App | `Switchboard.app`, `com.switchboard.app` | `Switchboard Next.app`, `com.switchboard.next` |
-| CLI | `switchboard` | `switchboard-next` |
-| Config | `~/.config/switchboard/config.json` | `~/.config/switchboard-next/config.json` |
-| History | `~/.local/state/switchboard/history.jsonl` | `~/.local/state/switchboard-next/history.jsonl` |
-| Test switches | | `SWITCHBOARD_NEXT_APPLICATIONS`, `_CONFIG`, `_HISTORY` |
+Built as Switchboard Next on `swift-next`, next to the previous Swift app, then renamed to the
+previous app's names when it replaced it on `main` (2026-11-04):
 
-Separate files matter: the current app's decoder drops keys it doesn't know, so its next save
-would delete anything new this app writes. On first run with no config of its own, the app offers
-to import the current app's config, which it reads without changing it. Every name above lives in
+| | |
+|---|---|
+| App | `Switchboard.app`, `com.switchboard.app` |
+| CLI | `switchboard` (built as the `switchboard-cli` product, since the app's `Switchboard` executable sits beside it on a case-insensitive file system) |
+| Config | `~/.config/switchboard/config.json` |
+| History | `~/.local/state/switchboard/history.jsonl` |
+| Test switches | `SWITCHBOARD_APPLICATIONS`, `_CONFIG`, `_HISTORY` |
+
+Taking the previous app's names keeps the default-browser choice, the login item and the settings:
+the previous app's `config.json` (with `routes` and profiles saved by name) loads as it is, and is
+saved in this app's format on the next change. The previous app drops keys it doesn't know, so it
+must not keep running beside this one. Every name above lives in
 `Sources/SwitchboardCore/Identity.swift`.
 
 ## Modules
@@ -53,7 +57,7 @@ to import the current app's config, which it reads without changing it. Every na
 Sources/
   SwitchboardCore/      Foundation only   every rule and file format, browsers, launching
   SwitchboardCLI/       Foundation only   the commands, as a library (ArgumentParser)
-  switchboard-next/     Foundation only   the CLI binary: reads the environment, calls SwitchboardCLI
+  switchboard-cli/      Foundation only   the CLI binary: reads the environment, calls SwitchboardCLI
   SwitchboardEditor/    Foundation only   the settings model, routing lifetime, picker model
   SwitchboardMac/       AppKit            menu bar, login item, current tab, default browser
   SwitchboardUI/        SwiftUI           panes, sheets, picker panel, scenes
@@ -69,7 +73,7 @@ The Rust crates map onto these:
 | `crates/core` | `SwitchboardCore` | Same modules. `platform::Browsers` becomes a concrete `Browsers` that reads app bundles; it is file-only, so it is in core |
 | `crates/platform-macos` (browsers, fixture) | `SwitchboardCore` | `Info.plist` is read with `PropertyListSerialization`, never `Bundle`, so it works on Linux |
 | `crates/platform-macos` (menu bar, login item, current tab) | `SwitchboardMac` | AppKit, ServiceManagement, Apple Events |
-| `crates/cli` | `SwitchboardCLI` + `switchboard-next` | The library holds the commands so the app can embed the same version; the binary is a few lines |
+| `crates/cli` | `SwitchboardCLI` + `switchboard-cli` | The library holds the commands so the app can embed the same version; the binary is a few lines |
 | `crates/app` (`editor`, `routing`, `picker` model, `watch`) | `SwitchboardEditor` | No SwiftUI, so tested on Linux |
 | `crates/app` (`ui/`, `scenes`, `main`) | `SwitchboardUI`, `Switchboard` | macOS only |
 | `crates/platform-linux` | none | |
@@ -116,7 +120,7 @@ As the Rust rewrite: real implementations end to end, isolated by a temporary ho
 - **Fixture browsers are real app bundles.** `Fixtures.installBrowser` writes `Name.app` with an
   `Info.plist` and a shell script as its executable that appends its arguments to a log. A test
   checks the `--profile-directory` and link a real launch passed. This runs on Linux too.
-- **The CLI is tested as a binary.** Tests run the built `switchboard-next` with `HOME=<tmp>`
+- **The CLI is tested as a binary.** Tests run the built `switchboard-cli` with `HOME=<tmp>`
   and check its JSON, exit code and the resulting files.
 - **Editor tests** drive the real model and the real store in a temporary home.
 - **What can't run safely stays out of automated tests** and goes on the Mac checklist:
@@ -149,7 +153,7 @@ As the Rust rewrite: real implementations end to end, isolated by a temporary ho
 
 Things only a person on a Mac can confirm. Record the date and macOS version when each is seen.
 
-- [ ] `scripts/install` puts `Switchboard Next.app` in `~/Applications`, and it appears under System
+- [ ] `scripts/install` puts `Switchboard.app` in `~/Applications`, and it appears under System
       Settings → Desktop & Dock → Default web browser.
 - [ ] Opening the app shows the menu-bar icon and no Dock icon or window; Settings… opens the
       window in front with the app's icon in the Dock, which goes again when Settings closes; Quit
@@ -161,7 +165,7 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
 - [ ] Opening the app again from Finder or Spotlight brings Settings forward.
 - [ ] Open at login: the toggle registers it, System Settings → Login Items lists it, and it
       starts at the next login.
-- [ ] `~/.local/bin/switchboard-next` from `scripts/install --cli` runs and reads the same config.
+- [ ] `~/.local/bin/switchboard` from `scripts/install --cli` runs and reads the same config.
 - [ ] Quick Switch: the shortcut over a browser shows the panel without taking focus from it; the
       first time, macOS asks to allow Automation; the panel shows the current tab's link. Pressing
       the shortcut again closes it.
@@ -172,4 +176,4 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
       and Return opens the chosen row; Esc clears the search, then closes; holding ⌘ shows ⌘1–⌘9 on
       the rows after a moment and letting go hides them.
 - [ ] With Automation denied, the panel says so and Automation Settings… opens the right pane.
-- [ ] A change made with `switchboard-next` while Settings is open shows up within a second.
+- [ ] A change made with `switchboard` while Settings is open shows up within a second.
