@@ -184,8 +184,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         startResident()
         settingsWanted = true
         settings.refresh()
+        // In the Dock and the app switcher while Settings is open, like any app with a window.
+        NSApp.setActivationPolicy(.regular)
         bringToFront()
         opener.openSettings()
+    }
+
+    /// Settings closed: back to a menu-bar app, out of the Dock.
+    func settingsWindowClosed() {
+        settings.flush()
+        NSApp.setActivationPolicy(.accessory)
     }
 
     /// SwiftUI opens the settings window at launch on its own. Unless Settings was asked for, it

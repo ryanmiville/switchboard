@@ -152,7 +152,8 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
 - [ ] `scripts/install` puts `Switchboard Next.app` in `~/Applications`, and it appears under System
       Settings → Desktop & Dock → Default web browser.
 - [ ] Opening the app shows the menu-bar icon and no Dock icon or window; Settings… opens the
-      window in front; Quit quits.
+      window in front with the app's icon in the Dock, which goes again when Settings closes; Quit
+      quits.
 - [ ] With it as the default browser, a link clicked in another app opens in the right browser
       profile, with no window or icon flashing up.
 - [ ] A link that can't open (a rule naming a missing profile) shows the failure with its recovery

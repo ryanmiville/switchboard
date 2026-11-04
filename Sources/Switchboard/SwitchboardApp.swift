@@ -53,7 +53,7 @@ struct SettingsWindow: View {
                 delegate.opener.capture(openWindow)
                 delegate.settingsWindowAppeared()
             }
-            .onDisappear { delegate.settings.flush() }
+            .onDisappear { delegate.settingsWindowClosed() }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) {
                 _ in
                 delegate.settings.refresh()
