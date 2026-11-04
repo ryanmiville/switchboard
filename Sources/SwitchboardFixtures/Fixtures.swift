@@ -78,8 +78,6 @@ public struct TemporaryHome: Sendable {
         Self.recordedLaunches(launchLog)
     }
 
-    /// Writes a shell script that appends one line per run to `log`, with its arguments separated
-    /// by tabs, and opens nothing.
     /// Waits up to about five seconds for `count` launches to be logged, since a launched program
     /// runs on its own, and returns what was logged.
     public func waitForLaunches(_ count: Int) -> [[String]] {
@@ -91,17 +89,23 @@ public struct TemporaryHome: Sendable {
         return recordedLaunches()
     }
 
+    /// Writes a shell script that appends one line per run to `log`, with its arguments separated
+    /// by tabs, and opens nothing.
     public static func writeRecordingProgram(_ program: URL, log: URL) throws {
         let quoted = log.path.replacingOccurrences(of: "'", with: "'\\''")
+        // The whole line goes out in one write, so a reader never sees half a launch.
         let script =
-            "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\t' \"$a\"; done >> '\(quoted)'\necho >> '\(quoted)'\n"
+            "#!/bin/sh\nline=''\nfor a in \"$@\"; do line=\"$line$a\t\"; done\nprintf '%s\\n' \"$line\" >> '\(quoted)'\n"
         try Data(script.utf8).write(to: program)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: program.path)
     }
 
+    /// Only finished lines: a launch still being written isn't counted until its newline is.
     public static func recordedLaunches(_ log: URL) -> [[String]] {
         guard let data = try? Data(contentsOf: log) else { return [] }
-        return String(decoding: data, as: UTF8.self).split(separator: "\n").map { line in
+        var text = String(decoding: data, as: UTF8.self)
+        if let end = text.lastIndex(of: "\n") { text = String(text[...end]) } else { return [] }
+        return text.split(separator: "\n").map { line in
             var text = String(line)
             if text.hasSuffix("\t") { text.removeLast() }
             return text.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)

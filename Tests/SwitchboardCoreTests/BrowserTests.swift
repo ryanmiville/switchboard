@@ -110,4 +110,12 @@ struct BrowserTests {
         }
         #expect(fixture.recordedLaunches().isEmpty)
     }
+
+    @Test func aLaunchStillBeingWrittenIsNotCountedYet() throws {
+        let fixture = try TemporaryHome()
+        defer { fixture.remove() }
+        try Data("--profile-directory=Default\thttps://a.com\t\n--profile-directory=Work\t".utf8)
+            .write(to: fixture.launchLog)
+        #expect(fixture.recordedLaunches() == [["--profile-directory=Default", "https://a.com"]])
+    }
 }
