@@ -100,7 +100,7 @@ public enum CommandLineTool {
     }
 
     /// Moves the global options to the end, so they work before the subcommand too
-    /// (`switchboard-next --json rules list`): ArgumentParser reads them on the leaf command.
+    /// (`switchboard --json rules list`): ArgumentParser reads them on the leaf command.
     static func hoistingGlobalOptions(_ arguments: [String]) -> [String] {
         var rest: [String] = []
         var global: [String] = []

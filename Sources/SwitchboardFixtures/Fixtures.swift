@@ -12,12 +12,12 @@ public struct TemporaryHome: Sendable {
 
     public init() throws {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("switchboard-next-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("switchboard-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         home = Home(url.resolvingSymlinksInPath())
     }
 
-    /// The folder fixture browsers go in; point `$SWITCHBOARD_NEXT_APPLICATIONS` at it.
+    /// The folder fixture browsers go in; point `$SWITCHBOARD_APPLICATIONS` at it.
     public var applications: URL { home.appending("Applications") }
 
     /// The log every fixture browser in this home appends its launches to.

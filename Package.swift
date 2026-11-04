@@ -17,7 +17,7 @@ var targets: [Target] = [
     // The CLI's commands, as a library the binary (and later the app) runs.
     .target(
         name: "SwitchboardCLI", dependencies: ["SwitchboardCore", argumentParser], swiftSettings: strict),
-    .executableTarget(name: "switchboard-next", dependencies: ["SwitchboardCLI"], swiftSettings: strict),
+    .executableTarget(name: "switchboard-cli", dependencies: ["SwitchboardCLI"], swiftSettings: strict),
     // The settings model, link routing for the app's lifetime and the Quick Switch model, without
     // SwiftUI, so they are tested on Linux too.
     .target(name: "SwitchboardEditor", dependencies: ["SwitchboardCore"], swiftSettings: strict),
@@ -25,9 +25,9 @@ var targets: [Target] = [
     .testTarget(
         name: "SwitchboardCoreTests", dependencies: ["SwitchboardCore", "SwitchboardFixtures"],
         swiftSettings: strict),
-    // Runs the built switchboard-next binary against temporary homes.
+    // Runs the built switchboard-cli binary against temporary homes.
     .testTarget(
-        name: "CLITests", dependencies: ["switchboard-next", "SwitchboardCore", "SwitchboardFixtures"],
+        name: "CLITests", dependencies: ["switchboard-cli", "SwitchboardCore", "SwitchboardFixtures"],
         swiftSettings: strict),
     .testTarget(
         name: "EditorTests", dependencies: ["SwitchboardEditor", "SwitchboardCore", "SwitchboardFixtures"],
@@ -67,7 +67,7 @@ var targets: [Target] = [
 let package = Package(
     name: "Switchboard",
     platforms: [.macOS(.v13)],
-    products: [.executable(name: "switchboard-next", targets: ["switchboard-next"])] + appProducts,
+    products: [.executable(name: "switchboard-cli", targets: ["switchboard-cli"])] + appProducts,
     dependencies: [.package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0")],
     targets: targets,
     swiftLanguageModes: [.v6]

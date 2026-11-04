@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the app on this Mac: builds it with scripts/bundle, quits a running copy, replaces
 # ~/Applications/<name>.app, and registers it with Launch Services so macOS offers it as a
-# browser. With --cli it also links ~/.local/bin/switchboard-next to the CLI inside the app.
+# browser. With --cli it also links ~/.local/bin/switchboard to the CLI inside the app.
 #
 #   scripts/install          the app
 #   scripts/install --cli    the app and the CLI link

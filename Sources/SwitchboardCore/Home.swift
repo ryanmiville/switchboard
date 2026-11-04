@@ -19,10 +19,10 @@ public struct Home: Hashable, Sendable {
         relative.split(separator: "/").reduce(url) { $0.appendingPathComponent(String($1)) }
     }
 
-    /// `~/.config/switchboard-next/config.json`.
+    /// `~/.config/switchboard/config.json`.
     public var configFile: URL { appending(".config/\(Identity.directoryName)/config.json") }
 
-    /// `~/.local/state/switchboard-next/history.jsonl`.
+    /// `~/.local/state/switchboard/history.jsonl`.
     public var historyFile: URL { appending(".local/state/\(Identity.directoryName)/history.jsonl") }
 
     /// `path` with a leading `~` or `~/` expanded.
@@ -36,7 +36,7 @@ public struct Home: Hashable, Sendable {
 /// The parts of the process environment Switchboard uses, read once by each binary's entry point,
 /// so library code never reads the environment itself.
 public struct Env: Sendable {
-    /// `$SWITCHBOARD_NEXT_APPLICATIONS`, split on `:`: when set, the only folders searched for
+    /// `$SWITCHBOARD_APPLICATIONS`, split on `:`: when set, the only folders searched for
     /// browsers. Tests and scenes set it so they never see the machine's real browsers.
     public var applicationDirectories: [URL]?
     /// The other variables Switchboard reads, by name. See `Env.names`.

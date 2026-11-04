@@ -84,7 +84,7 @@ public struct Browsers: Sendable {
         self.applicationDirectories = applicationDirectories
     }
 
-    /// `/Applications` and `~/Applications`, or only `$SWITCHBOARD_NEXT_APPLICATIONS` when it is set.
+    /// `/Applications` and `~/Applications`, or only `$SWITCHBOARD_APPLICATIONS` when it is set.
     public init(home: Home, env: Env) {
         self.init(
             home: home,

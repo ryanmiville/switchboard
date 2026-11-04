@@ -3,9 +3,9 @@ import SwitchboardCore
 import SwitchboardFixtures
 import Testing
 
-// End-to-end tests of the switchboard-next binary. Each test gets a temporary home with fixture
+// End-to-end tests of the switchboard binary. Each test gets a temporary home with fixture
 // browsers: real app bundles whose program records its arguments instead of opening anything.
-// $SWITCHBOARD_NEXT_APPLICATIONS keeps the machine's real browsers out of view, and the binary
+// $SWITCHBOARD_APPLICATIONS keeps the machine's real browsers out of view, and the binary
 // runs with only this home in its environment.
 
 /// A JSON value read from the binary's output, or built to write a fixture file.
@@ -205,7 +205,7 @@ func entry(_ id: String, _ url: String) -> JSONValue {
     ]
 }
 
-/// Finds the built switchboard-next next to the test binary. The test target depends on the
+/// Finds the built CLI (`switchboard-cli`) next to the test binary. The test target depends on the
 /// executable target, so `swift test` builds it first.
 enum Binary {
     static func url() throws -> URL {
@@ -215,9 +215,9 @@ enum Binary {
             .deletingLastPathComponent()
         folders.append(root.appendingPathComponent(".build/debug"))
         for folder in folders {
-            let candidate = folder.appendingPathComponent(Identity.cliName)
+            let candidate = folder.appendingPathComponent(Identity.cliProduct)
             if FileManager.default.isExecutableFile(atPath: candidate.path) { return candidate }
         }
-        throw FixtureError("Couldn’t find the built \(Identity.cliName) near \(folders.map(\.path)).")
+        throw FixtureError("Couldn’t find the built \(Identity.cliProduct) near \(folders.map(\.path)).")
     }
 }

@@ -92,6 +92,6 @@ struct ConfigTests {
         #expect(env["CODEX_HOME"] == nil)
         #expect(Env.parse(["HOME": ""]).home == nil)
         #expect(Home(path: "/Users/x").expand("~/a/b").path == "/Users/x/a/b")
-        #expect(Home(path: "/Users/x").configFile.path == "/Users/x/.config/switchboard-next/config.json")
+        #expect(Home(path: "/Users/x").configFile.path == "/Users/x/.config/switchboard/config.json")
     }
 }

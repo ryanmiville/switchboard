@@ -40,7 +40,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: scripts/launch-check
       - name: Render a scene from the bundled app
-        run: '".build/bundle/Switchboard Next.app/Contents/MacOS/Switchboard" --snap .build/snapshots/app-routing.png --scene routing'
+        run: '".build/bundle/Switchboard.app/Contents/MacOS/Switchboard" --snap .build/snapshots/app-routing.png --scene routing'
       - name: Render every scene through scripts/snap
         run: SNAP_DIR=.build/snapshots/snap scripts/snap
       # The scene renders from the UI tests and the app, with a -diff image for each golden that differs.

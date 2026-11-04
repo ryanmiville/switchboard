@@ -1,7 +1,7 @@
 import Foundation
 import SwitchboardCore
 
-// The agent skill: a short SKILL.md that points agents at `switchboard-next skill show`, so
+// The agent skill: a short SKILL.md that points agents at `switchboard skill show`, so
 // upgrading Switchboard updates the guide they follow.
 
 enum Agent: String, CaseIterable, Encodable {

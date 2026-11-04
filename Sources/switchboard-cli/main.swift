@@ -8,7 +8,7 @@ import SwitchboardCore
     import Glibc
 #endif
 
-// switchboard-next: inspect and change how links are routed. Reads and writes the same files as the
+// switchboard: inspect and change how links are routed. Reads and writes the same files as the
 // app, with no daemon. Every command accepts --json. It never opens links. This is the one place the
 // CLI reads its environment and the clock; everything else gets them passed in.
 

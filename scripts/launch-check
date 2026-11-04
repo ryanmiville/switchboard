@@ -10,12 +10,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-app=".build/bundle/Switchboard Next.app"
+app=".build/bundle/Switchboard.app"
 [ -d "$app" ] || { echo "launch-check: no $app; run scripts/bundle first" >&2; exit 1; }
 
 home=$(mktemp -d)
 mkdir -p "$home/Applications"
-HOME="$home" SWITCHBOARD_NEXT_APPLICATIONS="$home/Applications" \
+HOME="$home" SWITCHBOARD_APPLICATIONS="$home/Applications" \
   "$app/Contents/MacOS/Switchboard" >"$home/app.log" 2>&1 &
 pid=$!
 trap 'kill "$pid" 2>/dev/null || true; rm -rf "$home"' EXIT
@@ -49,7 +49,7 @@ echo
 echo "launch-check: the executable's build:"
 vtool -show-build "$app/Contents/MacOS/Switchboard" | sed -n '/LC_BUILD_VERSION/,/ntools/p'
 echo "launch-check: the settings window:"
-HOME="$home" SWITCHBOARD_NEXT_APPLICATIONS="$home/Applications" \
+HOME="$home" SWITCHBOARD_APPLICATIONS="$home/Applications" \
   "$app/Contents/MacOS/Switchboard" --describe-window >"$home/window.txt" 2>/dev/null &
 pid=$!
 for _ in $(seq 30); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done

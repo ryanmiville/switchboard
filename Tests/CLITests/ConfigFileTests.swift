@@ -73,20 +73,20 @@ struct SkillTests {
         let manager = FileManager.default
         try manager.createDirectory(at: f.home.appending(".claude"), withIntermediateDirectories: true)
         try manager.createDirectory(at: f.home.appending(".codex"), withIntermediateDirectories: true)
-        let foreign = f.home.appending(".agents/skills/switchboard-next/SKILL.md")
+        let foreign = f.home.appending(".agents/skills/switchboard/SKILL.md")
         try manager.createDirectory(
             at: foreign.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("mine".utf8).write(to: foreign)
 
         let out = try f.json(["skill", "setup"]).ok().json()
         #expect(out["items"].array.map { $0["status"] } == ["installed", "foreign"])
-        #expect(manager.fileExists(atPath: f.home.appending(".claude/skills/switchboard-next/SKILL.md").path))
+        #expect(manager.fileExists(atPath: f.home.appending(".claude/skills/switchboard/SKILL.md").path))
         #expect(try String(contentsOf: foreign, encoding: .utf8) == "mine")
 
         #expect(try f.json(["skill", "setup"]).ok().json()["items"][0]["status"] == "unchanged")
         #expect(try f.json(["skill", "status"]).ok().json()["items"][0]["status"] == "current")
         #expect(try f.json(["skill", "remove"]).ok().json()["items"][0]["status"] == "removed")
-        #expect(!manager.fileExists(atPath: f.home.appending(".claude/skills/switchboard-next").path))
+        #expect(!manager.fileExists(atPath: f.home.appending(".claude/skills/switchboard").path))
         #expect(try String(contentsOf: foreign, encoding: .utf8) == "mine")
     }
 
@@ -101,7 +101,7 @@ struct SkillTests {
         let f = try Fixture()
         let text = try f.run(["skill", "show"]).ok().stdout
         #expect(text.hasPrefix("# Switchboard routing guide"))
-        #expect(text.contains("switchboard-next explain --last"))
+        #expect(text.contains("switchboard explain --last"))
         #expect(!text.contains("switchboard-rs"))
     }
 }

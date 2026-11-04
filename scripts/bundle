@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds "Switchboard Next.app" into .build/bundle/: the app, the switchboard-next CLI in
+# Builds "Switchboard.app" into .build/bundle/: the app, the switchboard CLI in
 # Contents/Helpers, Info.plist with the browser declarations, the icons, and a signature.
 # It installs nothing; scripts/install does that.
 #
@@ -18,13 +18,14 @@ identity() { sed -n "s/^ *public static let $1 = \"\(.*\)\"$/\1/p" Sources/Switc
 name=$(identity appName)
 id=$(identity bundleID)
 cli=$(identity cliName)
+cliProduct=$(identity cliProduct)
 version=$(sed -n 's/^public let cliVersion = "\(.*\)"$/\1/p' Sources/SwitchboardCLI/Arguments.swift)
 exe=Switchboard
-[[ -n "$name" && -n "$id" && -n "$cli" && -n "$version" ]] || { echo "bundle: couldn't read the identity" >&2; exit 1; }
+[[ -n "$name" && -n "$id" && -n "$cli" && -n "$cliProduct" && -n "$version" ]] || { echo "bundle: couldn't read the identity" >&2; exit 1; }
 
 build=(swift build -c "$configuration")
 "${build[@]}" --product "$exe"
-"${build[@]}" --product "$cli"
+"${build[@]}" --product "$cliProduct"
 products=$("${build[@]}" --show-bin-path)
 
 app=".build/bundle/$name.app"
@@ -34,7 +35,7 @@ cp "$products/$exe" "$app/Contents/MacOS/$exe"
 
 # macOS gives the current design only to apps marked as built with its SDK.
 scripts/mark-sdk "$app/Contents/MacOS/$exe"
-cp "$products/$cli" "$app/Contents/Helpers/$cli"
+cp "$products/$cliProduct" "$app/Contents/Helpers/$cli"
 cp assets/MenuBarIcon.pdf "$app/Contents/Resources/MenuBarIcon.pdf"
 sed -e "s/@NAME@/$name/g" -e "s/@ID@/$id/g" -e "s/@EXE@/$exe/g" -e "s/@VERSION@/$version/g" \
   packaging/Info.plist > "$app/Contents/Info.plist"
