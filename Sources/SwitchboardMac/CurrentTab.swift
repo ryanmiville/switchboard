@@ -24,7 +24,7 @@ public enum CurrentTab {
     /// The link in `app`'s frontmost window's active tab, exactly as the browser reports it, and
     /// the window's title, which names the profile. Can block for a few seconds, so call it off the
     /// main thread.
-    public static func read(_ app: Frontmost) -> Result<Tab, TabError> {
+    public static func read(_ app: Frontmost) -> Result<BrowserTab, TabError> {
         guard app.pid > 0, Browsers.bundles.contains(where: { $0.id == app.id }) else {
             return .failure(.unsupportedBrowser)
         }
@@ -37,7 +37,7 @@ public enum CurrentTab {
         guard Link.isWeb(link) else { return .failure(.notWeb) }
         // The title only lets the panel leave out the profile being switched from, so it's best effort.
         let title = try? get(windowName(app), from: app).get()
-        return .success(Tab(link: link, windowTitle: title))
+        return .success(BrowserTab(link: link, windowTitle: title))
     }
 
     /// Asks `app` for the string at `specifier`.

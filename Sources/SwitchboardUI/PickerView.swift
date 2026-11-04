@@ -77,7 +77,7 @@ public final class PickerModel: ObservableObject {
     }
 
     /// What was read from the browser with bundle identifier `browserID`.
-    public func tabRead(_ result: Result<Tab, TabError>, browserID: String?) {
+    public func tabRead(_ result: Result<BrowserTab, TabError>, browserID: String?) {
         reading = false
         state.tabRead(result, browserID: browserID, installed: browsers.installed())
     }

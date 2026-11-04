@@ -169,7 +169,7 @@ struct PickerTests {
         defer { scene.remove() }
         var p = picker(scene)
         p.tabRead(
-            .success(Tab(link: "https://example.com/a", windowTitle: "Example - Helium - Ryan")),
+            .success(BrowserTab(link: "https://example.com/a", windowTitle: "Example - Helium - Ryan")),
             browserID: try id(scene.helium, scene), installed: scene.browsers.installed())
         #expect(p.current == Destination(browser: scene.helium, profile: "Default"))
         #expect(!p.shown.map(\.label).contains("Helium · Ryan"))
@@ -182,7 +182,7 @@ struct PickerTests {
         defer { scene.remove() }
         var p = picker(scene)
         p.tabRead(
-            .success(Tab(link: "https://example.com", windowTitle: "Docs - Google Chrome - Work")),
+            .success(BrowserTab(link: "https://example.com", windowTitle: "Docs - Google Chrome - Work")),
             browserID: try id(scene.chrome, scene), installed: scene.browsers.installed())
         #expect(p.shown.map(\.label).contains("Helium · Work"))
         #expect(!p.shown.map(\.label).contains("Google Chrome · Work"))
@@ -193,7 +193,7 @@ struct PickerTests {
         defer { scene.remove() }
         var p = picker(scene)
         p.tabRead(
-            .success(Tab(link: "https://example.com", windowTitle: "Home - Helium")),
+            .success(BrowserTab(link: "https://example.com", windowTitle: "Home - Helium")),
             browserID: try id(scene.helium, scene), installed: scene.browsers.installed())
         #expect(p.current == nil)
         #expect(p.shown.count == 5)

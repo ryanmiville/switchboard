@@ -18,7 +18,7 @@ public struct Choice: Equatable, Sendable {
 }
 
 /// What the focused browser window showed when the panel was summoned.
-public struct Tab: Equatable, Sendable {
+public struct BrowserTab: Equatable, Sendable {
     /// The active tab's link, exactly as the browser reported it.
     public var link: String
     /// The window's title. Chromium browsers end it with the profile's name when there are several,
@@ -194,7 +194,7 @@ public struct PickerState: Sendable {
 
     /// What the tab reader found in the browser with bundle identifier `browserID`.
     public mutating func tabRead(
-        _ result: Result<Tab, TabError>, browserID: String?, installed: [BrowserInfo]
+        _ result: Result<BrowserTab, TabError>, browserID: String?, installed: [BrowserInfo]
     ) {
         switch result {
         case .success(let tab):

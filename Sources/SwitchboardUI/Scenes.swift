@@ -121,7 +121,7 @@ public enum Scenes {
         let helium = home.browsers.installed().first { $0.locator == home.helium }?.id
         picker.tabRead(
             .success(
-                Tab(
+                BrowserTab(
                     link: "https://github.com/acme/api/pull/12",
                     windowTitle: "Pull request #12 - Helium - Ryan")),
             browserID: helium)
