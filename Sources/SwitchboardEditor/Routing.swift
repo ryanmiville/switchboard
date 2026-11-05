@@ -34,7 +34,10 @@ public enum Routing {
         editor.checkExternal()
         guard Link.isWeb(link) || Link.isLocalFile(link) else { return LaunchError.invalidURL.description }
         guard editor.flush() else { return editor.error ?? "Your settings couldn’t be saved." }
-        return open(link, config: editor.config, browsers: editor.browsers, history: editor.history, now: now)
+        let failure = open(
+            link, config: editor.config, browsers: editor.browsers, history: editor.history, now: now)
+        editor.loadRecent()
+        return failure
     }
 
     /// What the URL tester in Settings shows for `link`, and whether it is a usable link.
