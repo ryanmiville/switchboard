@@ -15,6 +15,8 @@ on:
 
 permissions:
   contents: write
+  # To start Verify on the commit it pushes (see the last step).
+  actions: write
 
 concurrency:
   group: record-goldens-${{ github.ref }}
@@ -58,11 +60,23 @@ jobs:
           # Someone may have pushed while this ran. Replay on top of it; where both changed a
           # golden, keep the one just recorded here (-X theirs is the commit being replayed).
           for attempt in 1 2 3; do
-            git pull --rebase -X theirs origin "$GITHUB_REF_NAME" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            if git pull --rebase -X theirs origin "$GITHUB_REF_NAME" && git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "PUSHED=1" >> "$GITHUB_ENV"
+              exit 0
+            fi
             sleep $((attempt * 5))
           done
           echo "Couldn't push the recorded goldens; they are in the recorded-goldens artifact." >&2
           exit 1
+      # A push made with this workflow's token starts a pull_request run that GitHub holds for a
+      # maintainer's approval. A run started on request with the same token isn't held, so start
+      # Verify on the branch here: its checks land on the pushed commit and nobody has to approve.
+      - name: Verify the pushed goldens
+        if: env.PUSHED == '1'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run verify.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
       - name: Upload the recorded goldens
         if: always()
         uses: actions/upload-artifact@v7
