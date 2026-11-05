@@ -80,7 +80,7 @@ struct SceneTests {
         defer { scene.remove() }
         let s = scene.settings
         let hidden = Shadowing.unreachable(s.editor.config.rules)
-        #expect(hidden == [Unreachable(rule: 2, by: 0)])
+        #expect(hidden.map { [$0.rule, $0.by] } == [[2, 0]])
         let id = s.editor.config.rules[2].id
         s.moveAbove(id, to: try #require(Shadowing.fix(s.editor.config.rules, hidden[0])))
         #expect(s.editor.config.rules.first?.value == "docs.github.com")
