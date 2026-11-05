@@ -10,8 +10,11 @@ struct RoutingPane: View {
     var body: some View {
         let e = model.editor
         let rules = e.config.rules
-        let hidden = Dictionary(
-            Shadowing.unreachable(rules).map { ($0.rule, $0.by) }, uniquingKeysWith: { first, _ in first })
+        let unreachable = Shadowing.unreachable(rules)
+        let hidden = Dictionary(unreachable.map { ($0.rule, $0.by) }, uniquingKeysWith: { first, _ in first })
+        let fixes = Dictionary(
+            unreachable.compactMap { u in Shadowing.fix(rules, u).map { (u.rule, $0) } },
+            uniquingKeysWith: { first, _ in first })
         Form {
             NoticesSection(model: model)
 
@@ -32,9 +35,10 @@ struct RoutingPane: View {
                     .accessibilityIdentifier("routing-empty")
                 } else {
                     RulesTable(
-                        rules: rules, hiddenBy: hidden, editor: e, selection: $model.selected,
+                        rules: rules, hiddenBy: hidden, fixes: fixes, editor: e, selection: $model.selected,
                         onEdit: { model.editSelected() }, onDelete: { model.deleteSelected() },
-                        onMove: { id, to in model.edit { $0.moveRule(id, to: to) } }
+                        onMove: { id, to in model.edit { $0.moveRule(id, to: to) } },
+                        onMoveAbove: { id, to in model.moveAbove(id, to: to) }
                     )
                     // Up to eight rows show at once; the table scrolls the rest.
                     .frame(height: CGFloat(min(max(rules.count, 3), 8)) * RulesTable.rowHeight + 10)
@@ -118,7 +122,10 @@ struct RuleRow: View {
     let index: Int
     let rule: Rule
     let hiddenBy: Int?
+    /// Where moving this rule makes it match again, when it never matches.
+    let fix: Int?
     let editor: Editor
+    var onMoveAbove: (Int) -> Void = { _ in }
 
     var body: some View {
         let browser = editor.config.browser(of: rule)
@@ -140,12 +147,21 @@ struct RuleRow: View {
                     Text(rule.value).lineLimit(1).truncationMode(.middle)
                 }
                 if let by = hiddenBy {
-                    Label(
-                        "Never matches: rule \(by + 1) always matches first",
-                        systemImage: "exclamationmark.triangle.fill"
-                    )
+                    HStack(spacing: 8) {
+                        Label(
+                            "Never matches: rule \(by + 1) always matches first",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(.orange)
+                        .lineLimit(1)
+                        if let fix {
+                            Button("Move Above Rule \(fix + 1)") { onMoveAbove(fix) }
+                                .buttonStyle(.link)
+                                .help("Move this rule above rule \(fix + 1), so it matches first")
+                                .accessibilityIdentifier("move-above-\(index + 1)")
+                        }
+                    }
                     .font(.caption)
-                    .foregroundStyle(.orange)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -178,20 +194,40 @@ struct RuleSheet: View {
         if let draft = model.draft {
             let e = model.editor
             let browser = draft.browser ?? e.config.browser
+            let preview = draft.preview(rules: e.config.rules, recent: model.recentLinks)
             Form {
                 Section {
-                    Picker("Match", selection: binding(\.condition)) {
+                    Picker(
+                        "Match",
+                        selection: Binding(
+                            get: { model.draft?.condition ?? .domain },
+                            set: { model.draft?.selectCondition($0) })
+                    ) {
                         ForEach(Condition.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    TextField(
-                        "Pattern", text: binding(\.value), prompt: Text(placeholder(draft.condition))
-                    )
-                    .accessibilityIdentifier("draft-value")
+                    // A bordered field that starts at the left, so a long link reads from its start.
+                    LabeledContent("Pattern") {
+                        TextField(
+                            "Pattern",
+                            text: Binding(
+                                get: { model.draft?.value ?? "" }, set: { model.draft?.enterPattern($0) }),
+                            prompt: Text(placeholder(draft.condition))
+                        )
+                        .labelsHidden()
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("draft-value")
+                    }
                 } header: {
                     Text(draft.isNew ? "New Rule" : "Edit Rule").font(.headline)
                 } footer: {
-                    Footer(hint(draft.condition))
+                    if let preview {
+                        PatternPreview(preview: preview, showsProblem: draft.error == nil)
+                    } else {
+                        Footer(hint(draft.condition))
+                    }
                 }
                 Section("Open in") {
                     BrowserPicker(
@@ -228,12 +264,6 @@ struct RuleSheet: View {
         }
     }
 
-    private func binding<T>(_ keyPath: WritableKeyPath<Draft, T>) -> Binding<T> {
-        Binding(
-            get: { model.draft![keyPath: keyPath] },
-            set: { model.draft?[keyPath: keyPath] = $0 })
-    }
-
     private func placeholder(_ condition: Condition) -> String {
         switch condition {
         case .domain: "github.com"
@@ -248,5 +278,41 @@ struct RuleSheet: View {
         case .contains: "Text anywhere in the link, ignoring case."
         case .exact: "The whole link, ignoring case."
         }
+    }
+}
+
+/// Under the pattern, as it is typed: what it matches, why it can't match, and which recent links
+/// it would have matched.
+struct PatternPreview: View {
+    let preview: RulePreview
+    /// False while the sheet already shows the same problem as the reason Done was refused.
+    let showsProblem: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let summary = preview.summary { Text(summary) }
+            if let problem = preview.problem, showsProblem { warning(problem) }
+            if let hidden = preview.hiddenBy { warning(hidden) }
+            if let recent = preview.recent {
+                Text(recent.text).padding(.top, 2)
+                ForEach(recent.examples, id: \.self) { link in
+                    Text(link)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .padding(.leading, 10)
+                }
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("pattern-preview")
+    }
+
+    private func warning(_ text: String) -> some View {
+        Label(text, systemImage: "exclamationmark.triangle.fill")
+            .foregroundStyle(.orange)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

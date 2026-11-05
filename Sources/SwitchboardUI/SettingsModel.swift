@@ -92,7 +92,13 @@ public final class SettingsModel: ObservableObject {
     @Published public var pane: Pane = .general
     @Published public var failure: Failure?
     @Published public var selected: RuleID?
-    @Published public var draft: Draft?
+    @Published public var draft: Draft? {
+        didSet {
+            if let draft, draft.id != oldValue?.id { recentLinks = editor.recentLinks() }
+        }
+    }
+    /// Links from history, newest first, read when a rule sheet opens for its preview.
+    @Published public private(set) var recentLinks: [String] = []
     @Published public var testURL = ""
     /// `nil` until the first answer arrives.
     @Published public private(set) var login: LoginStatus?
@@ -236,6 +242,12 @@ public final class SettingsModel: ObservableObject {
         edit { $0.deleteRule(id) }
         let rules = editor.config.rules
         selected = rules.isEmpty ? nil : rules[min(i, rules.count - 1)].id
+    }
+
+    /// Moves a rule that never matches above the rule that hides it, and selects it.
+    public func moveAbove(_ id: RuleID, to index: Int) {
+        edit { $0.moveRule(id, to: index) }
+        selected = id
     }
 
     /// Validates the draft and saves it into the config, or shows why not.

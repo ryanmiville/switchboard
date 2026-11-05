@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import SwitchboardCore
+import SwitchboardEditor
 import Testing
 
 @testable import SwitchboardUI
@@ -53,6 +54,38 @@ struct SceneTests {
         let scene = try Scenes.make("rule-error")
         defer { scene.remove() }
         #expect(scene.settings.draft?.error?.contains("isn’t a domain") == true)
+    }
+
+    @Test func theRuleSheetPreviewCountsTheRecentLinksThePatternMatches() throws {
+        let scene = try Scenes.make("rule-preview")
+        defer { scene.remove() }
+        let s = scene.settings
+        let preview = try #require(s.draft?.preview(rules: s.editor.config.rules, recent: s.recentLinks))
+        #expect(preview.recent?.matched == 3)
+        #expect(preview.recent?.total == 5)
+        #expect(preview.recent?.examples.first == "https://github.com/acme/api/pull/12")
+    }
+
+    @Test func aLinkPastedIntoANewDomainRuleKeepsItsHostAndSaysWhichRuleHidesIt() throws {
+        let scene = try Scenes.make("rule-hidden")
+        defer { scene.remove() }
+        let s = scene.settings
+        #expect(s.draft?.value == "docs.github.com")
+        let preview = try #require(s.draft?.preview(rules: s.editor.config.rules, recent: s.recentLinks))
+        #expect(preview.hiddenBy?.hasPrefix("Never matches: rule 1") == true)
+    }
+
+    @Test func movingAHiddenRuleAboveTheRuleThatHidesItMakesEveryRuleMatch() throws {
+        let scene = try Scenes.make("routing")
+        defer { scene.remove() }
+        let s = scene.settings
+        let hidden = Shadowing.unreachable(s.editor.config.rules)
+        #expect(hidden == [Unreachable(rule: 2, by: 0)])
+        let id = s.editor.config.rules[2].id
+        s.moveAbove(id, to: try #require(Shadowing.fix(s.editor.config.rules, hidden[0])))
+        #expect(s.editor.config.rules.first?.value == "docs.github.com")
+        #expect(s.selected == id)
+        #expect(Shadowing.unreachable(s.editor.config.rules).isEmpty)
     }
 
     @Test func aConflictKeepsTheEditsAndOffersBothChoices() throws {
