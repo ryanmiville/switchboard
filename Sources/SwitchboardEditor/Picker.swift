@@ -10,7 +10,6 @@ public struct Choice: Equatable, Sendable {
     public var destination: Destination
     public var browserName: String
     public var profileName: String
-    public var favorite: Bool
     /// Why it can't be opened: the browser or profile is gone, or its profiles can't be read.
     public var error: String?
 
@@ -58,10 +57,9 @@ public enum QuickSwitch {
     static let unavailable =
         "This browser or profile is unavailable. Refresh, or hide it in Quick Switch settings."
 
-    /// Every destination: favorites first in their saved order, then each installed browser's
-    /// profiles, then destinations the settings name that aren't installed (shown with an error,
-    /// never replaced by a similar one in another browser), then browsers whose profiles couldn't
-    /// be read.
+    /// Every destination: each installed browser's profiles, then destinations the settings name
+    /// that aren't installed (shown with an error, never replaced by a similar one in another
+    /// browser), then browsers whose profiles couldn't be read.
     public static func choices(_ installed: [BrowserInfo], _ settings: PickerSettings) -> [Choice] {
         var found: [Choice] = []
         var errors: [(String, String)] = []
@@ -71,42 +69,28 @@ public enum QuickSwitch {
                     found.append(
                         Choice(
                             destination: Destination(browser: browser.locator, profile: p.directory),
-                            browserName: browser.name, profileName: p.name, favorite: false))
+                            browserName: browser.name, profileName: p.name))
                 }
             } catch {
                 errors.append((browser.locator, error.description))
             }
         }
         func errorOf(_ locator: String) -> String? { errors.first { $0.0 == locator }?.1 }
-        var pinned: [Choice] = []
-        for f in settings.favorites where !pinned.contains(where: { $0.destination == f.destination }) {
-            let exists = found.contains { $0.destination == f.destination }
-            pinned.append(
-                Choice(
-                    destination: f.destination,
-                    browserName: installed.first { $0.locator == f.browser }?.name
-                        ?? Browsers.fileStem(f.browser),
-                    profileName: f.name, favorite: true,
-                    error: exists ? nil : (errorOf(f.browser) ?? unavailable)))
-        }
-        found.removeAll { c in pinned.contains { $0.destination == c.destination } }
-        for d in settings.destinations ?? [] where !(pinned + found).contains(where: { $0.destination == d })
-        {
+        for d in settings.destinations ?? [] where !found.contains(where: { $0.destination == d }) {
             found.append(
                 Choice(
                     destination: d, browserName: Browsers.fileStem(d.browser), profileName: d.profile,
-                    favorite: false,
                     error: errorOf(d.browser) ?? unavailable))
         }
         for (locator, error) in errors
-        where !(pinned + found).contains(where: { $0.destination.browser == locator }) {
+        where !found.contains(where: { $0.destination.browser == locator }) {
             found.append(
                 Choice(
                     destination: Destination(browser: locator, profile: ""),
                     browserName: Browsers.fileStem(locator),
-                    profileName: "Profiles unavailable", favorite: false, error: error))
+                    profileName: "Profiles unavailable", error: error))
         }
-        return pinned + found
+        return found
     }
 
     /// The destination the browser window is showing, so the panel can leave it out. Only that
@@ -164,7 +148,7 @@ public struct PickerState: Sendable {
 
     public init() {}
 
-    /// The destinations the settings allow, favorites first, without the one being switched from,
+    /// The destinations the settings allow, without the one being switched from,
     /// narrowed by the query.
     public var shown: [Choice] {
         all.filter { settings.includes($0.destination) && $0.destination != current && matches($0) }

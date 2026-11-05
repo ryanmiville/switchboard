@@ -42,50 +42,25 @@ public struct Shortcut: Codable, Hashable, Sendable {
     }
 }
 
-/// A pinned destination with the label the picker shows.
-public struct Favorite: Codable, Hashable, Sendable {
-    public var browser: String
-    public var profile: String
-    public var name: String
-
-    public init(browser: String, profile: String, name: String) {
-        self.browser = browser
-        self.profile = profile
-        self.name = name
-    }
-
-    public init(from decoder: Decoder) throws {
-        try decoder.refuseUnknownKeys(["browser", "name", "profile"])
-        let c = try decoder.container(keyedBy: AnyKey.self)
-        browser = try c.decode(String.self, forKey: AnyKey("browser"))
-        profile = try c.decode(String.self, forKey: AnyKey("profile"))
-        name = try c.decode(String.self, forKey: AnyKey("name"))
-    }
-
-    public var destination: Destination { Destination(browser: browser, profile: profile) }
-}
-
 public struct PickerSettings: Codable, Equatable, Sendable {
     public var shortcut: Shortcut
-    public var favorites: [Favorite]
     /// The destinations the picker shows. `nil` shows everything; empty shows nothing.
     public var destinations: [Destination]?
 
     public init(
-        shortcut: Shortcut = .standard, favorites: [Favorite] = [], destinations: [Destination]? = nil
+        shortcut: Shortcut = .standard, destinations: [Destination]? = nil
     ) {
         self.shortcut = shortcut
-        self.favorites = favorites
         self.destinations = destinations
     }
 
-    enum CodingKeys: String, CodingKey { case shortcut, favorites, destinations }
+    enum CodingKeys: String, CodingKey { case shortcut, destinations }
 
+    /// `favorites`, from before the picker dropped them, is accepted and left out of the next save.
     public init(from decoder: Decoder) throws {
         try decoder.refuseUnknownKeys(["destinations", "favorites", "shortcut"])
         let c = try decoder.container(keyedBy: CodingKeys.self)
         shortcut = try c.decodeIfPresent(Shortcut.self, forKey: .shortcut) ?? .standard
-        favorites = try c.decodeIfPresent([Favorite].self, forKey: .favorites) ?? []
         destinations = try c.decodeIfPresent([Destination].self, forKey: .destinations)
     }
 

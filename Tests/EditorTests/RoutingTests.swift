@@ -109,17 +109,15 @@ struct PickerTests {
         return p
     }
 
-    @Test func favoritesComeFirstWithTheirSavedNames() throws {
+    @Test func everyProfileIsShownByBrowserWithItsOwnName() throws {
         let scene = try SceneHome()
         defer { scene.remove() }
         let p = picker(scene)
         #expect(
             p.shown.map(\.label) == [
-                "Helium · Ryan", "Google Chrome · Chrome Ryan", "Google Chrome · Side project",
-                "Google Chrome · Work",
-                "Helium · Work",
+                "Google Chrome · Chrome Ryan", "Google Chrome · Side project", "Google Chrome · Work",
+                "Helium · Ryan", "Helium · Work",
             ])
-        #expect(p.shown[0].favorite)
     }
 
     @Test func hiddenDestinationsAreLeftOut() throws {
@@ -137,19 +135,22 @@ struct PickerTests {
         defer { scene.remove() }
         var p = picker(scene)
         let opened = p.open(
-            3, browsers: scene.browsers, history: scene.temporary.historyStore, now: Timestamp(5))
+            2, browsers: scene.browsers, history: scene.temporary.historyStore, now: Timestamp(5))
         #expect(opened == Destination(browser: scene.chrome, profile: "Profile 2"))
         #expect(scene.temporary.waitForLaunches(1) == [["--profile-directory=Profile 2", p.link]])
         #expect(try scene.temporary.historyStore.entries().first?.source == .picker)
     }
 
-    @Test func aFavoriteThatIsGoneShowsWhyAndOpensNothing() throws {
+    @Test func aShownDestinationThatIsGoneShowsWhyAndOpensNothing() throws {
         let scene = try SceneHome()
         defer { scene.remove() }
         var p = picker(scene)
-        p.settings.favorites.append(Favorite(browser: scene.helium, profile: "Profile 9", name: "Old work"))
+        p.settings.destinations = [
+            Destination(browser: scene.helium, profile: "Default"),
+            Destination(browser: scene.helium, profile: "Profile 9"),
+        ]
         p.all = QuickSwitch.choices(scene.browsers.installed(), p.settings)
-        let gone = try #require(p.shown.firstIndex { $0.profileName == "Old work" })
+        let gone = try #require(p.shown.firstIndex { $0.profileName == "Profile 9" })
         #expect(p.shown[gone].error != nil)
         let r1 = p.open(
             gone, browsers: scene.browsers, history: scene.temporary.historyStore, now: Timestamp(0))

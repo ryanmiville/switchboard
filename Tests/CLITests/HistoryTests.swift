@@ -61,18 +61,32 @@ struct PickerTests {
         let f = try Fixture()
         try f.rules([])
         _ = try f.json(["picker", "shortcut", "Ctrl+Shift+K"]).ok()
-        _ = try f.json(["picker", "favorite", "--browser", "Chrome", "--profile", "Profile 3"]).ok()
         _ = try f.json(["picker", "destination", "--browser", "Helium", "--profile", "Work", "--hide"]).ok()
         let picker = try f.readConfig()["picker"]
         #expect(picker["shortcut"] == "ctrl+shift+k")
-        #expect(
-            picker["favorites"][0] == ["browser": .string(f.chrome), "profile": "Profile 3", "name": "Work"])
         #expect(picker["destinations"].array.count == 5, "every destination but Helium · Work")
         _ = try f.json(["picker", "show-all"]).ok()
         #expect(try !f.readConfig()["picker"].has("destinations"))
-        _ = try f.json(["picker", "unfavorite", "--browser", "Chrome", "--profile", "Profile 3"]).ok()
-        #expect(try f.readConfig()["picker"]["favorites"] == [])
         #expect(try f.json(["picker", "shortcut", "space"]).status == 2)
+        #expect(
+            try f.json(["picker", "favorite", "--browser", "Chrome", "--profile", "Profile 3"]).status == 2)
+    }
+
+    @Test func favoritesInAnOlderConfigAreAcceptedAndDroppedByTheNextPickerChange() throws {
+        let f = try Fixture()
+        try f.config([
+            "browser": .string(f.helium), "defaultProfile": "Default", "rules": [],
+            "picker": [
+                "shortcut": "ctrl+alt+space",
+                "favorites": [["browser": .string(f.helium), "profile": "Default", "name": "Ryan"]],
+            ],
+        ])
+        _ = try f.json(["picker", "show"]).ok()
+        #expect(try f.readConfig()["picker"].has("favorites"), "reading leaves the file alone")
+        _ = try f.json(["picker", "shortcut", "ctrl+shift+k"]).ok()
+        let picker = try f.readConfig()["picker"]
+        #expect(!picker.has("favorites"))
+        #expect(picker["shortcut"] == "ctrl+shift+k")
     }
 
     @Test func onlyThenAddingSetsAnExactListOfDestinations() throws {

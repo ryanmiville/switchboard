@@ -139,9 +139,11 @@ public enum Scenes {
             p.state.link = ""
             p.tabRead(.failure(.automationDenied), browserID: nil)
         },
-        Scene(name: "picker-unavailable-favorite", kind: .picker) { _, p, home in
-            p.state.settings.favorites.append(
-                Favorite(browser: home.helium, profile: "Profile 9", name: "Old work"))
+        Scene(name: "picker-unavailable", kind: .picker) { _, p, home in
+            p.state.settings.destinations = [
+                Destination(browser: home.helium, profile: "Default"),
+                Destination(browser: home.helium, profile: "Profile 9"),
+            ]
             p.state.all = QuickSwitch.choices(home.browsers.installed(), p.state.settings)
         },
         Scene(name: "picker-empty", kind: .picker) { _, p, _ in p.state.settings.destinations = [] },

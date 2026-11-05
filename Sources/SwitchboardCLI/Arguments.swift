@@ -5,7 +5,7 @@ import SwitchboardCore
 // only parsed here; CommandLineTool runs them with a Session, so nothing reads the process.
 
 /// The CLI's version, shown by `--version` and `doctor`.
-public let cliVersion = "0.1.0"
+public let cliVersion = "0.2.0"
 
 struct Root: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -320,18 +320,16 @@ struct HistoryOff: ParsableCommand {
 struct PickerCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "picker",
-        abstract: "Show and change the Quick Switch picker: its shortcut, favorites, and destinations.",
+        abstract: "Show and change the Quick Switch picker: its shortcut and destinations.",
         subcommands: [
-            PickerShow.self, PickerShortcut.self, PickerFavorite.self, PickerUnfavorite.self,
-            PickerDestination.self,
-            PickerShowAll.self,
+            PickerShow.self, PickerShortcut.self, PickerDestination.self, PickerShowAll.self,
         ])
 }
 
 struct PickerShow: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "show",
-        abstract: "Show the picker's shortcut, favorites, and which destinations it shows.")
+        abstract: "Show the picker's shortcut and which destinations it shows.")
 
     @OptionGroup var global: GlobalOptions
 }
@@ -342,36 +340,6 @@ struct PickerShortcut: ParsableCommand {
         abstract: "Set the global shortcut that opens the picker, such as ctrl+alt+space.")
 
     @Argument var shortcut: String
-    @OptionGroup var change: ChangeOptions
-    @OptionGroup var global: GlobalOptions
-}
-
-struct PickerFavorite: ParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "favorite", abstract: "Pin a destination at the top of the picker.")
-
-    @Option(help: "The browser: a path, id, or name.")
-    var browser: String
-
-    @Option(help: "The profile, resolved in that browser.")
-    var profile: String
-
-    @Option(help: "The label to show. Defaults to the profile's display name.")
-    var name: String?
-
-    @OptionGroup var change: ChangeOptions
-    @OptionGroup var global: GlobalOptions
-}
-
-struct PickerUnfavorite: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "unfavorite", abstract: "Unpin a favorite.")
-
-    @Option(help: "The browser: a path, id, or name.")
-    var browser: String
-
-    @Option(help: "The profile, resolved in that browser.")
-    var profile: String
-
     @OptionGroup var change: ChangeOptions
     @OptionGroup var global: GlobalOptions
 }

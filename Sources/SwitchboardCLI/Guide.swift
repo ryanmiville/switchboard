@@ -80,7 +80,7 @@ enum Guide {
         \(Identity.cliName) history [--limit <n>] [--full-urls]
         \(Identity.cliName) history clear [--dry-run]
         \(Identity.cliName) history (on | off)
-        \(Identity.cliName) picker (show | shortcut <keys> | favorite | unfavorite | destination [--only | --hide] | show-all)
+        \(Identity.cliName) picker (show | shortcut <keys> | destination [--only | --hide] | show-all)
         \(Identity.cliName) config
         \(Identity.cliName) doctor
         ```

@@ -263,19 +263,6 @@ public final class SettingsModel: ObservableObject {
         edit { $0.setPicker(settings) }
     }
 
-    public func toggleFavorite(_ choice: Choice) {
-        var settings = editor.config.picker ?? PickerSettings()
-        if settings.favorites.contains(where: { $0.destination == choice.destination }) {
-            settings.favorites.removeAll { $0.destination == choice.destination }
-        } else {
-            settings.favorites.append(
-                Favorite(
-                    browser: choice.destination.browser, profile: choice.destination.profile,
-                    name: choice.profileName))
-        }
-        edit { $0.setPicker(settings) }
-    }
-
     // MARK: Rules
 
     public var selectedIndex: Int? { selected.flatMap { editor.config.index(of: $0) } }
