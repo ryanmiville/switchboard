@@ -43,12 +43,20 @@ public struct SettingsView: View {
             pane.navigationTitle(model.pane.title)
                 .toolbar {
                     ToolbarItemGroup(placement: .navigation) {
-                        Button("Back", systemImage: "chevron.backward") { model.goBack() }
-                            .disabled(model.backPanes.isEmpty)
-                            .keyboardShortcut("[", modifiers: .command)
-                        Button("Forward", systemImage: "chevron.forward") { model.goForward() }
-                            .disabled(model.forwardPanes.isEmpty)
-                            .keyboardShortcut("]", modifiers: .command)
+                        Button {
+                            model.goBack()
+                        } label: {
+                            Label("Back", systemImage: "chevron.backward")
+                        }
+                        .disabled(model.backPanes.isEmpty)
+                        .keyboardShortcut("[", modifiers: .command)
+                        Button {
+                            model.goForward()
+                        } label: {
+                            Label("Forward", systemImage: "chevron.forward")
+                        }
+                        .disabled(model.forwardPanes.isEmpty)
+                        .keyboardShortcut("]", modifiers: .command)
                     }
                 }
         }
