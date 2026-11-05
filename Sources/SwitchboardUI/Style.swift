@@ -11,6 +11,7 @@ extension Pane {
         switch self {
         case .general: Color(nsColor: .systemGray)
         case .routing: Color(nsColor: .systemBlue)
+        case .recent: Color(nsColor: .systemPurple)
         case .quickSwitch: Color(nsColor: .systemOrange)
         }
     }
@@ -20,6 +21,7 @@ extension Pane {
         switch self {
         case .general: "Where unmatched links open, starting at login, link history, and the settings file."
         case .routing: "Rules that send links to a browser profile. The first rule that matches wins."
+        case .recent: "Links that opened, where they went, and the rule that sent them there."
         case .quickSwitch: "A shortcut that opens the page in front in another profile, ignoring the rules."
         }
     }

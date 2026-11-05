@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var session = RoutingSession()
     private let shortcut = GlobalShortcut()
     private var watcher: FileWatcher?
+    private var historyWatcher: FileWatcher?
     private var startupError: String?
     private var resident = false
     /// Settings was asked for, so the window stays when it appears.
@@ -64,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 isDefaultBrowser: { DefaultBrowser.isDefault },
                 makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
                 openQuickSwitch: { holder.delegate?.summonPicker() },
+                now: { AppDelegate.now() },
                 openDefaultBrowserSettings: { DefaultBrowser.openSettings() }))
         super.init()
         holder.delegate = self
@@ -127,6 +129,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 self?.settings.edit { $0.checkExternal() }
                 self?.picker.refresh()
             }
+        }
+        // Quick Switch records links too, and another copy of the app may route them.
+        historyWatcher = FileWatcher(home.historyFile) { [weak self] in
+            Task { @MainActor in self?.settings.reloadRecent() }
         }
     }
 
@@ -228,6 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     func applicationWillTerminate(_ notification: Notification) {
         watcher?.stop()
+        historyWatcher?.stop()
         shortcut.stop()
     }
 }

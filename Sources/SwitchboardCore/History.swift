@@ -25,6 +25,12 @@ public enum History {
         public var index: Int
         public var condition: Condition
         public var value: String
+
+        public init(index: Int, condition: Condition, value: String) {
+            self.index = index
+            self.condition = condition
+            self.value = value
+        }
     }
 
     public struct Entry: Codable, Equatable, Sendable {

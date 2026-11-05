@@ -106,6 +106,24 @@ public enum Scenes {
                 reason: "The profile “Profile 9” is unavailable. Choose an existing profile.",
                 rule: s.editor.config.rules[0].id)
         },
+        Scene(name: "recent", kind: .settings) { s, _, home in
+            s.pane = .recent
+            try Scenes.recordLinks(home)
+            s.reloadRecent()
+        },
+        Scene(name: "recent-empty", kind: .settings) { s, _, _ in s.pane = .recent },
+        Scene(name: "recent-history-off", kind: .settings) { s, _, home in
+            s.pane = .recent
+            try Scenes.recordLinks(home)
+            s.editor.edit { $0.history = HistorySettings(enabled: false) }
+            s.editor.flush()
+            s.reloadRecent()
+        },
+        Scene(name: "recent-add-rule", kind: .ruleSheet) { s, _, home in
+            try Scenes.recordLinks(home)
+            s.reloadRecent()
+            if let entry = s.editor.recent.first(where: { $0.source == .picker }) { s.addRule(for: entry) }
+        },
         Scene(name: "quick-switch", kind: .settings) { s, _, _ in s.pane = .quickSwitch },
         // Summoned over Helium's Ryan profile, which the list leaves out.
         Scene(name: "picker", kind: .picker) { _, p, home in Scenes.fromRyan(p, home) },
@@ -141,6 +159,43 @@ public enum Scenes {
                     link: "https://github.com/acme/api/pull/12",
                     windowTitle: "Pull request #12 - Helium - Ryan")),
             browserID: helium)
+    }
+
+    /// Five links in history, as the scene home's rules sent them, the newest two minutes before
+    /// `SettingsServices.sceneTime`.
+    static func recordLinks(_ home: SceneHome) throws {
+        func entry(
+            minutesAgo: Int64, _ url: String, _ source: History.Source, rule: History.RuleSnapshot? = nil,
+            _ browser: String, _ profile: String, _ name: String, error: String? = nil
+        ) -> History.Entry {
+            History.Entry(
+                id: History.newID(),
+                time: Timestamp(SettingsServices.sceneTime.seconds - minutesAgo * 60).rfc3339,
+                url: url, source: source, rule: rule, browser: browser, profile: profile, profileName: name,
+                result: error == nil ? .launched : .failed, error: error)
+        }
+        let oldestFirst = [
+            entry(
+                minutesAgo: 26 * 60, "https://example.com/login", .rule,
+                rule: History.RuleSnapshot(index: 4, condition: .exact, value: "https://example.com/login"),
+                home.chrome, "Profile 3", "Side project",
+                error: LaunchError.spawn("Operation not permitted").description),
+            entry(
+                minutesAgo: 3 * 60, "https://www.figma.com/file/k2Jd/roadmap", .picker, home.chrome,
+                "Profile 3", "Side project"),
+            entry(
+                minutesAgo: 62, "https://news.ycombinator.com/item?id=41234567", .default, home.helium,
+                "Default", "Ryan"),
+            entry(
+                minutesAgo: 14, "https://acme.atlassian.net/browse/OPS-7?focusedCommentId=1", .rule,
+                rule: History.RuleSnapshot(index: 2, condition: .contains, value: "acme"),
+                home.chrome, "Profile 2", "Work"),
+            entry(
+                minutesAgo: 2, "https://github.com/acme/api/pull/12", .rule,
+                rule: History.RuleSnapshot(index: 1, condition: .domain, value: "github.com"),
+                home.helium, "Profile 1", "Work"),
+        ]
+        for link in oldestFirst { try home.temporary.historyStore.append(link) }
     }
 
     /// Builds the scene named `name` over a fresh fixture home.

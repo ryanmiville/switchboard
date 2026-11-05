@@ -19,6 +19,8 @@ public struct SettingsServices {
     public var openDefaultBrowserSettings: @MainActor () -> Void
     /// Shows the Quick Switch panel.
     public var openQuickSwitch: @MainActor () -> Void
+    /// The current time, for how long ago a recent link opened.
+    public var now: @MainActor () -> Timestamp
 
     public init(
         loginStatus: @escaping @Sendable () -> LoginStatus,
@@ -28,8 +30,10 @@ public struct SettingsServices {
         isDefaultBrowser: @escaping @MainActor () -> Bool,
         makeDefaultBrowser: @escaping @MainActor (@escaping @MainActor @Sendable (String?) -> Void) -> Void,
         openQuickSwitch: @escaping @MainActor () -> Void,
+        now: @escaping @MainActor () -> Timestamp,
         openDefaultBrowserSettings: @escaping @MainActor () -> Void = {}
     ) {
+        self.now = now
         self.openDefaultBrowserSettings = openDefaultBrowserSettings
         self.loginStatus = loginStatus
         self.setLoginEnabled = setLoginEnabled
@@ -40,20 +44,24 @@ public struct SettingsServices {
         self.openQuickSwitch = openQuickSwitch
     }
 
+    /// The time scenes and tests are shown at: 2025-10-29T17:04:11Z.
+    public static let sceneTime = Timestamp(1_761_757_451)
+
     /// No system calls: launch at login is shown as `login`, this is the default browser when
-    /// `isDefault`, and asking to make it the default fails with `makeDefaultError` when given.
+    /// `isDefault`, asking to make it the default fails with `makeDefaultError` when given, and the
+    /// time is always `sceneTime`.
     public static func shown(
         login: LoginStatus = .disabled, isDefault: Bool = true, makeDefaultError: String? = nil
     ) -> SettingsServices {
         SettingsServices(
             loginStatus: { login }, setLoginEnabled: { $0 ? .enabled : .disabled }, openLoginSettings: {},
             registerShortcut: { _ in nil }, isDefaultBrowser: { isDefault },
-            makeDefaultBrowser: { $0(makeDefaultError) }, openQuickSwitch: {})
+            makeDefaultBrowser: { $0(makeDefaultError) }, openQuickSwitch: {}, now: { Self.sceneTime })
     }
 }
 
 public enum Pane: String, CaseIterable, Identifiable, Sendable {
-    case general, routing, quickSwitch
+    case general, routing, recent, quickSwitch
 
     public var id: String { rawValue }
 
@@ -61,6 +69,7 @@ public enum Pane: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: "General"
         case .routing: "Routing"
+        case .recent: "Recent Links"
         case .quickSwitch: "Quick Switch"
         }
     }
@@ -69,6 +78,7 @@ public enum Pane: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: "gearshape"
         case .routing: "arrow.triangle.branch"
+        case .recent: "clock.arrow.circlepath"
         case .quickSwitch: "bolt"
         }
     }
@@ -126,6 +136,8 @@ public final class SettingsModel: ObservableObject {
     @Published public private(set) var isDefaultBrowser = true
     @Published public private(set) var defaultBrowserError: String?
     @Published public private(set) var shortcutError: String?
+    /// When the window last looked at the clock, for how long ago recent links opened.
+    @Published public private(set) var now: Timestamp
 
     public let services: SettingsServices
     private var autosave: Task<Void, Never>?
@@ -153,12 +165,14 @@ public final class SettingsModel: ObservableObject {
     public init(editor: Editor, services: SettingsServices) {
         self.editor = editor
         self.services = services
+        now = services.now()
     }
 
     /// Re-reads what the system may have changed: the file, launch at login, the default browser.
     /// Called when the window comes forward.
     public func refresh() {
         editor.checkExternal()
+        reloadRecent()
         isDefaultBrowser = services.isDefaultBrowser()
         let read = services.loginStatus
         Task {
@@ -298,6 +312,24 @@ public final class SettingsModel: ObservableObject {
             selected = rule.id
             self.draft = nil
         }
+    }
+
+    // MARK: Recent links
+
+    /// Reads history again, when the window comes forward or another process recorded a link.
+    public func reloadRecent() {
+        editor.loadRecent()
+        now = services.now()
+    }
+
+    /// Opens the rule sheet for a new rule that matches `entry`'s link.
+    public func addRule(for entry: History.Entry) {
+        draft = .forLink(entry, defaultBrowser: editor.config.browser)
+    }
+
+    public func copyLink(_ link: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(link, forType: .string)
     }
 
     // MARK: Notices

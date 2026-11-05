@@ -34,6 +34,10 @@ public struct Editor: Sendable {
     /// The file changed elsewhere while edits were pending.
     public private(set) var conflict = false
     public private(set) var historyError: String?
+    /// The newest links in history, newest first, as of the last `loadRecent()`.
+    public private(set) var recent: [History.Entry] = []
+    /// History couldn't be read.
+    public private(set) var recentError: String?
     /// Whether the file existed when it was last loaded.
     public private(set) var fileExists = false
     private var revision: String?
@@ -49,6 +53,7 @@ public struct Editor: Sendable {
         self.browsers = browsers
         installed = browsers.installed()
         reload()
+        loadRecent()
     }
 
     public var hasUnsavedChanges: Bool { dirty && loadError == nil }
@@ -268,10 +273,22 @@ public struct Editor: Sendable {
         edit { $0.history = enabled ? nil : HistorySettings(enabled: false) }
     }
 
+    /// Reads history again, for the Recent Links pane.
+    public mutating func loadRecent() {
+        do {
+            recent = try history.entries()
+            recentError = nil
+        } catch {
+            recentError = "Recent links couldn’t be read. \(error.message)"
+        }
+    }
+
     public mutating func clearHistory() {
         do {
             try history.clear()
             historyError = nil
+            recent = []
+            recentError = nil
         } catch {
             historyError = "History couldn’t be cleared. \(error.message)"
         }
