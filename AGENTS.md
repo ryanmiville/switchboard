@@ -53,7 +53,9 @@ Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
   is meant to change a scene, look at its render and `-diff` image in the failed run's
   `scene-renders` artifact, then run the **Record goldens** workflow on the branch with those
   scenes (`scenes: routing,picker`, empty for all). It records, compares again, and commits the
-  goldens. Never re-record a scene you haven't looked at, or to hide a change you didn't mean.
+  goldens, then starts Verify on the branch itself, since GitHub holds the pull_request run of a
+  bot's push for approval: that held run can be ignored, the started Verify run is the check.
+  Never re-record a scene you haven't looked at, or to hide a change you didn't mean.
 - Build the app: `scripts/bundle [--debug]` (into `.build/bundle/`; CI's macOS job runs it).
   Install it: `scripts/install [--cli]`, only when the owner asks.
 - Releases: every push to `main` that passes Verify is released by `.github/workflows/release.yml`
@@ -117,7 +119,8 @@ Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
 ## Autonomy
 
 - Run the checks, fix failures, and rerun without asking.
-- Commit and push to `main` once `scripts/check` passes. After pushing from Linux, watch CI's
+- Commit and push to `main` once `scripts/check` passes. A change on a pull request: merge it
+  yourself once Verify passes, without waiting for the owner. After pushing from Linux, watch CI's
   macOS job: it is the only check of the macOS targets.
 - Ask first before: installing the app or CLI on a real machine, changing the default browser, or
   anything that touches the owner's real `~/.config` or browser data.
