@@ -80,7 +80,8 @@ public enum Scenes {
             s.pane = .routing
             s.failure = Failure(
                 url: "https://github.com/acme/api/pull/12",
-                reason: "The profile “Profile 9” is unavailable. Choose an existing profile.")
+                reason: "The profile “Profile 9” is unavailable. Choose an existing profile.",
+                rule: s.editor.config.rules[0].id)
         },
         Scene(name: "quick-switch", kind: .settings) { s, _, _ in s.pane = .quickSwitch },
         // Summoned over Helium's Ryan profile, which the list leaves out.

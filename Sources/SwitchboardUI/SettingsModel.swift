@@ -78,10 +78,13 @@ public enum Pane: String, CaseIterable, Identifiable, Sendable {
 public struct Failure: Equatable, Sendable {
     public var url: String
     public var reason: String
+    /// The rule that sent the link where it failed, if one matched.
+    public var rule: RuleID?
 
-    public init(url: String, reason: String) {
+    public init(url: String, reason: String, rule: RuleID? = nil) {
         self.url = url
         self.reason = reason
+        self.rule = rule
     }
 }
 
@@ -260,6 +263,19 @@ public final class SettingsModel: ObservableObject {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(failure.url, forType: .string)
         self.failure = nil
+    }
+
+    /// The rule behind the failed link, while it is still in the settings.
+    public var failedRuleIndex: Int? { failure?.rule.flatMap { editor.config.index(of: $0) } }
+
+    /// Opens the rule sheet for the rule behind the failed link, on the Routing pane. The notice
+    /// stays until it is dismissed, so the link can still be copied.
+    public func fixFailedRule() {
+        guard let i = failedRuleIndex else { return }
+        let rule = editor.config.rules[i]
+        pane = .routing
+        selected = rule.id
+        draft = .editing(rule)
     }
 
     public func revealConfigFile() {

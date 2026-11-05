@@ -3,6 +3,18 @@ import SwitchboardCore
 
 // Opening a link that the system handed the app, and how long the app lives afterwards.
 
+/// Why a link couldn't be opened, and the rule that sent it there, if one matched, so Settings can
+/// offer to fix that rule.
+public struct LinkFailure: Equatable, Sendable {
+    public var reason: String
+    public var rule: RuleID?
+
+    public init(reason: String, rule: RuleID? = nil) {
+        self.reason = reason
+        self.rule = rule
+    }
+}
+
 public enum Routing {
     /// Seconds a link-only launch waits after its latest link before quitting.
     public static let idleExit = 0.5
@@ -11,7 +23,7 @@ public enum Routing {
     /// fails the link. Returns why the link couldn't be opened.
     public static func open(
         _ link: String, config: Config, browsers: Browsers, history: HistoryStore, now: Timestamp
-    ) -> String? {
+    ) -> LinkFailure? {
         let decision = Router.decide(config, link: link)
         var failure: String?
         do {
@@ -24,16 +36,20 @@ public enum Routing {
             link, destination: decision.destination,
             origin: decision.rule.map(History.Origin.rule) ?? .default,
             config: config, error: failure, now: now, store: history, browsers: browsers)
-        return failure
+        return failure.map { LinkFailure(reason: $0, rule: decision.rule.map { config.rules[$0].id }) }
     }
 
     /// A link from the system, as the app handles it: pending edits are saved first, so routing
     /// uses what the person sees. Returns why it couldn't be opened; the app shows that with
     /// recovery actions instead of opening the link anywhere else.
-    public static func receive(_ link: String, editor: inout Editor, now: Timestamp) -> String? {
+    public static func receive(_ link: String, editor: inout Editor, now: Timestamp) -> LinkFailure? {
         editor.checkExternal()
-        guard Link.isWeb(link) || Link.isLocalFile(link) else { return LaunchError.invalidURL.description }
-        guard editor.flush() else { return editor.error ?? "Your settings couldn’t be saved." }
+        guard Link.isWeb(link) || Link.isLocalFile(link) else {
+            return LinkFailure(reason: LaunchError.invalidURL.description)
+        }
+        guard editor.flush() else {
+            return LinkFailure(reason: editor.error ?? "Your settings couldn’t be saved.")
+        }
         return open(link, config: editor.config, browsers: editor.browsers, history: editor.history, now: now)
     }
 

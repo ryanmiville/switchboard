@@ -160,13 +160,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func receive(_ link: String) {
         let ticket = session.receiveLink()
-        var failure: String?
+        var failure: LinkFailure?
         settings.edit { editor in failure = Routing.receive(link, editor: &editor, now: Self.now()) }
         if let failure {
             // A failure stays on screen with recovery actions instead of opening somewhere else.
             session.stayResident()
             startResident()
-            settings.failure = Failure(url: link, reason: failure)
+            settings.failure = Failure(url: link, reason: failure.reason, rule: failure.rule)
             showSettings()
             return
         }
