@@ -62,6 +62,25 @@ struct SceneTests {
         #expect(scene.settings.editor.config.defaultProfile == "Profile 1")
     }
 
+    @Test func recentLinksListsHistoryNewestFirstWithTheRuleThatSentEach() throws {
+        let scene = try Scenes.make("recent")
+        defer { scene.remove() }
+        let recent = scene.settings.editor.recent
+        #expect(recent.first?.url == "https://github.com/acme/api/pull/12")
+        #expect(recent.first?.reason == "Rule 1: Domain github.com")
+        #expect(recent.count == 5)
+    }
+
+    @Test func addingARuleForARecentLinkStartsFromItsDomainAndQuickSwitchChoice() throws {
+        let scene = try Scenes.make("recent-add-rule")
+        defer { scene.remove() }
+        let draft = try #require(scene.settings.draft)
+        #expect(draft.isNew)
+        #expect(draft.condition == .domain)
+        #expect(draft.value == "figma.com")
+        #expect(draft.profile == "Profile 3")
+    }
+
     /// Whether SNAPSHOT_RECORD asks for `scene`: `1` for every scene, or a comma-separated list.
     static func records(_ scene: String, _ setting: String?) -> Bool {
         guard let setting, !setting.isEmpty, setting != "0" else { return false }

@@ -49,6 +49,7 @@ public struct SettingsView: View {
         switch model.pane {
         case .general: GeneralPane(model: model)
         case .routing: RoutingPane(model: model)
+        case .recent: RecentLinksPane(model: model)
         case .quickSwitch: QuickSwitchPane(model: model)
         }
     }
