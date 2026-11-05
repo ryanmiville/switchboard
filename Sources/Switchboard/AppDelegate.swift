@@ -58,17 +58,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             history: HistoryStore(url: self.home.historyFile), browsers: browsers)
         let loginItem = LoginItem()
         let holder = Holder()
-        settings = Self.shot?.scene.settings ?? SettingsModel(
-            editor: editor,
-            services: SettingsServices(
-                loginStatus: { loginItem.status() }, setLoginEnabled: { try loginItem.setEnabled($0) },
-                openLoginSettings: { loginItem.openSettings() },
-                registerShortcut: { chord in holder.delegate?.register(chord) },
-                isDefaultBrowser: { DefaultBrowser.isDefault },
-                makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
-                openQuickSwitch: { holder.delegate?.summonPicker() },
-                now: { AppDelegate.now() },
-                openDefaultBrowserSettings: { DefaultBrowser.openSettings() }))
+        let services = SettingsServices(
+            loginStatus: { loginItem.status() }, setLoginEnabled: { try loginItem.setEnabled($0) },
+            openLoginSettings: { loginItem.openSettings() },
+            registerShortcut: { chord in holder.delegate?.register(chord) },
+            isDefaultBrowser: { DefaultBrowser.isDefault },
+            makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
+            openQuickSwitch: { holder.delegate?.summonPicker() },
+            now: { AppDelegate.now() },
+            openDefaultBrowserSettings: { DefaultBrowser.openSettings() })
+        // `--shoot` shows a fixture scene's settings instead of the real ones.
+        settings = Self.shot?.scene.settings ?? SettingsModel(editor: editor, services: services)
         super.init()
         holder.delegate = self
         picker = QuickSwitchPanel(
