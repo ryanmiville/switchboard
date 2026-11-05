@@ -44,6 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     /// `--describe-window`: open Settings, print `WindowReport`, quit.
     static var describesWindow = false
+    /// `--shoot`: show a fixture scene's settings in the real window, capture it from the screen, quit.
+    static var shot: WindowShot?
 
     override init() {
         let (home, env) = Env.fromProcess()
@@ -56,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             history: HistoryStore(url: self.home.historyFile), browsers: browsers)
         let loginItem = LoginItem()
         let holder = Holder()
-        settings = SettingsModel(
+        settings = Self.shot?.scene.settings ?? SettingsModel(
             editor: editor,
             services: SettingsServices(
                 loginStatus: { loginItem.status() }, setLoginEnabled: { try loginItem.setEnabled($0) },
@@ -101,6 +103,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let startupError {
             settings.failure = Failure(url: "", reason: startupError)
             showSettings()
+        }
+        if let shot = Self.shot {
+            showSettings()
+            Task { @MainActor in await shot.take() }
         }
         if Self.describesWindow {
             showSettings()
