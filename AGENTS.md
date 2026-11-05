@@ -122,6 +122,12 @@ Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
 - Commit and push to `main` once `scripts/check` passes. A change on a pull request: merge it
   yourself once Verify passes, without waiting for the owner. After pushing from Linux, watch CI's
   macOS job: it is the only check of the macOS targets.
+- Several threads work in parallel. Don't merge `main` into a green pull request just because
+  `main` moved: `main` has no up-to-date rule, and its own Verify run checks the combination.
+  Merge `main` in only when GitHub reports a conflict (two branches changed the same golden PNG,
+  which can't be merged line by line), then re-record only the scenes that conflicted. After
+  merging, watch `main`'s Verify run; if a scene there differs because two changes met, look at
+  its render and run Record goldens on `main` for those scenes.
 - Ask first before: installing the app or CLI on a real machine, changing the default browser, or
   anything that touches the owner's real `~/.config` or browser data.
 
