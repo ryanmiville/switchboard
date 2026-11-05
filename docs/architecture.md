@@ -29,7 +29,7 @@ and is tested on Linux (cloud sessions and CI) as well as on the Mac.
 | Identity | `Switchboard Next` while both apps ran, then the previous app's names (below). One constants file, so the rename was one change |
 | Formats | `config.json` and `history.jsonl` as the Rust rewrite writes them (`rules`, unknown keys refused). The previous app's files still load |
 | CLI | swift-argument-parser. The Rust CLI's commands, `--json` everywhere, its exit codes (usage errors exit 2) |
-| UI | SwiftUI, macOS 13+. Panes and states as named scenes with snapshot goldens |
+| UI | SwiftUI, macOS 14+. Panes and states as named scenes with snapshot goldens |
 | Hard-coded picker favorites | Not ported. A new config has no favorites |
 
 ## Identity

@@ -78,10 +78,13 @@ public enum Pane: String, CaseIterable, Identifiable, Sendable {
 public struct Failure: Equatable, Sendable {
     public var url: String
     public var reason: String
+    /// The rule that sent the link where it failed, if one matched.
+    public var rule: RuleID?
 
-    public init(url: String, reason: String) {
+    public init(url: String, reason: String, rule: RuleID? = nil) {
         self.url = url
         self.reason = reason
+        self.rule = rule
     }
 }
 
@@ -89,7 +92,19 @@ public struct Failure: Equatable, Sendable {
 @MainActor
 public final class SettingsModel: ObservableObject {
     @Published public var editor: Editor
-    @Published public var pane: Pane = .general
+    /// The pane on show. Every change is remembered for the toolbar's back and forward buttons.
+    @Published public var pane: Pane = .general {
+        didSet {
+            guard pane != oldValue, !navigating else { return }
+            backPanes.append(oldValue)
+            forwardPanes.removeAll()
+        }
+    }
+    /// The panes shown before this one, the most recent last.
+    @Published public private(set) var backPanes: [Pane] = []
+    /// The panes left by going back, the most recent last.
+    @Published public private(set) var forwardPanes: [Pane] = []
+    private var navigating = false
     @Published public var failure: Failure?
     @Published public var selected: RuleID?
     @Published public var draft: Draft? {
@@ -114,6 +129,26 @@ public final class SettingsModel: ObservableObject {
 
     public let services: SettingsServices
     private var autosave: Task<Void, Never>?
+
+    /// Returns to the pane shown before this one.
+    public func goBack() {
+        guard let previous = backPanes.popLast() else { return }
+        forwardPanes.append(pane)
+        show(previous)
+    }
+
+    /// Returns to the pane left by going back.
+    public func goForward() {
+        guard let next = forwardPanes.popLast() else { return }
+        backPanes.append(pane)
+        show(next)
+    }
+
+    private func show(_ pane: Pane) {
+        navigating = true
+        self.pane = pane
+        navigating = false
+    }
 
     public init(editor: Editor, services: SettingsServices) {
         self.editor = editor
@@ -272,6 +307,19 @@ public final class SettingsModel: ObservableObject {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(failure.url, forType: .string)
         self.failure = nil
+    }
+
+    /// The rule behind the failed link, while it is still in the settings.
+    public var failedRuleIndex: Int? { failure?.rule.flatMap { editor.config.index(of: $0) } }
+
+    /// Opens the rule sheet for the rule behind the failed link, on the Routing pane. The notice
+    /// stays until it is dismissed, so the link can still be copied.
+    public func fixFailedRule() {
+        guard let i = failedRuleIndex else { return }
+        let rule = editor.config.rules[i]
+        pane = .routing
+        selected = rule.id
+        draft = .editing(rule)
     }
 
     public func revealConfigFile() {
