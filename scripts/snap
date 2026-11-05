@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Renders every scene (or the ones named) in light and dark through the app's --snap, into a
-# folder, so a change can be compared before and after. Scenes use fixture homes only.
+# folder, so a change can be compared before and after. Offscreen, so it needs no screen, but the
+# sidebar, toolbar and glass come out blank; scripts/shoot captures the real window. Scenes use
+# fixture homes only.
 #
 #   scripts/snap                        every scene into .build/snap/
 #   scripts/snap routing picker         just these scenes

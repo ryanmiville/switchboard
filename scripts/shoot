@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Shows every scene (or the ones named) in the bundled app's real window, on screen, and captures
+# it in light and dark: the whole window, sidebar, toolbar and glass included, which offscreen
+# renders (scripts/snap) can't draw. Scenes use fixture homes only.
+#
+#   scripts/shoot                          every scene into .build/shots/
+#   scripts/shoot routing picker           just these scenes
+#   SHOT_DIR=/tmp/before scripts/shoot     somewhere else
+#   SHOT_COMPARE=1 scripts/shoot           also compare with the goldens; a difference writes
+#                                          <scene>-<theme>-diff.png and fails
+#   SHOT_RECORD=1 scripts/shoot            rewrite every golden (SHOT_RECORD=routing,picker: those)
+#
+# Goldens are Tests/UITests/Goldens/<scene>-<light|dark>.png, recorded on CI's runner (its 1x
+# screen and macOS version); the "Record goldens" workflow records them. It needs a screen and
+# permission to record it: on a Mac, allow Screen Recording for the terminal. macOS only; run
+# scripts/bundle first.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+[[ "$(uname -s)" == Darwin ]] || { echo "shoot: macOS only" >&2; exit 2; }
+
+app=".build/bundle/Switchboard.app/Contents/MacOS/Switchboard"
+[ -x "$app" ] || { echo "shoot: no $app; run scripts/bundle first" >&2; exit 1; }
+out="${SHOT_DIR:-.build/shots}"
+goldens=Tests/UITests/Goldens
+record="${SHOT_RECORD:-}"
+
+# Whether SHOT_RECORD asks for this scene: 1 for every scene, or a comma-separated list.
+records() {
+  [[ -n "$record" && "$record" != 0 ]] || return 1
+  [[ "$record" == 1 ]] && return 0
+  local name
+  IFS=',' read -ra names <<<"$record"
+  for name in "${names[@]}"; do [[ "$(echo "$name" | xargs)" == "$1" ]] && return 0; done
+  return 1
+}
+
+if [[ $# -gt 0 ]]; then
+  scenes=("$@")
+else
+  scenes=()
+  while IFS= read -r name; do scenes+=("$name"); done < <("$app" --list-scenes)
+fi
+
+home=$(mktemp -d)
+trap 'rm -rf "$home"' EXIT
+mkdir -p "$out" "$home/Applications"
+failed=()
+for scene in "${scenes[@]}"; do
+  for theme in light dark; do
+    shot="$out/$scene-$theme.png"
+    golden=()
+    if [[ "${SHOT_COMPARE:-}" == 1 ]] && ! records "$scene"; then golden=(--golden "$goldens/$scene-$theme.png"); fi
+    # Never the real home: the app reads $HOME and browser folders, though scenes don't use them.
+    if HOME="$home" SWITCHBOARD_APPLICATIONS="$home/Applications" \
+      "$app" --shoot "$shot" --scene "$scene" --theme "$theme" ${golden[@]+"${golden[@]}"}; then
+      if records "$scene"; then cp "$shot" "$goldens/$scene-$theme.png"; fi
+    else
+      failed+=("$scene-$theme")
+    fi
+  done
+done
+
+if [[ ${#failed[@]} -gt 0 ]]; then
+  echo >&2
+  echo "shoot: ${#failed[@]} failed: ${failed[*]}" >&2
+  echo "If a change is meant, look at the shot and its -diff image, then run the \"Record goldens\"" >&2
+  echo "workflow with those scenes." >&2
+  exit 1
+fi

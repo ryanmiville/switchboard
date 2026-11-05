@@ -1,8 +1,7 @@
 import AppKit
 
-/// What macOS made of the settings window: its toolbar, title bar and view classes. Renders can't
-/// show the system's sidebar, toolbar or glass, and CI can't take screenshots, so this is how an
-/// agent checks the window's chrome. `Switchboard --describe-window` opens Settings, prints this
+/// What macOS made of the settings window: its toolbar, title bar and view classes, in words, to go
+/// with the window shots (`WindowShot`). `Switchboard --describe-window` opens Settings, prints this
 /// and quits; scripts/launch-check runs it.
 @MainActor
 enum WindowReport {

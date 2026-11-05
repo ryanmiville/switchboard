@@ -4,7 +4,7 @@ import SwitchboardCore
 import SwitchboardEditor
 import SwitchboardFixtures
 
-/// Named starting states for headless renders (`Switchboard --snap --scene <name>`), tests and
+/// Named starting states for window shots (`--shoot`), offscreen renders (`--snap`), tests and
 /// goldens. Each starts from a fresh `SceneHome`, so renders never read the real home. Add a scene
 /// for every new pane or state.
 @MainActor
