@@ -15,12 +15,13 @@ public enum Scenes {
         let setup: @MainActor @Sendable (SettingsModel, PickerModel, SceneHome) throws -> Void
     }
 
-    enum Kind: Sendable { case settings, ruleSheet, picker }
+    public enum Kind: Sendable { case settings, ruleSheet, picker }
 
     /// A scene ready to draw, with the temporary home it reads. Call `remove()` when done.
     public struct Instance {
         public let view: AnyView
         public let size: CGSize
+        public let kind: Kind
         public let settings: SettingsModel
         public let picker: PickerModel
         let home: SceneHome
@@ -237,7 +238,8 @@ public enum Scenes {
             view = AnyView(PickerView(model: picker))
             size = CGSize(width: PickerModel.width, height: picker.height)
         }
-        return Instance(view: view, size: size, settings: settings, picker: picker, home: home)
+        return Instance(
+            view: view, size: size, kind: scene.kind, settings: settings, picker: picker, home: home)
     }
 }
 
