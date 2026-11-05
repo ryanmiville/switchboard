@@ -29,6 +29,19 @@ public enum Shadowing {
         }
     }
 
+    /// Where to move a rule that never matches so that it does: just above the rule that hides it.
+    /// `nil` when that move would leave it unreachable or hide another rule instead, as with two
+    /// rules that cover each other.
+    public static func fix(_ rules: [Rule], _ hidden: Unreachable) -> Int? {
+        guard rules.indices.contains(hidden.rule), hidden.by < hidden.rule else { return nil }
+        var moved = rules
+        let rule = moved.remove(at: hidden.rule)
+        moved.insert(rule, at: hidden.by)
+        let stillHidden = unreachable(moved).contains { moved[$0.rule].id == rule.id }
+        guard !stillHidden, newlyUnreachable(before: rules, after: moved).isEmpty else { return nil }
+        return hidden.by
+    }
+
     /// Rules unreachable in `after` that weren't already unreachable in `before`, followed by id.
     public static func newlyUnreachable(before: [Rule], after: [Rule]) -> [Unreachable] {
         let existing = Set(unreachable(before).map { before[$0.rule].id })
