@@ -36,11 +36,26 @@ struct RoutingTests {
         e.edit { $0.rules[0].profile = "Profile 9" }
         // The edit can't be saved (the profile doesn't exist), so the link isn't routed with it.
         let reason = Routing.receive("https://github.com/x", editor: &e, now: Timestamp(0))
-        #expect(reason == ProfileError.missing("Profile 9").description)
+        #expect(reason == LinkFailure(reason: ProfileError.missing("Profile 9").description))
         #expect(
-            Routing.receive("github.com", editor: &e, now: Timestamp(0)) == LaunchError.invalidURL.description
-        )
+            Routing.receive("github.com", editor: &e, now: Timestamp(0))
+                == LinkFailure(reason: LaunchError.invalidURL.description))
         Thread.sleep(forTimeInterval: 0.2)
+        #expect(scene.temporary.recordedLaunches().isEmpty)
+    }
+
+    @Test func aLinkThatFailsInARulesBrowserNamesThatRuleSoItCanBeFixed() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        var e = editor(scene)
+        let helium = try #require(scene.browsers.installed().first { $0.locator == scene.helium })
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o644], ofItemAtPath: helium.executable.path)
+        let fromRule = try #require(Routing.receive("https://github.com/x", editor: &e, now: Timestamp(0)))
+        #expect(fromRule.rule == e.config.rules[0].id)
+        #expect(fromRule.reason == LaunchError.notExecutable(helium.executable.path).description)
+        let fromDefault = try #require(Routing.receive("https://example.org", editor: &e, now: Timestamp(0)))
+        #expect(fromDefault.rule == nil)
         #expect(scene.temporary.recordedLaunches().isEmpty)
     }
 

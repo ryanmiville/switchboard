@@ -94,6 +94,9 @@ struct NoticesSection: View {
                             "\(failure.reason) Fix the issue here, or copy the link to open it yourself.",
                         detail: failure.url
                     ) {
+                        if model.failedRuleIndex != nil {
+                            Button("Fix Rule…") { model.fixFailedRule() }
+                        }
                         Button("Copy Link") { model.copyFailedLink() }
                         Button("Dismiss") { model.failure = nil }
                     }
