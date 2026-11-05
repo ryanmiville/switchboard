@@ -92,7 +92,19 @@ public struct Failure: Equatable, Sendable {
 @MainActor
 public final class SettingsModel: ObservableObject {
     @Published public var editor: Editor
-    @Published public var pane: Pane = .general
+    /// The pane on show. Every change is remembered for the toolbar's back and forward buttons.
+    @Published public var pane: Pane = .general {
+        didSet {
+            guard pane != oldValue, !navigating else { return }
+            backPanes.append(oldValue)
+            forwardPanes.removeAll()
+        }
+    }
+    /// The panes shown before this one, the most recent last.
+    @Published public private(set) var backPanes: [Pane] = []
+    /// The panes left by going back, the most recent last.
+    @Published public private(set) var forwardPanes: [Pane] = []
+    private var navigating = false
     @Published public var failure: Failure?
     @Published public var selected: RuleID?
     @Published public var draft: Draft?
@@ -111,6 +123,26 @@ public final class SettingsModel: ObservableObject {
 
     public let services: SettingsServices
     private var autosave: Task<Void, Never>?
+
+    /// Returns to the pane shown before this one.
+    public func goBack() {
+        guard let previous = backPanes.popLast() else { return }
+        forwardPanes.append(pane)
+        show(previous)
+    }
+
+    /// Returns to the pane left by going back.
+    public func goForward() {
+        guard let next = forwardPanes.popLast() else { return }
+        backPanes.append(pane)
+        show(next)
+    }
+
+    private func show(_ pane: Pane) {
+        navigating = true
+        self.pane = pane
+        navigating = false
+    }
 
     public init(editor: Editor, services: SettingsServices) {
         self.editor = editor
