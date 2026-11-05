@@ -177,3 +177,6 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
       the rows after a moment and letting go hides them.
 - [ ] With Automation denied, the panel says so and Automation Settings… opens the right pane.
 - [ ] A change made with `switchboard` while Settings is open shows up within a second.
+- [ ] Settings → Recent Links lists a link opened from another app (or Quick Switch) within a
+      second, with the rule that sent it; its ⋯ menu's Add Rule for This Link… opens the rule
+      sheet filled in with its domain.
