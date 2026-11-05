@@ -1,6 +1,6 @@
 import SwitchboardCore
 
-// `picker`: the Quick Switch picker's shortcut, favorites, and which destinations it shows.
+// `picker`: the Quick Switch picker's shortcut and which destinations it shows.
 
 private func settings(_ config: Config) -> PickerSettings { config.picker ?? PickerSettings() }
 
@@ -8,7 +8,7 @@ private func describe(_ config: Config) -> String {
     let s = settings(config)
     let shown =
         s.destinations.map { "\($0.count) destination\($0.count == 1 ? "" : "s")" } ?? "every destination"
-    return "the picker: shortcut \(s.shortcut.text), \(s.favorites.count) favorites, showing \(shown)."
+    return "the picker: shortcut \(s.shortcut.text), showing \(shown)."
 }
 
 /// Resolves a browser and profile the way `route` does, into what the config saves.
@@ -41,8 +41,6 @@ extension PickerShow: Runnable {
         let s = settings(snapshot.config)
         let browsers = session.context.browsers
         var text = "Shortcut: \(s.shortcut.text)\n"
-        text += s.favorites.isEmpty ? "No favorites.\n" : "Favorites:\n"
-        for f in s.favorites { text += "  \(f.name)  \(browsers.displayName(f.browser)) · \(f.profile)\n" }
         if let list = s.destinations {
             text += "Shows \(list.count) destinations:\n"
             for d in list { text += "  \(browsers.displayName(d.browser)) · \(d.profile)\n" }
@@ -64,29 +62,6 @@ extension PickerShortcut: Runnable {
                 throw .invalid("Write a shortcut as modifiers and a key, such as ctrl+alt+space.")
             }
             s.shortcut = Shortcut(text)
-        }
-    }
-}
-
-extension PickerFavorite: Runnable {
-    func execute(_ session: Session) throws(OperationError) -> Output {
-        try changePicker(session, change) { operations, s throws(OperationError) in
-            let (d, profileName) = try destination(operations, browser, profile)
-            let label = name ?? profileName
-            if let index = s.favorites.firstIndex(where: { $0.destination == d }) {
-                s.favorites[index].name = label
-            } else {
-                s.favorites.append(Favorite(browser: d.browser, profile: d.profile, name: label))
-            }
-        }
-    }
-}
-
-extension PickerUnfavorite: Runnable {
-    func execute(_ session: Session) throws(OperationError) -> Output {
-        try changePicker(session, change) { operations, s throws(OperationError) in
-            let (d, _) = try destination(operations, browser, profile)
-            s.favorites.removeAll { $0.destination == d }
         }
     }
 }

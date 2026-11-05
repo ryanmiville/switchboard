@@ -116,7 +116,7 @@ public final class PickerModel: ObservableObject {
 }
 
 /// The Quick Switch panel's content, Spotlight-style: a search field that narrows the
-/// destinations, the link being switched under it, then the destinations, favorites first. Hold ⌘
+/// destinations, the link being switched under it, then the destinations. Hold ⌘
 /// to see the number that opens each. The panel puts it in AppKit's glass, with the corner below,
 /// so the window's shape and shadow are the glass's.
 public struct PickerView: View {

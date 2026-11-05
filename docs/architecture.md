@@ -30,7 +30,7 @@ and is tested on Linux (cloud sessions and CI) as well as on the Mac.
 | Formats | `config.json` and `history.jsonl` as the Rust rewrite writes them (`rules`, unknown keys refused). The previous app's files still load |
 | CLI | swift-argument-parser. The Rust CLI's commands, `--json` everywhere, its exit codes (usage errors exit 2) |
 | UI | SwiftUI, macOS 14+. Panes and states as named scenes with snapshot goldens |
-| Hard-coded picker favorites | Not ported. A new config has no favorites |
+| Picker favorites | Removed (2026-11-05). The picker shows the destinations turned on in settings, narrowed by typing. A `favorites` key in an older config loads and is dropped on the next save |
 
 ## Identity
 

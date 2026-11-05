@@ -2,7 +2,7 @@ import Foundation
 import SwitchboardCore
 
 /// The state scenes and app tests start from: a temporary home with fixture Helium and Chrome
-/// installs, a config with four rules (one of them hidden by another) and a Quick Switch favorite.
+/// installs, a config with four rules (one of them hidden by another).
 /// Never the real home.
 public struct SceneHome: Sendable {
     public let temporary: TemporaryHome
@@ -26,8 +26,7 @@ public struct SceneHome: Sendable {
                 Rule(.contains, "acme", profile: "Profile 2", browser: chrome),
                 Rule(.domain, "docs.github.com", profile: "Default"),
                 Rule(.exact, "https://example.com/login", profile: "Profile 3", browser: chrome),
-            ],
-            picker: PickerSettings(favorites: [Favorite(browser: helium, profile: "Default", name: "Ryan")]))
+            ])
         try temporary.configStore.save(config, expecting: nil)
     }
 

@@ -55,15 +55,6 @@ struct QuickSwitchPane: View {
                                     .foregroundStyle(choice.error == nil ? Color.secondary : Color.red)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
-                            Spacer()
-                            Button {
-                                model.toggleFavorite(choice)
-                            } label: {
-                                Image(systemName: choice.favorite ? "star.fill" : "star")
-                                    .foregroundStyle(choice.favorite ? Color.yellow : Color.secondary)
-                            }
-                            .buttonStyle(.borderless)
-                            .help(choice.favorite ? "Remove from favorites" : "Add to favorites")
                         }
                     }
                     .toggleStyle(.switch)
@@ -72,7 +63,9 @@ struct QuickSwitchPane: View {
             } header: {
                 Text("Destinations")
             } footer: {
-                Footer("Favorites come first in the panel.")
+                Footer(
+                    "Turn on the profiles you switch to. In the panel, type part of a name to narrow the list."
+                )
             }
         }
         .formStyle(.grouped)

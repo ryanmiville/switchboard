@@ -38,11 +38,20 @@ struct ConfigTests {
         #expect(!text.contains("routes"))
         #expect(!text.contains("\\/"), "slashes are written plainly")
         #expect(
-            text.components(separatedBy: "\"browser\"").count - 1 == 3,
+            text.components(separatedBy: "\"browser\"").count - 1 == 2,
             "only the overriding rule saves a browser")
         #expect(text.hasSuffix("}\n"))
         let again = try Config.parse(Data(text.utf8))
         #expect(again.encoded() == config.encoded())
+    }
+
+    @Test func pickerFavoritesFromBeforeTheyWereDroppedLoadAndAreLeftOutOfTheNextSave() throws {
+        let config = try Config.parse(Data(Self.currentApp.utf8))
+        #expect(config.picker?.shortcut.text == "ctrl+alt+space")
+        #expect(config.picker?.destinations == nil)
+        let text = String(decoding: config.encoded(), as: UTF8.self)
+        #expect(!text.contains("favorites"))
+        #expect(text.contains("ctrl+alt+space"))
     }
 
     @Test func unknownKeysAreRefusedSoTyposSurface() {
