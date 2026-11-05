@@ -1,12 +1,29 @@
 # Switchboard
 
-A personal macOS URL router that opens links in Chromium browser profiles, chosen by rules you
-define, with a `switchboard` command-line tool that can do everything the app can.
+**Every link opens in the right browser profile.**
 
-A Swift port of the Rust rewrite's architecture, it replaced the previous Swift app in place: same
-name, bundle identifier, settings (`~/.config/switchboard/config.json`) and history. See
-[`docs/architecture.md`](docs/architecture.md) for the design and [`AGENTS.md`](AGENTS.md) for how
-to work on it.
+Switchboard is Arc's Air Traffic Control, as its own little Mac app, for the Chromium browser you
+already use. Set it as your default browser and it quietly sends each link you click, in Slack,
+Mail, your terminal or anywhere else, to the browser and profile you chose for it. Work links land
+in your work profile, everything else in your personal one.
+
+![Switchboard's routing settings: a list of rules sending GitHub, Hacker News, Google Docs, Figma and other sites to chosen profiles](docs/images/routing.png)
+
+## What it does
+
+- **Rules, in order.** Match a link by domain (`github.com` and its subdomains), by text it
+  contains, or exactly. The first rule that matches wins; anything else goes to your default
+  profile. Test a link in Settings to see where it would go without opening it.
+- **Any Chromium browser.** Chrome, Arc, Brave, Edge, Helium, Vivaldi, Opera and Chromium,
+  including their beta and dev builds. Rules can mix browsers.
+- **Quick Switch.** Already on a page in the wrong profile? Press ⌃⌥Space (or your own shortcut),
+  type a few letters to filter, and press Return to reopen it in another profile. Choose which
+  profiles show up in Settings → Quick Switch.
+- **Recent Links.** See where each link went and which rule sent it there, and turn any of them
+  into a new rule in one click.
+- **Lives in the menu bar.** No Dock icon, no windows flashing up. It can open at login.
+- **A command line too.** The `switchboard` command can read and change every setting, so you can
+  script your rules or hand them to an AI agent.
 
 ## Install
 
@@ -16,27 +33,25 @@ Requires macOS 14 or newer on Apple silicon.
 brew install --cask ryanmiville/tap/switchboard
 ```
 
-That puts `Switchboard.app` in `/Applications` and links the `switchboard` command. Every change on
-`main` that passes CI is released, and the cask follows the newest release:
-`brew update && brew upgrade --cask ryanmiville/tap/switchboard`. To route links through it, choose
-Set Default… in Settings → General, or System Settings → Desktop & Dock → Default web browser.
+Update with `brew upgrade --cask ryanmiville/tap/switchboard`.
 
-From source (Xcode 26.4 or newer, Swift 6.3), `scripts/install --cli` builds the app into
-`~/Applications` and links `~/.local/bin/switchboard`. Keep one copy: both have the same bundle
-identifier, and macOS opens links with whichever it picks.
+## Set up
 
-Upgrading from the previous Swift app: delete its copy in `/Applications` first. Settings and
-history carry over as they are.
+1. **Open Switchboard.** It appears in the menu bar. Choose Settings… from its menu.
+2. **Make it your default browser.** In Settings → General, click Set Default… and confirm the
+   macOS prompt. (Or pick Switchboard in System Settings → Desktop & Dock → Default web browser.)
+3. **Pick a default destination** in Settings → General: the browser and profile for links no
+   rule matches.
+4. **Add rules** in Settings → Routing.
 
-## Development
+### Quick Switch needs Automation permission
 
-```sh
-scripts/check              # Everything CI runs, on macOS or Linux
-scripts/check RouterTests  # Format, lint and file sizes, then only the matching tests
-scripts/format             # Apply the checked-in formatting
-scripts/bundle --debug     # Build the .app into .build/bundle without installing it
-scripts/snap               # Render every scene in light and dark into .build/snap
-```
+Quick Switch reads the current tab's link from your browser, which macOS treats as Automation.
+The first time you use it over a browser, macOS asks whether Switchboard may control that browser:
+click **Allow**. It asks once for each browser.
 
-The core, CLI and editor model also build and test on Linux; `scripts/cloud-setup.sh` prepares a
-Linux cloud session.
+If you clicked Don't Allow, the Quick Switch panel says so. Turn it back on in System Settings →
+Privacy & Security → Automation → Switchboard, by switching on your browser. macOS may ask again
+after Switchboard updates.
+
+Switchboard needs no Accessibility permission. The Quick Switch shortcut works without it.
