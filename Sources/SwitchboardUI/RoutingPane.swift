@@ -156,7 +156,8 @@ struct RuleRow: View {
                         .lineLimit(1)
                         if let fix {
                             Button("Move Above Rule \(fix + 1)") { onMoveAbove(fix) }
-                                .buttonStyle(.link)
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
                                 .help("Move this rule above rule \(fix + 1), so it matches first")
                                 .accessibilityIdentifier("move-above-\(index + 1)")
                         }
@@ -206,8 +207,10 @@ struct RuleSheet: View {
                         ForEach(Condition.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    // A bordered field that starts at the left, so a long link reads from its start.
-                    LabeledContent("Pattern") {
+                    // A bordered field filling the row after its label, so a long link reads from
+                    // its start.
+                    HStack(spacing: 12) {
+                        Text("Pattern")
                         TextField(
                             "Pattern",
                             text: Binding(
@@ -224,7 +227,7 @@ struct RuleSheet: View {
                     Text(draft.isNew ? "New Rule" : "Edit Rule").font(.headline)
                 } footer: {
                     if let preview {
-                        PatternPreview(preview: preview, showsProblem: draft.error == nil)
+                        PatternPreview(preview: preview)
                     } else {
                         Footer(hint(draft.condition))
                     }
@@ -240,7 +243,8 @@ struct RuleSheet: View {
                         model.draft?.profile = $0
                     }
                 }
-                if let error = draft.error {
+                // A problem the preview already shows isn't repeated.
+                if let error = draft.error, error != preview?.problem {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
@@ -285,13 +289,11 @@ struct RuleSheet: View {
 /// it would have matched.
 struct PatternPreview: View {
     let preview: RulePreview
-    /// False while the sheet already shows the same problem as the reason Done was refused.
-    let showsProblem: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let summary = preview.summary { Text(summary) }
-            if let problem = preview.problem, showsProblem { warning(problem) }
+            if let problem = preview.problem { warning(problem) }
             if let hidden = preview.hiddenBy { warning(hidden) }
             if let recent = preview.recent {
                 Text(recent.text).padding(.top, 2)

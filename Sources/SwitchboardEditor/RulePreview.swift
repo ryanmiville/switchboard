@@ -69,7 +69,7 @@ extension Draft {
     static func summary(_ condition: Condition, _ pattern: String) -> String {
         switch condition {
         case .domain:
-            "Links to \(pattern) and its subdomains, such as www.\(pattern). Not my\(pattern)."
+            "Links to \(pattern) and anything ending in .\(pattern). Not my\(pattern)."
         case .contains:
             "Every link with “\(pattern)” anywhere in it, in any case."
         case .exact:

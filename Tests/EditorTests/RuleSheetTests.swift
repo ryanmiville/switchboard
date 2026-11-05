@@ -59,7 +59,7 @@ struct RuleSheetTests {
         var draft = Draft.newRule()
         draft.value = "github.com"
         let preview = try #require(draft.preview(rules: [], recent: []))
-        #expect(preview.summary?.contains("www.github.com") == true)
+        #expect(preview.summary?.contains("anything ending in .github.com") == true)
         #expect(preview.summary?.contains("Not mygithub.com") == true)
         #expect(preview.problem == nil)
         #expect(preview.recent == nil, "no history, no count")
