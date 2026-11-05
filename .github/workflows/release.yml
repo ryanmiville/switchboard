@@ -25,11 +25,12 @@ concurrency:
 
 jobs:
   release:
-    # A Verify run that passed for a push to main, or a manual run from main.
+    # A Verify run that passed for a push to main (or one Record goldens started after pushing to
+    # main, since GitHub holds the push's own run), or a manual run from main.
     if: >-
       github.repository == 'ryanmiville/switchboard' && (
         (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
-          && github.event.workflow_run.event == 'push') ||
+          && contains(fromJSON('["push", "workflow_dispatch"]'), github.event.workflow_run.event)) ||
         (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: macos-26
     timeout-minutes: 30

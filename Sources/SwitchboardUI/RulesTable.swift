@@ -9,12 +9,16 @@ import SwitchboardEditor
 struct RulesTable: NSViewRepresentable {
     let rules: [Rule]
     let hiddenBy: [Int: Int]
+    /// For each rule that never matches, the position that makes it match (`Shadowing.fix`).
+    let fixes: [Int: Int]
     let editor: Editor
     @Binding var selection: RuleID?
     let onEdit: () -> Void
     let onDelete: () -> Void
     /// Moves a rule to its final position (0-based).
     let onMove: (RuleID, Int) -> Void
+    /// Moves a rule that never matches above the rule that hides it.
+    let onMoveAbove: (RuleID, Int) -> Void
     @Environment(\.isEnabled) private var isEnabled
 
     static let rowHeight: CGFloat = 44
@@ -56,13 +60,13 @@ struct RulesTable: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         let previous = context.coordinator.parent
         let reload =
-            previous.rules != rules || previous.hiddenBy != hiddenBy
+            previous.rules != rules || previous.hiddenBy != hiddenBy || previous.fixes != fixes
             || previous.editor.config.browser != editor.config.browser
         context.coordinator.update(from: self, reload: reload)
     }
 
     @MainActor
-    final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
+    final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
         static let pasteboardType = NSPasteboard.PasteboardType(Identity.bundleID + ".rule-row")
         var parent: RulesTable
         weak var table: RulesTableView?
@@ -92,9 +96,12 @@ struct RulesTable: NSViewRepresentable {
             guard parent.rules.indices.contains(row) else { return nil }
             let cell =
                 tableView.makeView(withIdentifier: RuleCell.identifier, owner: nil) as? RuleCell ?? RuleCell()
+            let rule = parent.rules[row]
+            let moveAbove = parent.onMoveAbove
             cell.content = AnyView(
                 RuleRow(
-                    index: row, rule: parent.rules[row], hiddenBy: parent.hiddenBy[row], editor: parent.editor
+                    index: row, rule: rule, hiddenBy: parent.hiddenBy[row], fix: parent.fixes[row],
+                    editor: parent.editor, onMoveAbove: { moveAbove(rule.id, $0) }
                 )
                 .padding(.horizontal, 6))
             return cell
@@ -152,8 +159,19 @@ struct RulesTable: NSViewRepresentable {
                 self
             menu.addItem(withTitle: "Delete Rule", action: #selector(deleteClicked), keyEquivalent: "")
                 .target = self
+            menu.addItem(withTitle: "Move Above", action: #selector(moveAboveClicked), keyEquivalent: "")
+                .target = self
+            menu.delegate = self
             return menu
         }()
+
+        /// "Move Above Rule N" shows only on a rule that never matches and has a move that fixes it.
+        func menuNeedsUpdate(_ menu: NSMenu) {
+            guard let item = menu.items.last, let table else { return }
+            let fix = parent.fixes[table.clickedRow]
+            item.isHidden = fix == nil
+            item.title = fix.map { "Move Above Rule \($0 + 1)" } ?? "Move Above"
+        }
 
         private func selectClicked() -> Bool {
             guard let table, parent.rules.indices.contains(table.clickedRow) else { return false }
@@ -167,6 +185,13 @@ struct RulesTable: NSViewRepresentable {
 
         @objc private func deleteClicked() {
             if selectClicked() { parent.onDelete() }
+        }
+
+        @objc private func moveAboveClicked() {
+            guard let table, parent.rules.indices.contains(table.clickedRow),
+                let fix = parent.fixes[table.clickedRow]
+            else { return }
+            parent.onMoveAbove(parent.rules[table.clickedRow].id, fix)
         }
     }
 }

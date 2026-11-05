@@ -102,10 +102,28 @@ public struct Failure: Equatable, Sendable {
 @MainActor
 public final class SettingsModel: ObservableObject {
     @Published public var editor: Editor
-    @Published public var pane: Pane = .general
+    /// The pane on show. Every change is remembered for the toolbar's back and forward buttons.
+    @Published public var pane: Pane = .general {
+        didSet {
+            guard pane != oldValue, !navigating else { return }
+            backPanes.append(oldValue)
+            forwardPanes.removeAll()
+        }
+    }
+    /// The panes shown before this one, the most recent last.
+    @Published public private(set) var backPanes: [Pane] = []
+    /// The panes left by going back, the most recent last.
+    @Published public private(set) var forwardPanes: [Pane] = []
+    private var navigating = false
     @Published public var failure: Failure?
     @Published public var selected: RuleID?
-    @Published public var draft: Draft?
+    @Published public var draft: Draft? {
+        didSet {
+            if let draft, draft.id != oldValue?.id { recentLinks = editor.recentLinks() }
+        }
+    }
+    /// Links from history, newest first, read when a rule sheet opens for its preview.
+    @Published public private(set) var recentLinks: [String] = []
     @Published public var testURL = ""
     /// `nil` until the first answer arrives.
     @Published public private(set) var login: LoginStatus?
@@ -123,6 +141,26 @@ public final class SettingsModel: ObservableObject {
 
     public let services: SettingsServices
     private var autosave: Task<Void, Never>?
+
+    /// Returns to the pane shown before this one.
+    public func goBack() {
+        guard let previous = backPanes.popLast() else { return }
+        forwardPanes.append(pane)
+        show(previous)
+    }
+
+    /// Returns to the pane left by going back.
+    public func goForward() {
+        guard let next = forwardPanes.popLast() else { return }
+        backPanes.append(pane)
+        show(next)
+    }
+
+    private func show(_ pane: Pane) {
+        navigating = true
+        self.pane = pane
+        navigating = false
+    }
 
     public init(editor: Editor, services: SettingsServices) {
         self.editor = editor
@@ -253,6 +291,12 @@ public final class SettingsModel: ObservableObject {
         edit { $0.deleteRule(id) }
         let rules = editor.config.rules
         selected = rules.isEmpty ? nil : rules[min(i, rules.count - 1)].id
+    }
+
+    /// Moves a rule that never matches above the rule that hides it, and selects it.
+    public func moveAbove(_ id: RuleID, to index: Int) {
+        edit { $0.moveRule(id, to: index) }
+        selected = id
     }
 
     /// Validates the draft and saves it into the config, or shows why not.

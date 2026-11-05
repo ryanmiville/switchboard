@@ -10,7 +10,7 @@ to work on it.
 
 ## Install
 
-Requires macOS 13 or newer on Apple silicon.
+Requires macOS 14 or newer on Apple silicon.
 
 ```sh
 brew install --cask ryanmiville/tap/switchboard

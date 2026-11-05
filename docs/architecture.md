@@ -29,7 +29,7 @@ and is tested on Linux (cloud sessions and CI) as well as on the Mac.
 | Identity | `Switchboard Next` while both apps ran, then the previous app's names (below). One constants file, so the rename was one change |
 | Formats | `config.json` and `history.jsonl` as the Rust rewrite writes them (`rules`, unknown keys refused). The previous app's files still load |
 | CLI | swift-argument-parser. The Rust CLI's commands, `--json` everywhere, its exit codes (usage errors exit 2) |
-| UI | SwiftUI, macOS 13+. Panes and states as named scenes with snapshot goldens |
+| UI | SwiftUI, macOS 14+. Panes and states as named scenes with snapshot goldens |
 | Hard-coded picker favorites | Not ported. A new config has no favorites |
 
 ## Identity
@@ -180,3 +180,8 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
 - [ ] Settings → Recent Links lists a link opened from another app (or Quick Switch) within a
       second, with the rule that sent it; its ⋯ menu's Add Rule for This Link… opens the rule
       sheet filled in with its domain.
+- [ ] In the rule sheet, pasting a whole link (⌘V) into a Domain rule's pattern leaves only its
+      host in the field, while typing a link one key at a time stays as typed; the preview under
+      the field changes as you type.
+- [ ] On a rule marked "Never matches", Move Above Rule N (on the row and in its context menu)
+      moves it there and the warning goes.

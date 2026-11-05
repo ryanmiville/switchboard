@@ -87,6 +87,26 @@ struct ShadowingTests {
         let after = [a, b, rule(.domain, "api.github.com")]
         #expect(Shadowing.newlyUnreachable(before: [b], after: after) == [Unreachable(rule: 2, by: 1)])
     }
+
+    @Test func aHiddenSubdomainRuleIsFixedByMovingItAboveTheRuleThatHidesIt() {
+        let rules = [rule(.domain, "github.com"), rule(.contains, "acme"), rule(.domain, "docs.github.com")]
+        let hidden = Shadowing.unreachable(rules)
+        #expect(hidden == [Unreachable(rule: 2, by: 0)])
+        #expect(Shadowing.fix(rules, hidden[0]) == 0)
+    }
+
+    @Test func rulesThatCoverEachOtherHaveNoMoveThatFixesThem() {
+        let rules = [rule(.contains, "acme"), rule(.contains, "ACME")]
+        #expect(Shadowing.fix(rules, Unreachable(rule: 1, by: 0)) == nil)
+    }
+
+    @Test func aMoveThatWouldStillLeaveTheRuleHiddenIsNotOffered() {
+        // Rule 3 is hidden by rule 1 and rule 2; moving it above rule 2 alone wouldn't help, but
+        // the first rule that hides it is rule 1, so the move goes above that.
+        let rules = [rule(.contains, "git"), rule(.domain, "github.com"), rule(.domain, "docs.github.com")]
+        #expect(Shadowing.fix(rules, Unreachable(rule: 2, by: 1)) == nil)
+        #expect(Shadowing.fix(rules, Unreachable(rule: 2, by: 0)) == 0)
+    }
 }
 
 struct LinkTests {

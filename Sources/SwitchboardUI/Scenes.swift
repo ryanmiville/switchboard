@@ -59,6 +59,29 @@ public enum Scenes {
         Scene(name: "rule-new", kind: .ruleSheet) { s, _, _ in s.draft = .newRule() },
         Scene(name: "rule-edit", kind: .ruleSheet) { s, _, _ in s.draft = .editing(s.editor.config.rules[1])
         },
+        // Rule 1 being edited, with recent links in history for the preview to count.
+        Scene(name: "rule-preview", kind: .ruleSheet) { s, _, home in
+            let config = s.editor.config
+            for (i, link) in [
+                "https://github.com/acme/api/pull/12", "https://news.example.com",
+                "https://gist.github.com/r/1",
+                "https://mygithub.com/x", "https://github.com/login/oauth?code=secret",
+            ].enumerated().reversed() {
+                _ = History.record(
+                    link, destination: config.defaultDestination, origin: .default, config: config,
+                    error: nil,
+                    now: Timestamp(Int64(100 - i)), store: home.temporary.historyStore,
+                    browsers: home.browsers)
+            }
+            s.draft = .editing(config.rules[0])
+        },
+        // A new rule that rule 1 (github.com) would always match first.
+        Scene(name: "rule-hidden", kind: .ruleSheet) { s, _, _ in
+            var draft = Draft.newRule()
+            draft.enterPattern("https://docs.github.com/en/actions")
+            draft.profile = "Default"
+            s.draft = draft
+        },
         Scene(name: "rule-error", kind: .ruleSheet) { s, _, _ in
             var draft = Draft.newRule()
             draft.value = "github.com/acme"

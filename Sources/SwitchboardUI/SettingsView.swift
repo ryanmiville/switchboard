@@ -4,7 +4,8 @@ import SwitchboardEditor
 
 /// The settings window, built from SwiftUI's own components so it matches System Settings: a
 /// NavigationSplitView (the system's glass sidebar, with the traffic lights inside it and a search
-/// field), the pane's title in the toolbar, and the pane as a grouped Form.
+/// field), back and forward buttons and the pane's title in the toolbar, and the pane as a grouped
+/// Form. The sidebar is always shown: it has no toggle and can't be collapsed.
 ///
 /// Offscreen renders can't capture the system sidebar or Liquid Glass, which the window server
 /// composites, so scene renders show those areas blank. The app isn't changed to suit renders.
@@ -20,7 +21,7 @@ public struct SettingsView: View {
     public static let size = CGSize(width: 860, height: 640)
 
     public var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             List(selection: paneBinding) {
                 ForEach(panes) { pane in
                     Label {
@@ -34,11 +35,30 @@ public struct SettingsView: View {
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 260)
             .searchable(text: $search, placement: .sidebar)
+            .toolbar(removing: .sidebarToggle)
         } detail: {
-            // The sidebar toggle stays: it is the window's only toolbar item, and without a toolbar
-            // macOS gives the window a plain title bar (a centred title over a hard line) instead
-            // of the toolbar with the pane's title and content scrolling under it.
+            // The back and forward buttons also keep the window's toolbar: without one, macOS gives
+            // the window a plain title bar (a centred title over a hard line) instead of the
+            // toolbar with the pane's title and content scrolling under it.
             pane.navigationTitle(model.pane.title)
+                .toolbar {
+                    ToolbarItemGroup(placement: .navigation) {
+                        Button {
+                            model.goBack()
+                        } label: {
+                            Label("Back", systemImage: "chevron.backward")
+                        }
+                        .disabled(model.backPanes.isEmpty)
+                        .keyboardShortcut("[", modifiers: .command)
+                        Button {
+                            model.goForward()
+                        } label: {
+                            Label("Forward", systemImage: "chevron.forward")
+                        }
+                        .disabled(model.forwardPanes.isEmpty)
+                        .keyboardShortcut("]", modifiers: .command)
+                    }
+                }
         }
         .frame(width: Self.size.width, height: Self.size.height)
         .sheet(item: draftBinding) { _ in RuleSheet(model: model) }
