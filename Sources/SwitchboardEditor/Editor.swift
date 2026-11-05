@@ -253,6 +253,12 @@ public struct Editor: Sendable {
         return true
     }
 
+    /// Links from history, newest first, each once. Empty when history can't be read.
+    public func recentLinks() -> [String] {
+        var seen = Set<String>()
+        return ((try? history.entries()) ?? []).map(\.url).filter { seen.insert($0).inserted }
+    }
+
     public mutating func setPicker(_ settings: PickerSettings) {
         edit { $0.picker = settings }
     }
@@ -291,6 +297,38 @@ public struct Draft: Equatable, Sendable {
         Draft(
             id: rule.id, isNew: false, condition: rule.condition, value: rule.value, browser: rule.browser,
             profile: rule.profile, error: nil)
+    }
+
+    /// The pattern as typed or pasted. A whole web link pasted into a Domain rule becomes its host,
+    /// the part a Domain rule matches. Typing stays as typed: one character at a time, the start of
+    /// a link would already have a host.
+    public mutating func enterPattern(_ text: String) {
+        let pasted = Self.inserted(from: value, to: text) > 1
+        value = condition == .domain && pasted ? Self.host(of: text) ?? text : text
+    }
+
+    /// How many characters an edit from `old` to `new` put in at once, beyond what they share at
+    /// either end.
+    static func inserted(from old: String, to new: String) -> Int {
+        let a = Array(old)
+        let b = Array(new)
+        var start = 0
+        while start < a.count, start < b.count, a[start] == b[start] { start += 1 }
+        var end = 0
+        while end < a.count - start, end < b.count - start, a[a.count - 1 - end] == b[b.count - 1 - end] {
+            end += 1
+        }
+        return b.count - start - end
+    }
+
+    /// A new way to match. Switching to Domain with a whole link in the pattern keeps its host.
+    public mutating func selectCondition(_ condition: Condition) {
+        self.condition = condition
+        if condition == .domain, let host = Self.host(of: value) { value = host }
+    }
+
+    static func host(of text: String) -> String? {
+        Link.webHost(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     /// Changing the browser needs a new profile: directory names belong to one browser.
