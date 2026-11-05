@@ -55,8 +55,9 @@ final class WindowShot {
         else { throw RenderError("ScreenCaptureKit doesn’t list the settings window.") }
         let filter = SCContentFilter(desktopIndependentWindow: shared)
         let configuration = SCStreamConfiguration()
-        configuration.width = Int(window.frame.width * Renderer.scale)
-        configuration.height = Int(window.frame.height * Renderer.scale)
+        // In the screen's own pixels: CI's virtual display is 1x, so this is 1x there.
+        configuration.width = Int(window.frame.width * window.backingScaleFactor)
+        configuration.height = Int(window.frame.height * window.backingScaleFactor)
         configuration.showsCursor = false
         configuration.ignoreShadowsSingleWindow = true
         configuration.captureResolution = .best
