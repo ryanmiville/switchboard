@@ -34,8 +34,11 @@ jobs:
           home=$(mktemp -d); mkdir -p "$home/Applications"
           app=.build/bundle/Switchboard.app/Contents/MacOS/Switchboard
           failed=0
-          for scene in general routing recent rule-edit; do
+          scenes=$("$app" --list-scenes | grep -v '^picker')
+          for scene in $scenes routing; do
             for theme in light dark; do
+              # The second routing pass checks that two shots of the same scene match exactly.
+              if [ -f "$out/$scene-$theme.png" ]; then mv "$out/$scene-$theme.png" "$out/$scene-$theme-first.png"; fi
               HOME="$home" SWITCHBOARD_APPLICATIONS="$home/Applications" \
                 "$app" --shoot "$out/$scene-$theme.png" --scene "$scene" --theme "$theme" > "$out/$scene-$theme.log" 2>&1 &
               pid=$!
@@ -46,13 +49,16 @@ jobs:
                 kill -0 $pid 2>/dev/null || break
                 sleep 0.5
               done
-              if [ -n "$wid" ]; then
-                screencapture -x -o -l"$wid" "$out/$scene-$theme-screencapture.png" || echo "screencapture -l failed"
-              fi
-              screencapture -x "$out/$scene-$theme-fullscreen.png" || echo "full-screen screencapture failed"
               wait $pid || failed=1
               cat "$out/$scene-$theme.log"
             done
+          done
+          for theme in light dark; do
+            if cmp -s "$out/routing-$theme.png" "$out/routing-$theme-first.png"; then
+              echo "routing-$theme: two shots are identical"
+            else
+              echo "routing-$theme: two shots differ"
+            fi
           done
           ls -la "$out"
           exit $failed
