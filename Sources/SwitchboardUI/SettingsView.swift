@@ -35,7 +35,7 @@ public struct SettingsView: View {
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 260)
             .searchable(text: $search, placement: .sidebar)
-            .withoutSidebarToggle()
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             // The back and forward buttons also keep the window's toolbar: without one, macOS gives
             // the window a plain title bar (a centred title over a hard line) instead of the
@@ -91,18 +91,6 @@ public struct SettingsView: View {
         Binding(
             get: { model.draft.map { DraftID(id: $0.id) } },
             set: { if $0 == nil { model.draft = nil } })
-    }
-}
-
-extension View {
-    /// Hides the split view's sidebar toggle. macOS 13 can't remove it, so it keeps the toggle.
-    @ViewBuilder
-    fileprivate func withoutSidebarToggle() -> some View {
-        if #available(macOS 14, *) {
-            toolbar(removing: .sidebarToggle)
-        } else {
-            self
-        }
     }
 }
 
