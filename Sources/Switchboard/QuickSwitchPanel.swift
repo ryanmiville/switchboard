@@ -23,26 +23,29 @@ final class QuickSwitchPanel {
 
     init(
         store: ConfigStore, history: HistoryStore, browsers: Browsers, settings: SettingsModel,
-        openSettings: @escaping @MainActor () -> Void
+        model scene: PickerModel? = nil, openSettings: @escaping @MainActor () -> Void
     ) {
         let holder = PanelHolder()
         self.holder = holder
-        model = PickerModel(
-            store: store, history: history, browsers: browsers,
-            services: PickerServices(
-                flushSettings: { settings.flush() },
-                savePicker: { picker in
-                    settings.edit { $0.setPicker(picker) }
-                    settings.flush()
-                },
-                activate: { CurrentTab.activate($0) },
-                openAutomationSettings: { CurrentTab.openAutomationSettings() },
-                openSettings: {
-                    holder.panel?.orderOut(nil)
-                    settings.pane = .quickSwitch
-                    openSettings()
-                },
-                close: { holder.panel?.orderOut(nil) }, now: { AppDelegate.now() }))
+        // `--shoot` passes a fixture scene's model.
+        model =
+            scene
+            ?? PickerModel(
+                store: store, history: history, browsers: browsers,
+                services: PickerServices(
+                    flushSettings: { settings.flush() },
+                    savePicker: { picker in
+                        settings.edit { $0.setPicker(picker) }
+                        settings.flush()
+                    },
+                    activate: { CurrentTab.activate($0) },
+                    openAutomationSettings: { CurrentTab.openAutomationSettings() },
+                    openSettings: {
+                        holder.panel?.orderOut(nil)
+                        settings.pane = .quickSwitch
+                        openSettings()
+                    },
+                    close: { holder.panel?.orderOut(nil) }, now: { AppDelegate.now() }))
     }
 
     func refresh() { model.refresh() }
@@ -71,6 +74,11 @@ final class QuickSwitchPanel {
         } else {
             model.tabRead(.failure(.unsupportedBrowser), browserID: nil)
         }
+        present()
+    }
+
+    /// Shows the panel near the top of the screen with the pointer, as the model stands.
+    func present() {
         let panel = self.panel ?? makePanel()
         panel.setContentSize(NSSize(width: PickerModel.width, height: model.height))
         if let screen = NSScreen.screens.first(where: {

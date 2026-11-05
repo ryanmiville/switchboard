@@ -34,7 +34,7 @@ jobs:
           home=$(mktemp -d); mkdir -p "$home/Applications"
           app=.build/bundle/Switchboard.app/Contents/MacOS/Switchboard
           failed=0
-          scenes=$("$app" --list-scenes | grep -v '^picker')
+          scenes=$("$app" --list-scenes)
           for scene in $scenes routing; do
             for theme in light dark; do
               # The second routing pass checks that two shots of the same scene match exactly.

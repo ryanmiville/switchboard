@@ -2,7 +2,7 @@ import AppKit
 import ScreenCaptureKit
 import SwitchboardUI
 
-/// `--shoot`: the settings window of a fixture scene, captured from the screen. Offscreen renders
+/// `--shoot`: the settings window (or the Quick Switch panel) of a fixture scene, captured from the screen. Offscreen renders
 /// (`Renderer`) draw only the window's content, so the parts the window server composites (the
 /// glass sidebar, the toolbar, the title bar) come out blank; this captures what a person sees.
 @MainActor
@@ -24,10 +24,13 @@ final class WindowShot {
             var window: NSWindow?
             for _ in 0..<40 where window == nil {
                 try await Task.sleep(for: .milliseconds(100))
-                window = NSApp.windows.first { $0.isVisible && $0.title != "" && $0.frame.width > 400 }
+                window = NSApp.windows.first {
+                    $0.isVisible && $0.title != "" && $0.frame.width > 400
+                        && ($0.title == "Quick Switch") == (scene.kind == .picker)
+                }
             }
-            guard let window else { throw RenderError("The settings window never appeared.") }
-            window.center()
+            guard let window else { throw RenderError("The scene's window never appeared.") }
+            if scene.kind != .picker { window.center() }
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             try await Task.sleep(for: .seconds(2))

@@ -73,7 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         holder.delegate = self
         picker = QuickSwitchPanel(
             store: ConfigStore(url: self.home.configFile), history: HistoryStore(url: self.home.historyFile),
-            browsers: browsers, settings: settings, openSettings: { [weak self] in self?.showSettings() })
+            browsers: browsers, settings: settings, model: Self.shot?.scene.picker,
+            openSettings: { [weak self] in self?.showSettings() })
     }
 
     /// Lets the settings services reach the delegate, which doesn't exist yet when they are made.
@@ -105,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             showSettings()
         }
         if let shot = Self.shot {
-            showSettings()
+            if shot.scene.kind == .picker { picker.present() } else { showSettings() }
             Task { @MainActor in await shot.take() }
         }
         if Self.describesWindow {
