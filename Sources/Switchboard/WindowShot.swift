@@ -25,8 +25,9 @@ final class WindowShot {
             for _ in 0..<40 where window == nil {
                 try await Task.sleep(for: .milliseconds(100))
                 window = NSApp.windows.first {
-                    $0.isVisible && $0.title != "" && $0.frame.width > 400
-                        && ($0.title == "Quick Switch") == (scene.kind == .picker)
+                    // The settings window has a title bar; the Quick Switch panel is borderless.
+                    $0.isVisible && $0.frame.width > 400
+                        && $0.styleMask.contains(.titled) == (scene.kind != .picker)
                 }
             }
             guard let window else { throw RenderError("The scene's window never appeared.") }
