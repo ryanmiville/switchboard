@@ -46,10 +46,10 @@ if let snapIndex = arguments.firstIndex(of: "--snap") {
     exit(0)
 }
 
-// `--shoot <png> --scene <name> [--theme dark]` runs the real app with a fixture scene's settings,
-// shows the settings window on screen and captures it with ScreenCaptureKit: the whole window, as
-// the window server draws it, sidebar and toolbar included. It needs a screen and permission to
-// record it (CI's macOS runner has both).
+// `--shoot <png> --scene <name> [--theme dark] [--golden <png>]` runs the real app with a fixture
+// scene, shows its window on screen and captures it (`WindowShot`): the whole window, as the window
+// server draws it, sidebar and toolbar included. With a golden, it compares and exits 3 on a
+// difference. scripts/shoot runs it for every scene.
 if let shootIndex = arguments.firstIndex(of: "--shoot") {
     func value(after flag: String) -> String? {
         arguments.firstIndex(of: flag).flatMap {
@@ -58,14 +58,17 @@ if let shootIndex = arguments.firstIndex(of: "--shoot") {
     }
     guard arguments.indices.contains(shootIndex + 1), let scene = value(after: "--scene") else {
         FileHandle.standardError.write(
-            Data("usage: Switchboard --shoot <out.png> --scene <name> [--theme dark]\n".utf8))
+            Data("usage: Switchboard --shoot <out.png> --scene <name> [--theme dark] [--golden <png>]\n".utf8)
+        )
         exit(2)
     }
     let output = URL(fileURLWithPath: arguments[shootIndex + 1])
     let dark = value(after: "--theme") == "dark"
     MainActor.assumeIsolated {
         do {
-            AppDelegate.shot = try WindowShot(scene: scene, dark: dark, output: output)
+            AppDelegate.shot = try WindowShot(
+                scene: scene, dark: dark, output: output,
+                golden: value(after: "--golden").map { URL(fileURLWithPath: $0) })
         } catch {
             FileHandle.standardError.write(Data("Switchboard: \(error)\n".utf8))
             exit(1)
@@ -74,7 +77,7 @@ if let shootIndex = arguments.firstIndex(of: "--shoot") {
 }
 
 // `--describe-window` runs the real app, opens Settings, prints what macOS made of the window
-// (`WindowReport`) and quits: renders can't show the system's toolbar, sidebar or glass.
+// (`WindowReport`) and quits.
 if arguments.contains("--describe-window") {
     MainActor.assumeIsolated { AppDelegate.describesWindow = true }
 }

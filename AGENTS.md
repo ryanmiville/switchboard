@@ -42,15 +42,18 @@ Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
 - Format: `scripts/format`. Swift 6.3 (Xcode 26.4 on macOS); `scripts/cloud-setup.sh` installs it
   in cloud sessions.
 - Run the CLI against a scratch home: `HOME=$(mktemp -d) swift run switchboard-cli rules list`.
-- See the app without a person (macOS): `scripts/snap [scene…]` renders every scene (or the
-  named ones) in light and dark into `.build/snap/`; one scene:
-  `swift run Switchboard --snap out.png --scene routing [--theme dark]`; list them with
-  `--list-scenes`. The UI tests render every
-  scene in both themes into `.build/snapshots` (CI uploads them as `scene-renders`). Scenes use
-  fixture homes only. Add a scene for every new pane or state.
-- Goldens: `Tests/UITests/Goldens/<scene>-<light|dark>.png`, recorded on CI's runner and compared
-  there (`SNAPSHOT_COMPARE=1`); another macOS version may not match them locally. When a change
-  is meant to change a scene, look at its render and `-diff` image in the failed run's
+- See the app without a person (macOS): `scripts/shoot [scene…]` shows every scene (or the named
+  ones) in the bundled app's real window on screen and captures it in light and dark into
+  `.build/shots/`: the whole window, sidebar, toolbar, sheets and the Quick Switch panel's glass.
+  One scene: `Switchboard --shoot out.png --scene routing [--theme dark]`; list them with
+  `--list-scenes`. It needs a screen and Screen Recording permission (CI's runner has both; its
+  screen is 1x, so shots are). `scripts/snap` renders offscreen instead, with no screen, but leaves
+  the sidebar, toolbar and glass blank. CI shoots every scene and uploads them as `scene-renders`.
+  Scenes use fixture homes only. Add a scene for every new pane or state.
+- Goldens: `Tests/UITests/Goldens/<scene>-<light|dark>.png`, window shots recorded on CI's runner
+  and compared there (`SHOT_COMPARE=1 scripts/shoot`, a little tolerance for the blinking text
+  cursor); another Mac won't match them. When a change
+  is meant to change a scene, look at its shot and `-diff` image in the failed run's
   `scene-renders` artifact, then run the **Record goldens** workflow on the branch with those
   scenes (`scenes: routing,picker`, empty for all). It records, compares again, and commits the
   goldens, then starts Verify on the branch itself, since GitHub holds the pull_request run of a

@@ -29,7 +29,7 @@ and is tested on Linux (cloud sessions and CI) as well as on the Mac.
 | Identity | `Switchboard Next` while both apps ran, then the previous app's names (below). One constants file, so the rename was one change |
 | Formats | `config.json` and `history.jsonl` as the Rust rewrite writes them (`rules`, unknown keys refused). The previous app's files still load |
 | CLI | swift-argument-parser. The Rust CLI's commands, `--json` everywhere, its exit codes (usage errors exit 2) |
-| UI | SwiftUI, macOS 14+. Panes and states as named scenes with snapshot goldens |
+| UI | SwiftUI, macOS 14+. Panes and states as named scenes with window-shot goldens |
 | Picker favorites | Removed (2026-11-05). The picker shows the destinations turned on in settings, narrowed by typing. A `favorites` key in an older config loads and is dropped on the next save |
 
 ## Identity
@@ -136,8 +136,9 @@ As the Rust rewrite: real implementations end to end, isolated by a temporary ho
   `load-error`, `link-failure`, `quick-switch`, `picker`, …).
 - **The app renders them headless:** `Switchboard --list-scenes`, `--snap out.png --scene routing
   --theme dark`. `scripts/snap` renders every scene in both themes.
-- **Image goldens** for every scene in both themes, compared with a tolerance on macOS. CI records
-  its renders as an artifact; goldens are recorded from CI's runner so CI can compare them.
+- **Image goldens** for every scene in both themes: shots of the real window on CI's screen
+  (`scripts/shoot`), so the sidebar, toolbar and glass are in them, compared with a tolerance. CI
+  uploads its shots as an artifact; goldens are recorded from CI's runner so CI can compare them.
 - Scenes are fixtures, not end-to-end proof; reports say so.
 
 ## Order
