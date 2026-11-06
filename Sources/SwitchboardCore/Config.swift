@@ -26,7 +26,7 @@ public enum Condition: String, Codable, CaseIterable, Sendable {
 }
 
 /// A browser and one of its profiles. `browser` is the app's path; `profile` is a Chromium profile
-/// directory such as `Profile 1`, or, in old files, a display name.
+/// directory such as `Profile 1`, or, in old files, a display name. Safari's only profile is `Default`.
 public struct Destination: Codable, Hashable, Sendable {
     public var browser: String
     public var profile: String

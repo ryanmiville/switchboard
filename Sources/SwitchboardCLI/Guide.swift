@@ -7,8 +7,8 @@ enum Guide {
     static let text = """
         # Switchboard routing guide
 
-        Switchboard is the default browser on this machine. It opens each link in a Chromium browser
-        profile chosen by ordered rules (the first match wins), or in the default destination when no rule
+        Switchboard is the default browser on this machine. It opens each link in a browser profile
+        (Chromium browsers such as Chrome, Arc or Helium, or Safari) chosen by ordered rules (the first match wins), or in the default destination when no rule
         matches. The `\(Identity.cliName)` command reads and changes those rules and the app's other settings. It
         never opens links.
 
@@ -38,6 +38,8 @@ enum Guide {
           mean.
         - Omit `--browser` to use the default browser. Pass it (a name like `Chrome`, an id, or a path) to
           send links to another browser.
+        - Safari has one profile, `Default`: nothing outside Safari can choose one of its profiles, so a link
+          opens in whichever profile Safari's front window uses.
 
         ## Choosing the pattern
 

@@ -89,21 +89,25 @@ public enum CurrentTab {
     /// The frontmost window. Windows are ordered front to back. An integer index avoids encoding an
     /// absolute ordinal as an enum, which Chrome rejects with errAECoercionFail.
     private static func frontWindow(_ app: Frontmost) -> NSAppleEventDescriptor {
-        // Arc uses WiND for its window class; Chromium browsers use cwin.
+        // Arc uses WiND for its window class; other Chromium browsers and Safari use cwin.
         let isArc = ["company.thebrowser.Browser", "com.keksbay.Arc"].contains(app.id)
         return object(
             isArc ? 0x5769_4E44 : DescType(cWindow), form: OSType(formAbsolutePosition),
             key: NSAppleEventDescriptor(int32: 1))
     }
 
-    /// The URL of the front window's active tab.
+    /// The URL of the front window's active tab. Chromium calls them `active tab` (acTa) and `URL`
+    /// (URL[space]); Safari calls them `current tab` (cTab) and `URL` (pURL).
     private static func tabURL(_ app: Frontmost) -> NSAppleEventDescriptor {
+        let isSafari = Browsers.bundles.contains { $0.id == app.id && !$0.family.isChromium }
         let tab = object(
-            typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x6163_5461),
-            container: frontWindow(app))  // acTa
+            typeProperty, form: OSType(formPropertyID),
+            key: NSAppleEventDescriptor(typeCode: isSafari ? 0x6354_6162 : 0x6163_5461),
+            container: frontWindow(app))
         return object(
-            typeProperty, form: OSType(formPropertyID), key: NSAppleEventDescriptor(typeCode: 0x5552_4C20),
-            container: tab)  // URL[space]
+            typeProperty, form: OSType(formPropertyID),
+            key: NSAppleEventDescriptor(typeCode: isSafari ? 0x7055_524C : 0x5552_4C20),
+            container: tab)
     }
 
     /// The front window's title.

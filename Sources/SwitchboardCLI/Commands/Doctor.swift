@@ -20,7 +20,9 @@ extension DoctorCommand: Runnable {
             for path in snapshot.config.browsers {
                 let info = browsers.at(path)
                 var check = BrowserCheck(path: path, name: browsers.displayName(path), installed: info != nil)
-                check.localState = info?.userData.appendingPathComponent("Local State").path
+                check.localState = info.flatMap {
+                    $0.family.isChromium ? $0.userData.appendingPathComponent("Local State").path : nil
+                }
                 do {
                     check.profileCount = try Profiles.of(browsers, path).count
                 } catch {
@@ -161,7 +163,8 @@ private struct DoctorReport {
         if !browsers.isEmpty { text += "Browsers:\n" }
         for b in browsers {
             let detail =
-                b.error ?? "\(b.profileCount ?? 0) profiles, Local State at \(b.localState ?? "unknown")"
+                b.error ?? "\(b.profileCount ?? 0) profiles"
+                + (b.localState.map { ", Local State at \($0)" } ?? "")
             text += line(b.error == nil, "\(b.name)  \(b.path)  \(detail)")
         }
         if configValid {

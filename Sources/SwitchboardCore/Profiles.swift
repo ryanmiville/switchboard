@@ -3,7 +3,11 @@ import Foundation
 // Chromium profiles, read from a browser's Local State. Profiles are saved by directory identifier
 // (`Default`, `Profile 1`); display names are for people. Identical directory names in two
 // browsers can belong to different people, so a profile is always resolved within one browser.
-
+//
+// Safari has profiles too (macOS 14 and later), but nothing outside Safari can choose one: it has
+// no command-line arguments, and its AppleScript dictionary doesn't know about profiles. So Safari
+// has a single profile here, `Default`, and a link opens in whichever profile Safari's front window
+// uses.
 public struct Profile: Hashable, Sendable {
     /// The directory identifier, such as `Profile 1`.
     public var directory: String
@@ -19,7 +23,7 @@ public struct Profile: Hashable, Sendable {
 public enum ProfileError: Error, Equatable, CustomStringConvertible {
     /// No profile was chosen.
     case selectionRequired
-    /// The browser isn't installed, or isn't a supported Chromium browser.
+    /// The browser isn't installed, or isn't a supported browser.
     case browserUnavailable(String)
     /// Local State exists but couldn't be read or parsed.
     case unreadable(String)
@@ -55,10 +59,11 @@ public struct ProfileActivity: Equatable, Sendable {
 
 public enum Profiles {
     /// The profiles in `browser`'s Local State, `Default` first, then by name. A browser that
-    /// hasn't written Local State yet has just `Default`.
+    /// hasn't written Local State yet has just `Default`, and so does Safari.
     public static func read(_ browser: BrowserInfo) throws(ProfileError) -> [Profile] {
-        let url = browser.userData.appendingPathComponent("Local State")
         let fallback = [Profile(directory: "Default", name: "Default")]
+        guard browser.family.isChromium else { return fallback }
+        let url = browser.userData.appendingPathComponent("Local State")
         let data: Data
         do {
             guard let contents = try Files.contents(of: url) else { return fallback }
@@ -94,6 +99,7 @@ public enum Profiles {
     /// file a few seconds after a change, so this can lag a profile switch. Best effort: anything
     /// unreadable is just unknown.
     public static func activity(_ browser: BrowserInfo) -> ProfileActivity {
+        guard browser.family.isChromium else { return ProfileActivity() }
         let url = browser.userData.appendingPathComponent("Local State")
         guard let data = try? Files.contents(of: url),
             let state = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

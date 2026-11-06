@@ -15,6 +15,7 @@ public struct TemporaryHome: Sendable {
             .appendingPathComponent("switchboard-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         home = Home(url.resolvingSymlinksInPath())
+        try Self.writeRecordingProgram(home.appending("open"), log: home.appending("launches.log"))
     }
 
     /// The folder fixture browsers go in; point `$SWITCHBOARD_APPLICATIONS` at it.
@@ -23,8 +24,11 @@ public struct TemporaryHome: Sendable {
     /// The log every fixture browser in this home appends its launches to.
     public var launchLog: URL { home.appending("launches.log") }
 
-    /// Browser discovery limited to this home's fixture folder.
-    public var browsers: Browsers { Browsers(home: home, applicationDirectories: [applications]) }
+    /// Browser discovery limited to this home's fixture folder, with a recording program in place
+    /// of macOS's `open`, so opening a link in Safari is logged like any other launch.
+    public var browsers: Browsers {
+        Browsers(home: home, applicationDirectories: [applications], opener: home.appending("open"))
+    }
 
     /// The environment a binary under test gets, limited to this home's fixture folder.
     public var environment: [String: String] {
@@ -38,8 +42,8 @@ public struct TemporaryHome: Sendable {
         try? FileManager.default.removeItem(at: home.url)
     }
 
-    /// Installs `<applications>/<name>.app` as a browser of `family`, gives it `profiles`
-    /// (directory, display name), and returns its locator.
+    /// Installs `<applications>/<name>.app` as a browser of `family`, gives a Chromium browser
+    /// `profiles` (directory, display name), and returns its locator.
     @discardableResult
     public func installBrowser(
         _ family: Family, name: String, profiles: [(String, String)] = [("Default", "Default")]
@@ -59,17 +63,18 @@ public struct TemporaryHome: Sendable {
         try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
             .write(to: app.appendingPathComponent("Contents/Info.plist"))
         try Self.writeRecordingProgram(macOS.appendingPathComponent(executable), log: launchLog)
-        try writeLocalState(bundle.data, profiles)
+        if family.isChromium { try writeLocalState(bundle.data, profiles) }
         return app.path
     }
 
-    /// Writes the browser's Local State with `profiles` (directory, display name), and, as
-    /// Chromium records them, the profiles with windows open and the one used last.
+    /// Writes the browser's Local State in `dataFolder` (under ~/Library) with `profiles`
+    /// (directory, display name), and, as Chromium records them, the profiles with windows open and
+    /// the one used last.
     public func writeLocalState(
         _ dataFolder: String, _ profiles: [(String, String)], open: [String]? = nil, lastUsed: String? = nil
     ) throws {
         try writeLocalState(
-            in: home.appending("Library/Application Support/\(dataFolder)"), profiles, open: open,
+            in: home.appending("Library/\(dataFolder)"), profiles, open: open,
             lastUsed: lastUsed)
     }
 

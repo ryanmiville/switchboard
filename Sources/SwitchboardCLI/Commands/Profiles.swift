@@ -9,7 +9,7 @@ extension ProfilesCommand: Runnable {
             ?? operations.knownBrowsers()
         let defaultBrowser = session.context.browsers.standardize(snapshot.config.browser)
         var reports: [JSONObject] = []
-        var text = browsers.isEmpty ? "No supported Chromium browsers found.\n" : ""
+        var text = browsers.isEmpty ? "No supported browsers found.\n" : ""
         for info in browsers {
             var profiles: [Profile] = []
             var error: String?
@@ -24,7 +24,9 @@ extension ProfilesCommand: Runnable {
             report.set("path", info.locator)
             report.set("id", info.id)
             report.set("isDefault", isDefault)
-            report.set("localState", info.userData.appendingPathComponent("Local State").path)
+            if info.family.isChromium {
+                report.set("localState", info.userData.appendingPathComponent("Local State").path)
+            }
             report.set(
                 "profiles",
                 profiles.map { p -> JSONObject in
