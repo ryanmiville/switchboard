@@ -78,7 +78,8 @@ struct RoutingPane: View {
         HStack(spacing: 8) {
             ControlGroup {
                 Button {
-                    model.draft = .newRule()
+                    model.draft = .newRule(
+                        profile: model.editor.firstProfile(of: model.editor.config.browser))
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -237,7 +238,9 @@ struct RuleSheet: View {
                         title: "Browser", selection: draft.browser, browsers: e.installed, editor: e,
                         allowsDefault: true
                     ) { chosen in
-                        model.draft?.selectBrowser(chosen, defaultBrowser: e.config.browser)
+                        model.draft?.selectBrowser(
+                            chosen, defaultBrowser: e.config.browser,
+                            firstProfile: e.firstProfile(of: chosen ?? e.config.browser))
                     }
                     ProfilePicker(title: "Profile", browser: browser, selection: draft.profile, editor: e) {
                         model.draft?.profile = $0

@@ -47,12 +47,13 @@ struct RecentLinksTests {
     @Test func aRuleForALinkMatchesItsDomainWithoutWww() throws {
         let draft = Draft.forLink(
             entry("https://www.Figma.com/file/a?t=1", .default, browser: "/A/Helium.app", profile: "Default"),
-            defaultBrowser: "/A/Helium.app")
+            defaultBrowser: "/A/Helium.app", firstProfile: "Profile 1")
         #expect(draft.isNew)
         #expect(draft.condition == .domain)
         #expect(draft.value == "figma.com")
         #expect(draft.browser == nil)
-        #expect(draft.profile == "", "a link that went where the rules sent it needs a new destination")
+        #expect(
+            draft.profile == "Profile 1", "a link that went where the rules sent it starts like a new rule")
         #expect(Draft.domain(of: "www.com") == "www.com")
     }
 
@@ -61,12 +62,12 @@ struct RecentLinksTests {
         defer { scene.remove() }
         let other = Draft.forLink(
             entry("https://figma.com/a", .picker, browser: scene.chrome, profile: "Profile 3"),
-            defaultBrowser: scene.helium)
+            defaultBrowser: scene.helium, firstProfile: "Default")
         #expect(other.browser == scene.chrome)
         #expect(other.profile == "Profile 3")
         let same = Draft.forLink(
             entry("https://figma.com/a", .picker, browser: scene.helium, profile: "Profile 1"),
-            defaultBrowser: scene.helium)
+            defaultBrowser: scene.helium, firstProfile: "Default")
         #expect(same.browser == nil, "the default browser is inherited, as the rule sheet chooses it")
         #expect(same.profile == "Profile 1")
         var draft = other
@@ -76,7 +77,7 @@ struct RecentLinksTests {
     @Test func aRuleForALocalFileMatchesTheWholeLink() {
         let draft = Draft.forLink(
             entry("file:///Users/r/a.html", .default, browser: "/A/Helium.app", profile: "Default"),
-            defaultBrowser: "/A/Helium.app")
+            defaultBrowser: "/A/Helium.app", firstProfile: "Default")
         #expect(draft.condition == .exact)
         #expect(draft.value == "file:///Users/r/a.html")
     }

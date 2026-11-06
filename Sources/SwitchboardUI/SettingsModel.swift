@@ -311,7 +311,9 @@ public final class SettingsModel: ObservableObject {
 
     /// Opens the rule sheet for a new rule that matches `entry`'s link.
     public func addRule(for entry: History.Entry) {
-        draft = .forLink(entry, defaultBrowser: editor.config.browser)
+        draft = .forLink(
+            entry, defaultBrowser: editor.config.browser,
+            firstProfile: editor.firstProfile(of: editor.config.browser))
     }
 
     public func copyLink(_ link: String) {

@@ -192,6 +192,12 @@ public struct Editor: Sendable {
         }
     }
 
+    /// The first profile `browser` lists, which a new choice of browser starts on, so a browser
+    /// is never left without a profile. Empty when the browser has none to read.
+    public func firstProfile(of browser: String) -> String {
+        browser.isEmpty ? "" : profiles(of: browser).first?.directory ?? ""
+    }
+
     public func browserName(_ browser: String) -> String {
         browser.isEmpty ? "Choose a browser" : browsers.displayName(browser)
     }
@@ -208,14 +214,16 @@ public struct Editor: Sendable {
 
     // MARK: Edits
 
-    /// A new default browser. Profiles that inherited the old one were chosen there and can be
-    /// different people in the new one, so they need choosing again.
+    /// A new default browser, on its first profile. Profiles that inherited the old one were
+    /// chosen there and can be different people in the new one, so they move to the first profile
+    /// too instead of keeping a directory that means someone else.
     public mutating func selectDefaultBrowser(_ browser: String) {
         guard browser != config.browser else { return }
+        let first = firstProfile(of: browser)
         edit { c in
             c.browser = browser
-            c.defaultProfile = ""
-            for i in c.rules.indices where c.rules[i].browser == nil { c.rules[i].profile = "" }
+            c.defaultProfile = first
+            for i in c.rules.indices where c.rules[i].browser == nil { c.rules[i].profile = first }
         }
     }
 
@@ -306,8 +314,11 @@ public struct Draft: Equatable, Sendable {
     public var profile: String
     public var error: String?
 
-    public static func newRule() -> Draft {
-        Draft(id: RuleID(), isNew: true, condition: .domain, value: "", browser: nil, profile: "", error: nil)
+    /// A new rule in the default browser, on `profile` (its first, from `Editor.firstProfile`).
+    public static func newRule(profile: String = "") -> Draft {
+        Draft(
+            id: RuleID(), isNew: true, condition: .domain, value: "", browser: nil, profile: profile,
+            error: nil)
     }
 
     public static func editing(_ rule: Rule) -> Draft {
@@ -348,9 +359,10 @@ public struct Draft: Equatable, Sendable {
         Link.webHost(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
-    /// Changing the browser needs a new profile: directory names belong to one browser.
-    public mutating func selectBrowser(_ browser: String?, defaultBrowser: String) {
-        if (browser ?? defaultBrowser) != (self.browser ?? defaultBrowser) { profile = "" }
+    /// Changing the browser needs a new profile, since directory names belong to one browser: it
+    /// starts on `firstProfile`, the new browser's first (from `Editor.firstProfile`).
+    public mutating func selectBrowser(_ browser: String?, defaultBrowser: String, firstProfile: String) {
+        if (browser ?? defaultBrowser) != (self.browser ?? defaultBrowser) { profile = firstProfile }
         self.browser = browser
     }
 
