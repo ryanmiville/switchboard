@@ -7,8 +7,9 @@ import SwitchboardEditor
 /// field), back and forward buttons and the pane's title in the toolbar, and the pane as a grouped
 /// Form. The sidebar is always shown: it has no toggle and can't be collapsed.
 ///
-/// Offscreen renders can't capture the system sidebar or Liquid Glass, which the window server
-/// composites, so scene renders show those areas blank. The app isn't changed to suit renders.
+/// Offscreen renders (`--snap`) can't capture the system sidebar or Liquid Glass, which the window
+/// server composites, so they show those areas blank; window shots (`--shoot`) capture them. The
+/// app isn't changed to suit either.
 public struct SettingsView: View {
     @ObservedObject var model: SettingsModel
     @State private var search = ""

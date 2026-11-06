@@ -8,4 +8,3 @@ Sources/switchboard-cli/main.swift clock # the CLI binary reads the clock once a
 Sources/Switchboard/AppDelegate.swift clock # the app's entry point reads the clock and passes it to routing and history
 Sources/SwitchboardMac/CurrentTab.swift system-open # opens System Settings' Automation pane, a settings URL rather than a web link
 Sources/SwitchboardMac/DefaultBrowser.swift system-open # opens System Settings' Desktop & Dock pane, a settings URL rather than a web link
-Tests/UITests/SceneTests.swift environment # SNAPSHOT_RECORD and SNAPSHOT_COMPARE choose whether goldens are recorded or compared

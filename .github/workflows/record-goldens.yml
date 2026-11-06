@@ -38,13 +38,15 @@ jobs:
         run: |
           [[ -d Tests/UITests/Goldens ]] || { echo "This branch has no scene goldens (Tests/UITests/Goldens)." >&2; exit 2; }
           [[ "$SCENES" =~ ^[a-z0-9,\ -]*$ ]] || { echo "Scenes are lowercase names separated by commas." >&2; exit 2; }
+      - name: Bundle the app
+        run: scripts/bundle --debug
       - name: Record
         shell: bash
-        run: SNAPSHOT_RECORD="${SCENES:-1}" scripts/check SceneTests
-      # Rendering again and comparing proves the new goldens are stable on this runner.
+        run: SHOT_DIR=.build/snapshots SHOT_RECORD="${SCENES:-1}" scripts/shoot $(echo "$SCENES" | tr ',' ' ')
+      # Shooting again and comparing proves the new goldens are stable on this runner.
       - name: Compare with what was just recorded
         shell: bash
-        run: SNAPSHOT_COMPARE=1 scripts/check SceneTests
+        run: SHOT_DIR=.build/snapshots/again SHOT_COMPARE=1 scripts/shoot $(echo "$SCENES" | tr ',' ' ')
       - name: Commit changed goldens
         shell: bash
         run: |

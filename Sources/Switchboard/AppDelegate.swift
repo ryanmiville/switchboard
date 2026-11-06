@@ -44,6 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     /// `--describe-window`: open Settings, print `WindowReport`, quit.
     static var describesWindow = false
+    /// `--shoot`: show a fixture scene's settings in the real window, capture it from the screen, quit.
+    static var shot: WindowShot?
 
     override init() {
         let (home, env) = Env.fromProcess()
@@ -56,22 +58,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             history: HistoryStore(url: self.home.historyFile), browsers: browsers)
         let loginItem = LoginItem()
         let holder = Holder()
-        settings = SettingsModel(
-            editor: editor,
-            services: SettingsServices(
-                loginStatus: { loginItem.status() }, setLoginEnabled: { try loginItem.setEnabled($0) },
-                openLoginSettings: { loginItem.openSettings() },
-                registerShortcut: { chord in holder.delegate?.register(chord) },
-                isDefaultBrowser: { DefaultBrowser.isDefault },
-                makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
-                openQuickSwitch: { holder.delegate?.summonPicker() },
-                now: { AppDelegate.now() },
-                openDefaultBrowserSettings: { DefaultBrowser.openSettings() }))
+        let services = SettingsServices(
+            loginStatus: { loginItem.status() }, setLoginEnabled: { try loginItem.setEnabled($0) },
+            openLoginSettings: { loginItem.openSettings() },
+            registerShortcut: { chord in holder.delegate?.register(chord) },
+            isDefaultBrowser: { DefaultBrowser.isDefault },
+            makeDefaultBrowser: { done in DefaultBrowser.makeDefault(done: done) },
+            openQuickSwitch: { holder.delegate?.summonPicker() },
+            now: { AppDelegate.now() },
+            openDefaultBrowserSettings: { DefaultBrowser.openSettings() })
+        // `--shoot` shows a fixture scene's settings instead of the real ones.
+        settings = Self.shot?.scene.settings ?? SettingsModel(editor: editor, services: services)
         super.init()
         holder.delegate = self
         picker = QuickSwitchPanel(
             store: ConfigStore(url: self.home.configFile), history: HistoryStore(url: self.home.historyFile),
-            browsers: browsers, settings: settings, openSettings: { [weak self] in self?.showSettings() })
+            browsers: browsers, settings: settings, model: Self.shot?.scene.picker,
+            openSettings: { [weak self] in self?.showSettings() })
     }
 
     /// Lets the settings services reach the delegate, which doesn't exist yet when they are made.
@@ -101,6 +104,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let startupError {
             settings.failure = Failure(url: "", reason: startupError)
             showSettings()
+        }
+        if let shot = Self.shot {
+            if shot.scene.kind == .picker { picker.present() } else { showSettings() }
+            Task { @MainActor in await shot.take() }
         }
         if Self.describesWindow {
             showSettings()
