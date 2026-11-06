@@ -119,7 +119,10 @@ As the Rust rewrite: real implementations end to end, isolated by a temporary ho
   the fixture folder.
 - **Fixture browsers are real app bundles.** `Fixtures.installBrowser` writes `Name.app` with an
   `Info.plist` and a shell script as its executable that appends its arguments to a log. A test
-  checks the `--profile-directory` and link a real launch passed. This runs on Linux too.
+  checks the `--profile-directory` and link a real launch passed. Safari is opened with
+  `open -a <Safari.app> <link>` instead (it takes no arguments and runs as one process), so
+  `Browsers.opener` names that program and a test home points it at the same recording script.
+  This runs on Linux too.
 - **The CLI is tested as a binary.** Tests run the built `switchboard-cli` with `HOME=<tmp>`
   and check its JSON, exit code and the resulting files.
 - **Editor tests** drive the real model and the real store in a temporary home.
@@ -175,6 +178,9 @@ Things only a person on a Mac can confirm. Record the date and macOS version whe
       browser's record of open profiles); typing narrows the list; ↑↓ and ⌃N/⌃P move while typing,
       and Return opens the chosen row; Esc clears the search, then closes; holding ⌘ shows ⌘1–⌘9 on
       the rows after a moment and letting go hides them.
+- [ ] Safari: a rule sending a link to Safari opens it there, in a new tab of the front window,
+      whether or not Safari was running; Quick Switch over Safari reads its current tab and offers
+      the other destinations.
 - [ ] With Automation denied, the panel says so and Automation Settings… opens the right pane.
 - [ ] A change made with `switchboard` while Settings is open shows up within a second.
 - [ ] Settings → Recent Links lists a link opened from another app (or Quick Switch) within a

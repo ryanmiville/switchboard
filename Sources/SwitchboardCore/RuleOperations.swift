@@ -235,7 +235,7 @@ public struct RuleOperations: Sendable {
             guard let info = browsers.at(home.expand(query).path) else {
                 throw OperationError(
                     .browserNotFound,
-                    "“\(query)” isn’t a supported Chromium browser. Choose one of the installed browsers.",
+                    "“\(query)” isn’t a supported browser. Choose one of the installed browsers.",
                     candidates: candidates)
             }
             return info

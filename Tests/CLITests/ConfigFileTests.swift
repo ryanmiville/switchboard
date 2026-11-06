@@ -67,6 +67,23 @@ struct ConfigFileTests {
     }
 }
 
+struct SafariTests {
+    @Test func safariIsListedWithOneProfileAndCanTakeARule() throws {
+        let f = try Fixture()
+        let safari = try f.temporary.installBrowser(.safari, name: "Safari")
+        try f.rules([["condition": "domain", "value": "apple.com", "profile": "Default"]])
+        let out = try f.json(["profiles", "--browser", "Safari"]).ok().json()
+        #expect(out["browsers"][0]["path"] == .string(safari))
+        #expect(out["browsers"][0]["profiles"].array == [["profile": "Default", "profileName": "Default"]])
+        #expect(!out["browsers"][0].has("localState"))
+        let updated = try f.json(["rules", "update", "1", "--browser", "Safari", "--profile", "Default"]).ok()
+            .json()
+        #expect(updated["rule"]["destination"]["browserName"] == "Safari")
+        #expect(try f.readConfig()["rules"][0]["browser"] == .string(safari))
+        #expect(try f.json(["rules", "update", "1", "--profile", "Work"]).status == 3)
+    }
+}
+
 struct SkillTests {
     @Test func skillSetupInstallsForDetectedAgentsAndLeavesForeignSkillsAlone() throws {
         let f = try Fixture()

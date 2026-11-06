@@ -5,7 +5,7 @@ import SwitchboardCore
 // only parsed here; CommandLineTool runs them with a Session, so nothing reads the process.
 
 /// The CLI's version, shown by `--version` and `doctor`.
-public let cliVersion = "0.2.0"
+public let cliVersion = "0.3.0"
 
 struct Root: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -254,7 +254,7 @@ struct DefaultCommand: ParsableCommand {
 
 struct ProfilesCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "profiles", abstract: "List installed, supported Chromium browsers and their profiles.")
+        commandName: "profiles", abstract: "List installed, supported browsers and their profiles.")
 
     @Option(help: "Only list this browser: a path, id, or name.")
     var browser: String?

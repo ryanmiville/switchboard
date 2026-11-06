@@ -11,7 +11,7 @@ struct BrowserTests {
         defer { fixture.remove() }
         let chrome = try fixture.installBrowser(.chrome, name: "Google Chrome")
         let helium = try fixture.installBrowser(.helium, name: "Helium")
-        // Not a Chromium browser Switchboard supports, so it is ignored.
+        // Not a browser Switchboard supports, so it is ignored.
         let other = fixture.applications.appendingPathComponent("Notes.app/Contents")
         try FileManager.default.createDirectory(at: other, withIntermediateDirectories: true)
         try PropertyListSerialization.data(
@@ -109,6 +109,61 @@ struct BrowserTests {
             try Launch.command("https://x.com", at: destination, browsers: browsers)
         }
         #expect(fixture.recordedLaunches().isEmpty)
+    }
+
+    @Test func safariIsFoundWithOneDefaultProfileAndNoLocalState() throws {
+        let fixture = try TemporaryHome()
+        defer { fixture.remove() }
+        let locator = try fixture.installBrowser(.safari, name: "Safari")
+        let safari = try #require(fixture.browsers.at(locator))
+        #expect(safari.id == "com.apple.Safari")
+        #expect(!safari.family.isChromium)
+        #expect(safari.answers(to: "safari"))
+        #expect(try Profiles.read(safari) == [Profile(directory: "Default", name: "Default")])
+        #expect(Profiles.activity(safari) == ProfileActivity())
+        #expect(throws: ProfileError.missing("Work")) {
+            try Profiles.directory("Work", in: try Profiles.read(safari))
+        }
+    }
+
+    @Test func aSafariLaunchAsksOpenForSafariByPathWithTheExactLink() throws {
+        let fixture = try TemporaryHome()
+        defer { fixture.remove() }
+        let safari = try fixture.installBrowser(.safari, name: "Safari")
+        let link = "https://Example.com/a%2Fb?q=caf\u{E9}#Top"
+        let destination = Destination(browser: safari, profile: "Default")
+        let (program, arguments) = try Launch.command(link, at: destination, browsers: fixture.browsers)
+        #expect(Browsers(home: fixture.home, applicationDirectories: []).opener.path == "/usr/bin/open")
+        #expect(program == fixture.browsers.opener)
+        #expect(arguments == ["-a", safari, link])
+        try Launch.launch(link, at: destination, browsers: fixture.browsers)
+        #expect(fixture.waitForLaunches(1) == [["-a", safari, link]])
+    }
+
+    @Test func aChromeDefaultWithASafariRuleRoutesEachLinkToItsOwnBrowser() throws {
+        let fixture = try TemporaryHome()
+        defer { fixture.remove() }
+        let chrome = try fixture.installBrowser(
+            .chrome, name: "Google Chrome", profiles: [("Profile 1", "Work")])
+        let safari = try fixture.installBrowser(.safari, name: "Safari")
+        var config = Config.defaults
+        config.browser = chrome
+        config.defaultProfile = "Work"
+        config.rules = [Rule(.domain, "apple.com", profile: "Default", browser: safari)]
+        let normalized = try Profiles.normalized(config, fixture.browsers)
+        #expect(normalized.defaultProfile == "Profile 1")
+        #expect(normalized.rules.map(\.profile) == ["Default"])
+        // One at a time, since each launch logs from its own process.
+        for (count, link) in ["https://developer.apple.com/x", "https://github.com"].enumerated() {
+            try Launch.launch(
+                link, at: Router.decide(normalized, link: link).destination, browsers: fixture.browsers)
+            _ = fixture.waitForLaunches(count + 1)
+        }
+        #expect(
+            fixture.waitForLaunches(2) == [
+                ["-a", safari, "https://developer.apple.com/x"],
+                ["--profile-directory=Profile 1", "https://github.com"],
+            ])
     }
 
     @Test func aLaunchStillBeingWrittenIsNotCountedYet() throws {

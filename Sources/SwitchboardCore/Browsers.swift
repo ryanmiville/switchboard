@@ -1,16 +1,23 @@
 import Foundation
 
-// Chromium browsers as macOS app bundles. A browser is identified by its bundle identifier; its
-// profiles live in a folder under ~/Library/Application Support that each browser names its own
-// way, so the table below lists them rather than deriving them.
+// Browsers as macOS app bundles: the Chromium browsers, and Safari. A browser is identified by its
+// bundle identifier. A Chromium browser's profiles live in a folder under ~/Library/Application
+// Support that each browser names its own way, so the table below lists them rather than deriving
+// them. Safari offers no way to choose one of its profiles from outside it, so it has one
+// destination of its own (see `Profiles.read`).
 //
 // Discovery only reads files: Info.plist through PropertyListSerialization, never Bundle, so it
 // builds and is tested on Linux as well as on the Mac.
 
-/// The Chromium browsers Switchboard supports.
+/// The browsers Switchboard supports.
 public enum Family: String, CaseIterable, Sendable {
     case chrome, chromeBeta, chromeDev, chromeCanary, chromium, brave, edge, edgeBeta, edgeDev, edgeCanary
     case opera, operaBeta, operaDeveloper, vivaldi, arc, helium
+    case safari, safariTechnologyPreview
+
+    /// Whether the browser is Chromium-based, with profiles in `Local State` and a
+    /// `--profile-directory` argument. Safari is not.
+    public var isChromium: Bool { self != .safari && self != .safariTechnologyPreview }
 
     /// A name people use for the browser that differs from its full name, if any.
     public var shortName: String? {
@@ -23,7 +30,7 @@ public enum Family: String, CaseIterable, Sendable {
     }
 }
 
-/// A supported Chromium browser on this machine.
+/// A supported browser on this machine.
 public struct BrowserInfo: Equatable, Sendable {
     /// What config.json stores for this browser: the `.app` path.
     public var locator: String
@@ -36,7 +43,8 @@ public struct BrowserInfo: Equatable, Sendable {
     public var aliases: [String]
     /// The program to run.
     public var executable: URL
-    /// The browser's user-data folder, which holds `Local State` and the profiles.
+    /// The browser's user-data folder. A Chromium browser's holds `Local State` and the profiles;
+    /// Switchboard reads nothing from Safari's.
     public var userData: URL
 
     /// Whether `query` names this browser: its name, an alias, or its family's short name (such as
@@ -48,40 +56,52 @@ public struct BrowserInfo: Equatable, Sendable {
     }
 }
 
-/// Finds supported Chromium browsers in a list of application folders.
+/// Finds supported browsers in a list of application folders.
 public struct Browsers: Sendable {
-    /// Bundle identifiers, the family each belongs to, and its user-data folder under
-    /// ~/Library/Application Support.
+    /// Bundle identifiers, the family each belongs to, and its user-data folder under ~/Library.
     public static let bundles: [(id: String, family: Family, data: String)] = [
-        ("com.google.Chrome", .chrome, "Google/Chrome"),
-        ("com.google.Chrome.beta", .chromeBeta, "Google/Chrome Beta"),
-        ("com.google.Chrome.dev", .chromeDev, "Google/Chrome Dev"),
-        ("com.google.Chrome.canary", .chromeCanary, "Google/Chrome Canary"),
-        ("org.chromium.Chromium", .chromium, "Chromium"),
-        ("com.brave.Browser", .brave, "BraveSoftware/Brave-Browser"),
-        ("com.microsoft.edgemac", .edge, "Microsoft Edge"),
-        ("com.microsoft.edgemac.Beta", .edgeBeta, "Microsoft Edge Beta"),
-        ("com.microsoft.edgemac.Dev", .edgeDev, "Microsoft Edge Dev"),
-        ("com.microsoft.edgemac.Canary", .edgeCanary, "Microsoft Edge Canary"),
-        ("com.operasoftware.Opera", .opera, "com.operasoftware.Opera"),
-        ("com.operasoftware.OperaNext", .operaBeta, "com.operasoftware.OperaNext"),
-        ("com.operasoftware.OperaDeveloper", .operaDeveloper, "com.operasoftware.OperaDeveloper"),
-        ("com.opera.Opera", .opera, "com.operasoftware.Opera"),
-        ("com.opera.OperaBeta", .operaBeta, "com.operasoftware.OperaNext"),
-        ("com.opera.OperaDeveloper", .operaDeveloper, "com.operasoftware.OperaDeveloper"),
-        ("com.vivaldi.Vivaldi", .vivaldi, "Vivaldi"),
-        ("company.thebrowser.Browser", .arc, "Arc/User Data"),
-        ("com.keksbay.Arc", .arc, "Arc/User Data"),
-        ("net.imput.helium", .helium, "net.imput.helium"),
+        ("com.google.Chrome", .chrome, "Application Support/Google/Chrome"),
+        ("com.google.Chrome.beta", .chromeBeta, "Application Support/Google/Chrome Beta"),
+        ("com.google.Chrome.dev", .chromeDev, "Application Support/Google/Chrome Dev"),
+        ("com.google.Chrome.canary", .chromeCanary, "Application Support/Google/Chrome Canary"),
+        ("org.chromium.Chromium", .chromium, "Application Support/Chromium"),
+        ("com.brave.Browser", .brave, "Application Support/BraveSoftware/Brave-Browser"),
+        ("com.microsoft.edgemac", .edge, "Application Support/Microsoft Edge"),
+        ("com.microsoft.edgemac.Beta", .edgeBeta, "Application Support/Microsoft Edge Beta"),
+        ("com.microsoft.edgemac.Dev", .edgeDev, "Application Support/Microsoft Edge Dev"),
+        ("com.microsoft.edgemac.Canary", .edgeCanary, "Application Support/Microsoft Edge Canary"),
+        ("com.operasoftware.Opera", .opera, "Application Support/com.operasoftware.Opera"),
+        ("com.operasoftware.OperaNext", .operaBeta, "Application Support/com.operasoftware.OperaNext"),
+        (
+            "com.operasoftware.OperaDeveloper", .operaDeveloper,
+            "Application Support/com.operasoftware.OperaDeveloper"
+        ),
+        ("com.opera.Opera", .opera, "Application Support/com.operasoftware.Opera"),
+        ("com.opera.OperaBeta", .operaBeta, "Application Support/com.operasoftware.OperaNext"),
+        ("com.opera.OperaDeveloper", .operaDeveloper, "Application Support/com.operasoftware.OperaDeveloper"),
+        ("com.vivaldi.Vivaldi", .vivaldi, "Application Support/Vivaldi"),
+        ("company.thebrowser.Browser", .arc, "Application Support/Arc/User Data"),
+        ("com.keksbay.Arc", .arc, "Application Support/Arc/User Data"),
+        ("net.imput.helium", .helium, "Application Support/net.imput.helium"),
+        ("com.apple.Safari", .safari, "Safari"),
+        ("com.apple.SafariTechnologyPreview", .safariTechnologyPreview, "SafariTechnologyPreview"),
     ]
+
+    /// macOS's `open`, which opens links in Safari: Safari has no command-line arguments and runs
+    /// as a single process, so its executable can't be run a second time.
+    public static let systemOpener = URL(fileURLWithPath: "/usr/bin/open")
 
     public var home: Home
     public var applicationDirectories: [URL]
+    /// The program that opens a link in a browser without profiles (`open -a <app> <link>`).
+    /// Tests point it at a recording program.
+    public var opener: URL
 
     /// Browsers found in `applicationDirectories`.
-    public init(home: Home, applicationDirectories: [URL]) {
+    public init(home: Home, applicationDirectories: [URL], opener: URL = Browsers.systemOpener) {
         self.home = home
         self.applicationDirectories = applicationDirectories
+        self.opener = opener
     }
 
     /// `/Applications` and `~/Applications`, or only `$SWITCHBOARD_APPLICATIONS` when it is set.
@@ -109,7 +129,7 @@ public struct Browsers: Sendable {
     }
 
     /// The supported browser at `locator`, whether or not it is in the application folders. `nil`
-    /// when nothing is there or it isn't a supported Chromium browser.
+    /// when nothing is there or it isn't a supported browser.
     public func at(_ locator: String) -> BrowserInfo? {
         let path = Self.standardized(locator)
         let plistURL = URL(fileURLWithPath: path).appendingPathComponent("Contents/Info.plist")
@@ -129,7 +149,7 @@ public struct Browsers: Sendable {
         return BrowserInfo(
             locator: path, name: name, id: id, family: bundle.family, aliases: aliases,
             executable: URL(fileURLWithPath: path).appendingPathComponent("Contents/MacOS/\(executable)"),
-            userData: home.appending("Library/Application Support/\(bundle.data)"))
+            userData: home.appending("Library/\(bundle.data)"))
     }
 
     /// `locator` in the form `BrowserInfo.locator` uses, so two spellings compare equal.

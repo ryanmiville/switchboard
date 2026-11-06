@@ -3,6 +3,11 @@ import Foundation
 // Opening a link in a browser profile. The browser's executable is run directly with an argument
 // array (`--profile-directory=<dir> <link>`), never through `open -a`, so the profile is honoured
 // when the browser is already running. The link is passed exactly as it arrived.
+//
+// Safari is the exception: it takes no arguments and runs as one process, so a second copy of its
+// executable can't hand a link to the first. It is opened with `open -a <Safari.app> <link>`, which
+// asks Launch Services to give the running Safari the link. Safari has a single profile here (see
+// Profiles.swift), so nothing is lost.
 
 public enum LaunchError: Error, Equatable, CustomStringConvertible {
     case invalidURL
@@ -37,6 +42,7 @@ public enum Launch {
         } catch {
             throw .profile(error)
         }
+        guard browser.family.isChromium else { return (browsers.opener, ["-a", browser.locator, link]) }
         return (browser.executable, ["--profile-directory=\(directory)", link])
     }
 

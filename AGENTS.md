@@ -1,11 +1,11 @@
 # Switchboard
 
 A personal URL router for macOS: set as the default browser, it opens each link in a Chromium
-browser profile chosen by ordered rules. A Swift port of the Rust rewrite's design (`rune-rewrite`,
-paused), with a SwiftUI app and a CLI that can do everything the app can. It replaced the previous
-Swift app in place, with the same names (`switchboard`, `com.switchboard.app`,
-`~/.config/switchboard/`) and the same settings file; those names live only in
-`Sources/SwitchboardCore/Identity.swift`.
+browser profile, or in Safari, chosen by ordered rules. A Swift port of the Rust rewrite's design
+(`rune-rewrite`, paused), with a SwiftUI app and a CLI that can do everything the app can. It
+replaced the previous Swift app in place, with the same names (`switchboard`,
+`com.switchboard.app`, `~/.config/switchboard/`) and the same settings file; those names live only
+in `Sources/SwitchboardCore/Identity.swift`.
 
 ## Layout
 

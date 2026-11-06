@@ -38,7 +38,7 @@ struct QuickSwitchPane: View {
 
             Section {
                 if choices.isEmpty {
-                    Text("No supported Chromium browsers were found.").foregroundStyle(.secondary)
+                    Text("No supported browsers were found.").foregroundStyle(.secondary)
                 }
                 ForEach(choices, id: \.destination) { choice in
                     Toggle(

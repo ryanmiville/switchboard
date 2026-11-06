@@ -2,8 +2,8 @@
 
 **Every link opens in the right browser profile.**
 
-Switchboard is Arc's Air Traffic Control, as its own little Mac app, for the Chromium browser you
-already use. Set it as your default browser and it quietly sends each link you click, in Slack,
+Switchboard is Arc's Air Traffic Control, as its own little Mac app, for the browsers you already
+use. Set it as your default browser and it quietly sends each link you click, in Slack,
 Mail, your terminal or anywhere else, to the browser and profile you chose for it. Work links land
 in your work profile, everything else in your personal one.
 
@@ -14,8 +14,10 @@ in your work profile, everything else in your personal one.
 - **Rules, in order.** Match a link by domain (`github.com` and its subdomains), by text it
   contains, or exactly. The first rule that matches wins; anything else goes to your default
   profile. Test a link in Settings to see where it would go without opening it.
-- **Any Chromium browser.** Chrome, Arc, Brave, Edge, Helium, Vivaldi, Opera and Chromium,
-  including their beta and dev builds. Rules can mix browsers.
+- **Any Chromium browser, and Safari.** Chrome, Arc, Brave, Edge, Helium, Vivaldi, Opera and
+  Chromium, including their beta and dev builds, plus Safari and Safari Technology Preview. Rules
+  can mix browsers. Safari doesn't let other apps pick one of its profiles, so links sent to Safari
+  open in the profile of its front window.
 - **Quick Switch.** Already on a page in the wrong profile? Press ⌃⌥Space (or your own shortcut),
   type a few letters to filter, and press Return to reopen it in another profile. Choose which
   profiles show up in Settings → Quick Switch.
