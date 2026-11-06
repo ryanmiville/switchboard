@@ -63,18 +63,35 @@ struct EditorTests {
         #expect(try Data(contentsOf: e.store.url) == Data(#"{"browser": "#.utf8))
     }
 
-    @Test func aNewDefaultBrowserClearsTheProfilesChosenInTheOldOne() throws {
+    @Test func aNewDefaultBrowserStartsOnItsFirstProfileAndSavesWithoutAsking() throws {
         let scene = try SceneHome()
         defer { scene.remove() }
         var e = editor(scene)
         e.selectDefaultBrowser(scene.chrome)
-        #expect(e.config.defaultProfile == "")
+        #expect(e.config.defaultProfile == "Default")
         #expect(
-            e.config.rules.map(\.profile) == ["", "Profile 2", "", "Profile 3"],
-            "rules with a browser keep theirs")
+            e.config.rules.map(\.profile) == ["Default", "Profile 2", "Default", "Profile 3"],
+            "rules that inherit the browser move to its first profile; rules with a browser keep theirs")
         let r6 = e.flush()
-        #expect(!r6, "saving waits for new profiles")
-        #expect(e.profileError == ProfileError.selectionRequired.description)
+        #expect(r6, "nothing is left to choose")
+        #expect(e.profileError == nil)
+    }
+
+    @Test func aDefaultBrowserWithNoDefaultProfileStartsOnTheFirstOneItsMenuLists() throws {
+        let fixture = try TemporaryHome()
+        defer { fixture.remove() }
+        let helium = try fixture.installBrowser(.helium, name: "Helium", profiles: [("Default", "Ryan")])
+        let chrome = try fixture.installBrowser(
+            .chrome, name: "Google Chrome", profiles: [("Profile 4", "Work"), ("Profile 7", "Home")])
+        try FileManager.default.createDirectory(
+            at: fixture.home.configFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"{"browser":"\#(helium)","defaultProfile":"Default"}"#.utf8).write(
+            to: fixture.home.configFile)
+        var e = Editor(
+            home: fixture.home, store: fixture.configStore, history: fixture.historyStore,
+            browsers: fixture.browsers)
+        e.selectDefaultBrowser(chrome)
+        #expect(e.config.defaultProfile == "Profile 7", "Home sorts before Work, as the menu lists them")
     }
 
     @Test func anEditSavesAfterTheAutosaveDelayAndNotBefore() throws {
@@ -153,13 +170,25 @@ struct EditorTests {
         #expect(draft.error == "Choose a profile.")
     }
 
-    @Test func changingADraftsBrowserAsksForANewProfile() {
+    @Test func changingADraftsBrowserStartsOnTheNewBrowsersFirstProfile() {
         var draft = Draft.newRule()
         draft.profile = "Profile 1"
-        draft.selectBrowser(nil, defaultBrowser: "/A.app")
+        draft.selectBrowser(nil, defaultBrowser: "/A.app", firstProfile: "Default")
         #expect(draft.profile == "Profile 1", "the same browser keeps the profile")
-        draft.selectBrowser("/B.app", defaultBrowser: "/A.app")
-        #expect(draft.profile == "")
+        draft.selectBrowser("/B.app", defaultBrowser: "/A.app", firstProfile: "Profile 3")
+        #expect(draft.profile == "Profile 3")
+    }
+
+    @Test func aNewRuleStartsOnTheDefaultBrowsersFirstProfile() throws {
+        let scene = try SceneHome()
+        defer { scene.remove() }
+        let e = editor(scene)
+        #expect(e.firstProfile(of: scene.chrome) == "Default")
+        #expect(e.firstProfile(of: "") == "")
+        var draft = Draft.newRule(profile: e.firstProfile(of: e.config.browser))
+        draft.enterPattern("figma.com")
+        #expect(draft.profile == "Default")
+        #expect(draft.validated() != nil, "a new rule needs only a pattern")
     }
 
     @Test func theSwiftAppsSettingsFileOpensInPlaceAndSavesProfilesAsDirectories() throws {

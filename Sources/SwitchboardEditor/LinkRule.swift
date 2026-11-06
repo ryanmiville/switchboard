@@ -8,9 +8,10 @@ extension Draft {
     ///
     /// A link chosen in Quick Switch keeps the destination the person picked, since a rule makes
     /// that choice automatic. Any other link already went where the rules or the default sent it,
-    /// so the profile is left to choose.
-    public static func forLink(_ entry: History.Entry, defaultBrowser: String) -> Draft {
-        var draft = newRule()
+    /// so it starts on `firstProfile`, the default browser's first, like any new rule.
+    public static func forLink(_ entry: History.Entry, defaultBrowser: String, firstProfile: String) -> Draft
+    {
+        var draft = newRule(profile: firstProfile)
         if let host = Link.webHost(entry.url) {
             draft.condition = .domain
             draft.value = domain(of: host)

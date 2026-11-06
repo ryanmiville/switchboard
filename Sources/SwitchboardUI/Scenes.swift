@@ -56,7 +56,9 @@ public enum Scenes {
             s.editor.edit { $0.rules[0].profile = "Profile 9" }
             s.editor.refreshProfiles()
         },
-        Scene(name: "rule-new", kind: .ruleSheet) { s, _, _ in s.draft = .newRule() },
+        Scene(name: "rule-new", kind: .ruleSheet) { s, _, _ in
+            s.draft = .newRule(profile: s.editor.firstProfile(of: s.editor.config.browser))
+        },
         Scene(name: "rule-edit", kind: .ruleSheet) { s, _, _ in s.draft = .editing(s.editor.config.rules[1])
         },
         // Rule 1 being edited, with recent links in history for the preview to count.
